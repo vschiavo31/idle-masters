@@ -90,16 +90,6 @@ test("migration preserves unknown items, old wins and moves high-level worn gear
   assert.equal(run("D.w.Amulette"), null);
   assert.equal(run("D.uid"), 10);
 });
-test("progression gates and existing unlocked zones", () => {
-  const { run } = game();
-  assert.equal(run("zoneOpen(1)"), false);
-  run("D.master.m4785=10");
-  assert.equal(run("!!zoneOpen(1)"), true);
-  run("D.master.m489=10");
-  assert.equal(run("!!zoneOpen(2)"), true);
-  run("D.master.m147=1");
-  assert.equal(run("!!zoneOpen(3)"), true);
-});
 
 test("family drops are exact, complete and never leak into unrelated families", () => {
   const { run } = game();
@@ -259,11 +249,9 @@ test("expanded zones cover level 1–40, are reachable, and keep original saves 
     ),
     true,
   );
-  for (let z = 4; z < run("Z.length"); z++) {
-    run(`D.lv=Z[${z}][1]-1`);
-    assert.equal(run(`!!zoneOpen(${z})`), false);
-    run(`D.lv=Z[${z}][1]`);
-    assert.equal(run(`!!zoneOpen(${z})`), true);
+  for (const id of JSON.parse(run("JSON.stringify(ZONE_ORDER)"))) {
+    assert.equal(run(`!!zoneOpen(${id})`), true);
+    run(`D.encounterWins['${id}:2']=10`);
   }
   assert.equal(run("!!zoneOpen(500)"), false);
 });
@@ -303,7 +291,9 @@ test("every added monster has nonempty level-1–40 loot and the same global gat
       true,
     );
   }
-  run("D.z=20;D.lv=40;Math.random=()=>0;startEncounter(20,2)");
+  run(
+    "ZONE_ORDER.slice(0,ZONE_ORDER.indexOf(20)).forEach(id=>D.encounterWins[id+':2']=10);D.z=20;D.lv=40;Math.random=()=>0;startEncounter(20,2)",
+  );
   assert.equal(run("encounter.members.length"), 3);
   const earned = run(
     "encounter.members.reduce((n,e)=>n+M.find(m=>m.id===e.id).xp,0)",
@@ -491,33 +481,51 @@ test("class confirmation is free initially, costs 20000 thereafter, and cannot d
   assert.equal(run("D.k"), 20000);
 });
 
-test("Astrub includes all Incarnam areas, all combat tiers and older saves", () => {
+test("zones unlock in displayed order only after ten hard wins in every preceding zone", () => {
   const { run } = game();
-  run('D.master={};D.encounterWins={"8:2":9}');
-  assert.equal(run("!!zoneOpen(1)"), false);
-  run('D.encounterWins["8:2"]=10');
-  assert.equal(run("!!zoneOpen(1)"), true);
-  run('D.encounterWins={"8:0":5,"8:1":1,"8:2":17}');
-  assert.equal(
-    run("!!zoneOpen(1)"),
-    true,
-    "Reported cemetery save unlocks Astrub",
-  );
-  run('D.encounterWins={"0:0":2,"7:1":3,"8:2":5}');
-  assert.equal(run("incarnamWins()"), 10);
-  assert.equal(run("!!zoneOpen(1)"), true);
-  run('D.encounterWins={"1:2":50,"4:2":50};D.master={}');
+  const order = JSON.parse(run("JSON.stringify(ZONE_ORDER)"));
+  assert.equal(new Set(order).size, 25);
+  assert.equal(order[0], 0);
+  run("D.lv=40;D.boss={incarnam:1,astrub:1,tainela:1};D.master.m4785=999");
+  assert.equal(run(`!!zoneOpen(${order[1]})`), false);
+  run('D.encounterWins={"8:2":17}');
   assert.equal(
     run("!!zoneOpen(1)"),
     false,
-    "Other regions cannot unlock Astrub",
+    "Later saved wins cannot skip predecessors",
   );
-  run("D.encounterWins={};D.master.m4046=10");
-  assert.equal(
-    run("!!zoneOpen(1)"),
-    true,
-    "Legacy cemetery victories remain valid",
-  );
-  run("D.master={};D.boss.incarnam=1");
-  assert.equal(run("!!zoneOpen(1)"), true);
+  run("D.encounterWins={}");
+  for (let n = 1; n < order.length; n++) {
+    const previous = order[n - 1],
+      next = order[n];
+    run(
+      `D.encounterWins['${previous}:0']=100;D.encounterWins['${previous}:1']=100;D.encounterWins['${previous}:2']=9`,
+    );
+    assert.equal(run(`!!zoneOpen(${next})`), false);
+    run(`D.encounterWins['${previous}:2']=10`);
+    assert.equal(run(`!!zoneOpen(${next})`), true);
+  }
+  assert.equal(run("zoneOpen(-1)"), false);
+  assert.equal(run("zoneOpen(500)"), false);
+});
+test("inventory sorts support all four directions without changing items or bag order", () => {
+  const { run } = game();
+  run(`sortFixture=Object.keys(I).map(id=>({id,...meta(id)})).filter(x=>Object.values(x.x).some(v=>v[0]!==v[1])).sort((a,b)=>a.l-b.l);low=sortFixture[0];high=sortFixture.at(-1);
+    mk=(x,uid,max)=>({id:x.id,uid,st:Object.fromEntries(Object.entries(x.x).map(([k,v])=>[k,max?Math.max(...v):Math.min(...v)]))});
+    D.bag=[mk(high,1,true),mk(low,2,false),mk(low,3,true)];original=JSON.stringify(D.bag)`);
+
+  for (const [order, field, sign] of [
+    ["levelAsc", "level", 1],
+    ["levelDesc", "level", -1],
+    ["jetAsc", "jet", 1],
+    ["jetDesc", "jet", -1],
+  ]) {
+    assert.equal(
+      run(
+        `sortedInventory(D.bag,'${order}').map(q=>${field === "level" ? "meta(q.id).l" : "jet(q)"}).every((v,i,a)=>!i||(v-a[i-1])*${sign}>=0)`,
+      ),
+      true,
+    );
+  }
+  assert.equal(run("JSON.stringify(D.bag)===original"), true);
 });

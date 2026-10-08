@@ -96,3 +96,16 @@ le jeu bloque le chargement et propose de réessayer pour éviter de perdre une 
 Les victoires dans Incarnam, les Prairies et le Cimetière d’Incarnam
 comptent toutes pour débloquer Astrub. La condition affiche désormais
 la région concernée et la progression sur 10. Les anciens déblocages sont conservés.
+
+### V3.8 — progression linéaire et tris
+
+Les 25 zones suivent l’ordre affiché, du niveau le plus bas au plus haut.
+Seule la première est ouverte au départ. Dix victoires au combat difficile
+de chaque zone précédente débloquent la suivante ; les niveaux, boss et
+combats faciles/intermédiaires ne remplacent plus cette condition.
+Les victoires déjà sauvegardées restent conservées, avec leur identifiant
+de zone initial. Une zone déjà visitée peut être bloquée tant que les étapes
+précédentes ne sont pas terminées.
+
+L’inventaire propose les tris niveau et perfection du jet, chacun dans les
+deux sens. Le choix est sauvegardé avec le personnage.

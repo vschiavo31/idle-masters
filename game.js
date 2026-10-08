@@ -883,6 +883,23 @@ function dashboard() {
     ACH.length +
     " succès débloqués";
 }
+const INVENTORY_SORTS = ["levelAsc", "levelDesc", "jetAsc", "jetDesc"];
+function sortedInventory(items, order) {
+  const compare =
+    {
+      levelAsc: (a, b) => meta(a.id).l - meta(b.id).l,
+      levelDesc: (a, b) => meta(b.id).l - meta(a.id).l,
+      jetAsc: (a, b) => jet(a) - jet(b),
+      jetDesc: (a, b) => jet(b) - jet(a),
+    }[order] || ((a, b) => jet(b) - jet(a));
+  return items
+    .slice()
+    .sort(
+      (a, b) =>
+        compare(a, b) ||
+        String(a.uid).localeCompare(String(b.uid), "fr", { numeric: true }),
+    );
+}
 function inventory() {
   let search = ($("bagSearch").value || "").toLowerCase();
   $("bagCount").textContent = D.bag.length;
@@ -911,8 +928,10 @@ function inventory() {
   e.innerHTML = "";
   let ready = D.bag.slice().filter((q) => meta(q.id));
   let pending = D.bag.length - ready.length;
-  ready
-    .sort((a, b) => jet(b) - jet(a))
+  $("bagSort").value = INVENTORY_SORTS.includes(D.inventorySort)
+    ? D.inventorySort
+    : "jetDesc";
+  sortedInventory(ready, $("bagSort").value)
     .filter((q) => meta(q.id).n.toLowerCase().includes(search))
     .forEach((q) => {
       let x = meta(q.id),
@@ -1042,77 +1061,58 @@ function collection() {
     a.append(d);
   });
 }
-function zoneWins(z) {
-  return M.filter((m) => m.z === z).reduce(
-    (n, m) => n + (D.master[m.id] || 0),
-    0,
-  );
+// Keep persistent zone IDs; progression follows the displayed difficulty order.
+const ZONE_ORDER = Z.map((zone, id) => ({ zone, id }))
+  .sort((a, b) => a.zone[1] - b.zone[1] || a.id - b.id)
+  .map(({ id }) => id);
+function hardWins(id) {
+  return D.encounterWins[id + ":2"] || 0;
 }
-// Stable zone IDs stay unchanged: saves reference them in encounterWins.
-function incarnamWins() {
-  const zones = Z.map((zone, id) => ({ zone, id }))
-    .filter(({ zone }) => zone[0].includes("Incarnam"))
-    .map(({ id }) => id);
-  const combats = zones.reduce(
-    (total, id) =>
-      total +
-      [0, 1, 2].reduce(
-        (sum, tier) => sum + (D.encounterWins[id + ":" + tier] || 0),
-        0,
-      ),
-    0,
-  );
-  // Retain unlocks from older saves that only tracked monster victories.
-  const legacy = zones.reduce((total, id) => total + zoneWins(id), 0);
-  return Math.max(combats, legacy);
-}
-function zoneOpen(i) {
+function zoneOpen(id) {
+  const position = ZONE_ORDER.indexOf(id);
   return (
-    i === 0 ||
-    (i === 1 && (D.boss.incarnam || incarnamWins() >= 10)) ||
-    (i === 2 && (D.boss.astrub || zoneWins(1) >= 10)) ||
-    (i === 3 && (D.boss.tainela || D.master.m147 >= 1)) ||
-    (i >= 4 && !!Z[i] && D.lv >= Z[i][1])
+    position >= 0 &&
+    ZONE_ORDER.slice(0, position).every((previous) => hardWins(previous) >= 10)
   );
+}
+function zoneRequirement(id) {
+  const position = ZONE_ORDER.indexOf(id);
+  const missing = ZONE_ORDER.slice(0, position).find(
+    (previous) => hardWins(previous) < 10,
+  );
+  return missing === undefined
+    ? ""
+    : "— Combat difficile : " +
+        Z[missing][0] +
+        " · " +
+        Math.min(10, hardWins(missing)) +
+        "/10 victoires";
 }
 function picker() {
   let z = $("zones");
   z.innerHTML = "";
-  Z.map((x, i) => ({ x, i }))
-    .sort((a, b) => a.x[1] - b.x[1] || a.i - b.i)
-    .forEach(({ x, i }) => {
-      let ok = zoneOpen(i),
-        b = document.createElement("button");
-      b.dataset.zone = String(i);
-      b.className = "choice " + (D.z === i ? "sel" : "");
-      b.disabled = !ok;
-      b.innerHTML =
-        "<b>" +
-        x[0] +
-        "</b> · niv. " +
-        Z[i][1] +
-        "–" +
-        Math.max(...M.filter((m) => m.z === i).map((m) => m.l)) +
-        " " +
-        (ok
-          ? ""
-          : i >= 4
-            ? "— personnage niveau " + x[1]
-            : i === 3
-              ? "— vaincre le Bouftou Royal"
-              : i === 1
-                ? "— 10 victoires à Incarnam (toutes zones) · " +
-                  Math.min(10, incarnamWins()) +
-                  "/10"
-                : "— 10 victoires à Astrub · " +
-                  Math.min(10, zoneWins(1)) +
-                  "/10");
-      b.onclick = () => {
-        D.z = i;
-        render();
-      };
-      z.append(b);
-    });
+  ZONE_ORDER.forEach((i) => {
+    const x = Z[i];
+    let ok = zoneOpen(i),
+      b = document.createElement("button");
+    b.dataset.zone = String(i);
+    b.className = "choice " + (D.z === i ? "sel" : "");
+    b.disabled = !ok;
+    b.innerHTML =
+      "<b>" +
+      x[0] +
+      "</b> · niv. " +
+      Z[i][1] +
+      "–" +
+      Math.max(...M.filter((m) => m.z === i).map((m) => m.l)) +
+      " " +
+      (ok ? "" : zoneRequirement(i));
+    b.onclick = () => {
+      D.z = i;
+      render();
+    };
+    z.append(b);
+  });
   $("zoneTitle").textContent = Z[D.z][0] + " · choisir un combat";
   let e = $("mobs");
   e.innerHTML = "";
@@ -1323,7 +1323,11 @@ document
   .querySelectorAll(".nav button")
   .forEach((b) => (b.onclick = () => show(b.dataset.page)));
 $("bagSearch").oninput = inventory;
-$("sortBtn").onclick = inventory;
+$("bagSort").onchange = () => {
+  D.inventorySort = $("bagSort").value;
+  inventory();
+  save();
+};
 $("endBtn").onclick = enemy;
 $("autoBtn").onclick = toggleAuto;
 $("backMob").onclick = () => {
@@ -1468,7 +1472,7 @@ async function boot() {
     ];
     let [eq, sets, bestiary] = await Promise.all(
       files.map(async (f) => {
-        let r = await fetch(f + "?v=3.7.1");
+        let r = await fetch(f + "?v=3.8.0");
         if (!r.ok) throw Error(f + " : HTTP " + r.status);
         return r.json();
       }),
@@ -1488,7 +1492,8 @@ async function boot() {
     }
     D.localCombatMigration = 1;
     if (!M.some((m) => m.id === D.mid)) D.mid = M[0].id;
-    if (!Z[D.z] || !zoneOpen(D.z)) D.z = 0;
+    if (!Z[D.z] || !zoneOpen(D.z))
+      D.z = ZONE_ORDER.filter(zoneOpen).at(-1) ?? ZONE_ORDER[0];
     D.hp = mh();
     PA = maxpa();
     checkAch();

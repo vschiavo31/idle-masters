@@ -6,7 +6,7 @@
       name="viewport"
       content="width=device-width,initial-scale=1,viewport-fit=cover"
     />
-    <title>Idle Masters V3.7.1</title>
+    <title>Idle Masters V3.8.0</title>
     <style>
       :root {
         --bg: #100e0b;
@@ -490,13 +490,19 @@
       [hidden] {
         display: none !important;
       }
+      .bagTools {
+        flex-wrap: wrap;
+      }
+      .bagTools select {
+        min-width: 0;
+      }
     </style>
   </head>
   <body>
     <div class="wrap">
       <div class="top">
         <div class="brand">Idle Masters</div>
-        <span class="version">V3.7.1 · Accès aux zones</span>
+        <span class="version">V3.8 · Progression et inventaire</span>
       </div>
       <div class="row" style="margin-bottom: 12px">
         <small id="saveStatus" class="mut" role="status"
@@ -611,11 +617,18 @@
         </div>
         <div class="panel">
           <div class="bagTools">
-            <input id="bagSearch" placeholder="Rechercher un objet..." /><button
-              id="sortBtn"
-            >
-              Meilleur jet
-            </button>
+            <input id="bagSearch" placeholder="Rechercher un objet..." />
+            <label for="bagSort">Trier les objets</label>
+            <select id="bagSort">
+              <option value="levelAsc">Niveau : plus bas au plus haut</option>
+              <option value="levelDesc">Niveau : plus haut au plus bas</option>
+              <option value="jetAsc">
+                Jet : moins parfait au plus parfait
+              </option>
+              <option value="jetDesc" selected>
+                Jet : plus parfait au moins parfait
+              </option>
+            </select>
           </div>
           <div id="bag"></div>
         </div>
@@ -824,11 +837,11 @@
       ><button data-page="collection">COLLECTION</button
       ><button data-page="combat">COMBAT</button>
     </nav>
-    <script src="local-data.js?v=3.7.1"></script>
-    <script src="bestiary-ui.js?v=3.7.1"></script>
-    <script src="saving.js?v=3.7.1"></script>
-    <script src="classes.js?v=3.7.1"></script>
-    <script src="combat-effects.js?v=3.7.1"></script>
-    <script src="game.js?v=3.7.1"></script>
+    <script src="local-data.js?v=3.8.0"></script>
+    <script src="bestiary-ui.js?v=3.8.0"></script>
+    <script src="saving.js?v=3.8.0"></script>
+    <script src="classes.js?v=3.8.0"></script>
+    <script src="combat-effects.js?v=3.8.0"></script>
+    <script src="game.js?v=3.8.0"></script>
   </body>
 </html>

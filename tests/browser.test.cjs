@@ -459,29 +459,69 @@ async function main() {
           D.spellPts += 1;
           upSpell(0);
         });
-        // Reproduce the reported save: 5 easy, 1 medium and 17 hard cemetery wins.
-        const gateBackup = await page.evaluate(() => ({
-          master: D.master,
-          encounterWins: D.encounterWins,
-          boss: D.boss,
-        }));
+        // Ten hard wins unlock exactly the next displayed zone; level cannot bypass it.
+        const gateBackup = await page.evaluate(() => D.encounterWins);
         await page.evaluate(() => {
-          D.master = {};
-          D.boss = {};
-          D.encounterWins = { "8:0": 5, "8:1": 1, "8:2": 17 };
-          D.z = 8;
+          D.encounterWins = {};
+          D.z = 0;
           show("combat");
         });
+        const order = await page.evaluate(() => ZONE_ORDER);
+        assert.equal(await page.locator("#zones button:enabled").count(), 1);
+        await page.evaluate(() => {
+          D.encounterWins["0:0"] = 100;
+          D.encounterWins["0:1"] = 100;
+          D.encounterWins["0:2"] = 9;
+          render();
+        });
         assert.equal(
-          await page.locator('#zones button[data-zone="1"]').isEnabled(),
-          true,
+          await page
+            .locator(`#zones button[data-zone="${order[1]}"]`)
+            .isEnabled(),
+          false,
         );
-        await page.locator('#zones button[data-zone="1"]').click();
-        assert.equal(await page.evaluate(() => D.z), 1);
+        await page.evaluate(() => {
+          D.encounterWins["0:2"] = 10;
+          render();
+        });
+        await page.locator(`#zones button[data-zone="${order[1]}"]`).click();
+        assert.equal(await page.evaluate(() => D.z), order[1]);
         await page.evaluate((backup) => {
-          Object.assign(D, backup);
+          D.encounterWins = backup;
+          ZONE_ORDER.forEach((id) => (D.encounterWins[id + ":2"] = 10));
           render();
         }, gateBackup);
+        await page.evaluate(() => show("inventory"));
+        for (const sort of ["levelAsc", "levelDesc", "jetAsc", "jetDesc"]) {
+          await page.locator("#bagSort").selectOption(sort);
+          assert.equal(await page.evaluate(() => D.inventorySort), sort);
+          const values = await page
+            .locator("#bag .item")
+            .evaluateAll(
+              (items, sort) =>
+                items.map((item) =>
+                  Number(
+                    item
+                      .querySelector(
+                        sort.startsWith("level") ? ".eyebrow" : ".itemHead > b",
+                      )
+                      .textContent.match(/(?:Niv\. |Jet )(\d+)/)[1],
+                  ),
+                ),
+              sort,
+            );
+          assert.equal(
+            values.every(
+              (v, i) =>
+                !i ||
+                (sort.endsWith("Asc")
+                  ? v >= values[i - 1]
+                  : v <= values[i - 1]),
+            ),
+            true,
+          );
+        }
+        await page.evaluate(() => show("combat"));
         // Open every added zone and all three difficulties through the mobile controls.
         await page.evaluate(() => {
           D.lv = 40;
@@ -534,6 +574,7 @@ async function main() {
           zone: D.z,
           classId: D.classId,
           spellRanks: D.spellRanks,
+          inventorySort: D.inventorySort,
         }));
         await page
           .getByRole("button", { name: "Sauvegarder", exact: true })
@@ -573,6 +614,7 @@ async function main() {
             zone: D.z,
             classId: D.classId,
             spellRanks: D.spellRanks,
+            inventorySort: D.inventorySort,
           })),
           kept,
         );
