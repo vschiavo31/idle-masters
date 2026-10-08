@@ -689,6 +689,7 @@ function renderClassChoice() {
     : "Choisis une classe pour combattre";
   $("classList").hidden = classPreviewOpen;
   $("classDetail").hidden = !classPreviewOpen;
+  $("classTraining").hidden = classPreviewOpen;
   $("classPreviewName").textContent = candidate.name;
   $("classPreview").textContent = candidate.style + " · " + candidate.passive;
   $("chooseClassBtn").textContent = "Voir les sorts du " + candidate.name;
