@@ -82,14 +82,14 @@ jobs:
               if not levels or min(levels)>40 or max(levels)<1:continue
               name=translations.get(str(get(m,'nameId')))
               if name:raw.append({'id':get(m,'id'),'name':name,'minLevel':max(1,min(levels)),'maxLevel':min(40,max(levels)),'hpMin':min(hp) if hp else None,'hpMax':max(hp) if hp else None,'pa':max(pa) if pa else None,'pm':max(pm) if pm else None,'raceId':get(m,'race'),'boss':bool(get(m,'isBoss','boss'))})
-          blocked=re.compile(r"(?i)(balise|bombe|bomb'|tourelle|cadran|cawotte|coffre|curseur|glyphe|piège|portail|tentacule|invocation|double|chaton|lapino|sac animé|épée volante|aiguille|boufballe|attaquant |capitaine |bloqueur|caisse|cherche trésor|coffiot|coquille|surveillante|sentinelle)")
+          blocked=re.compile(r"(?i)(balise|bombe|bomb'|tourelle|cadran|cawotte|coffre|curseur|glyphe|piège|portail|tentacule|invocation|double|chaton|lapino|sac animé|épée volante|aiguille|boufballe|attaquant |capitaine |bloqueur|caisse|cherche trésor|coffiot|coquille|surveillante|sentinelle|d[ée]voreur)")
           clean=[];seen=set()
           for x in sorted(raw,key=lambda x:(x['minLevel'],x['name'],str(x['id']))):
               if x['id'] in seen or blocked.search(x['name']):continue
               seen.add(x['id'])
               if not x['boss'] and ((x['hpMax'] or 0)<=1 or (x['pa'] or 0)<=0 or (x['pm'] is not None and x['pm']<0)):continue
               clean.append(x)
-          Path('dofus-bestiary-1-40.json').write_text(json.dumps({'source':'dofusdude/dofus3-main','version':version,'range':[1,40],'rawCount':len(raw),'count':len(clean),'filter':'playable-pvm-candidates-v2','monsters':clean},ensure_ascii=False,separators=(',',':')),encoding='utf-8')
+          Path('dofus-bestiary-1-40.json').write_text(json.dumps({'source':'dofusdude/dofus3-main','version':version,'range':[1,40],'rawCount':len(raw),'count':len(clean),'filter':'playable-pvm-candidates-v3-no-devourers','monsters':clean},ensure_ascii=False,separators=(',',':')),encoding='utf-8')
           SLOT_TYPES={1:'Amulette',9:'Anneau',10:'Ceinture',16:'Chapeau',17:'Cape',11:'Bottes'}
           chars={num(get(c,'id')):c for c in refdata(roots['characteristics']) if num(get(c,'id')) is not None}
           effects_by_id={num(get(e,'id')):e for e in refdata(roots['effects']) if num(get(e,'id')) is not None}
@@ -111,7 +111,6 @@ jobs:
               if label:
                   label=re.sub(r'[#{}~%+\-0-9.,]+',' ',label);label=re.sub(r'\s+',' ',label).strip(' :')
               dn=num(get(e,'diceNum','min','value')); ds=num(get(e,'diceSide','max')); dv=num(get(e,'value'))
-              # Ankama possibleEffects: diceNum/diceSide encode a range. A zero diceSide is a fixed value.
               if ds in (None,0):
                   fixed=dn if dn is not None else dv
                   mn=mx=fixed
@@ -159,5 +158,5 @@ jobs:
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
           git add dofus-bestiary-1-40.json dofus-equipment-1-40.json dofus-item-sets.json
           git diff --cached --quiet && exit 0
-          git commit -m 'Normalize fixed Dofus equipment effects'
+          git commit -m 'Filter Devourers from local Dofus bestiary'
           git push
