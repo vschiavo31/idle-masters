@@ -25,3 +25,9 @@ La clé `idleMastersV2` est conservée. Avant la migration 3.3.2, une copie est 
 ## Vérification
 
 `node --test tests/game.test.cjs` lance les tests de données, drops, équipement, bonus de panoplie et migration. Validation réalisée dans Chromium avec un écran de 390 × 844 : démarrage, bestiaire, succès, victoire, retour au combat et annulation des tours différés ; aucune erreur JavaScript, aucun appel externe et aucun débordement horizontal. Une vérification DOM confirme aussi la sauvegarde après victoire. Cette simulation ne remplace pas un essai sur Safari iPhone.
+
+## Version d’essai en ligne
+
+Le projet Sites associé est déclaré dans `.openai/hosting.json`. Les mises à jour conservent ce projet et son adresse, afin de garder la sauvegarde navigateur sur la même origine. La publication nécessite `node scripts/build-static.cjs` pour créer `dist`, puis le workflow Sites. Les futures modifications doivent être vérifiées et publiées sur ce même site avant de remettre le lien d’essai.
+
+À chaque push GitHub, `.github/workflows/check-game.yml` vérifie les règles et lance le parcours mobile dans Chromium et WebKit (moteur Safari). Les anciens workflows qui réinjectaient des scripts sont archivés dans `retired-workflows` et ne s’exécutent plus. Ces tests couvrent les parcours connus, sans garantir l’absence de tous les bugs.
