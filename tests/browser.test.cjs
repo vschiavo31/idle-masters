@@ -456,9 +456,38 @@ async function main() {
         }
         await page.evaluate(() => {
           M.forEach((m) => (m.h -= 10000));
-          D.spellPts += 1;
-          upSpell(0);
         });
+        await page.evaluate(() => {
+          delete D.spellRanks[spellBook()[0].id];
+          show("spellsPage");
+        });
+        const upgrade = page.locator('#spellList .card[data-spell="0"] button');
+        for (let cost = 1; cost <= 5; cost++) {
+          await page.evaluate((cost) => {
+            D.spellPts = cost - 1;
+            render();
+          }, cost);
+          assert.equal(await upgrade.isDisabled(), true);
+          assert.equal(
+            (await upgrade.textContent()).includes(String(cost) + " point"),
+            true,
+          );
+          await page.evaluate((cost) => {
+            D.spellPts = cost;
+            render();
+          }, cost);
+          await upgrade.click();
+          assert.equal(await page.evaluate(() => D.spellPts), 0);
+          assert.equal(await page.evaluate(() => spellRank(0)), cost + 1);
+        }
+        assert.equal(await upgrade.textContent(), "Rang 6 · maximum");
+        assert.equal(await upgrade.isDisabled(), true);
+        assert.equal(
+          (
+            await page.locator('#spellList .card[data-spell="0"]').textContent()
+          ).includes("6/6"),
+          true,
+        );
         // Ten hard wins unlock exactly the next displayed zone; level cannot bypass it.
         const gateBackup = await page.evaluate(() => D.encounterWins);
         await page.evaluate(() => {
@@ -629,7 +658,10 @@ async function main() {
         // Close the original session entirely, then recover from the server in a
         // fresh session where Safari-like browser storage is unavailable.
         // Fixture gear also earns collection rewards, just as a real victory would.
-        await page.evaluate(() => { checkAch(); render(); });
+        await page.evaluate(() => {
+          checkAch();
+          render();
+        });
         const kept = await page.evaluate(() => ({
           k: D.k,
           bag: D.bag.length,

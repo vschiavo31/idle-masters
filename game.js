@@ -665,11 +665,17 @@ function spend(n) {
     render();
   }
 }
+const MAX_SPELL_RANK = 6;
+function spellUpgradeCost(i) {
+  return spellRank(i) < MAX_SPELL_RANK ? spellRank(i) : 0;
+}
 function upSpell(i) {
-  if (!spellUnlocked(i) || D.spellPts <= 0 || spellRank(i) >= 5) return;
-  D.spellPts--;
+  const cost = spellUpgradeCost(i);
+  if (!spellUnlocked(i) || !cost || D.spellPts < cost) return false;
+  D.spellPts -= cost;
   D.spellRanks[spellBook()[i].id] = spellRank(i) + 1;
   render();
+  return true;
 }
 const CLASS_CHANGE_PRICE = 20000;
 let pendingClass = "iop",
@@ -745,7 +751,7 @@ function renderClassChoice() {
       s.e +
       " · Rang " +
       rank +
-      "/5</div><div>" +
+      "/6</div><div>" +
       spellEffectText(s, p, candidate.trait) +
       "</div><div class='mut'>" +
       (s.cd ? "Relance " + s.cd + " tours" : "3 lancers maximum par tour") +
@@ -1074,7 +1080,7 @@ function spells() {
       s.n +
       '</b><div class="mut">' +
       (unlocked
-        ? "Rang " + spellRank(i) + "/5"
+        ? "Rang " + spellRank(i) + "/6"
         : "Déblocage niveau " + s.level) +
       " · " +
       p[2] +
@@ -1086,10 +1092,13 @@ function spells() {
       (s.cd ? "Relance " + s.cd + " tours" : "3 lancers maximum par tour") +
       "</div>";
     const button = document.createElement("button");
-    button.textContent = unlocked
-      ? "Améliorer"
-      : "Niveau " + s.level + " requis";
-    button.disabled = !unlocked || D.spellPts <= 0 || spellRank(i) >= 5;
+    const cost = spellUpgradeCost(i);
+    button.textContent = !unlocked
+      ? "Niveau " + s.level + " requis"
+      : !cost
+        ? "Rang 6 · maximum"
+        : "Améliorer · " + cost + " point" + (cost > 1 ? "s" : "");
+    button.disabled = !unlocked || !cost || D.spellPts < cost;
     button.onclick = () => upSpell(i);
     d.append(button);
     root.append(d);
@@ -1553,7 +1562,7 @@ async function boot() {
     ];
     let [eq, sets, bestiary] = await Promise.all(
       files.map(async (f) => {
-        let r = await fetch(f + "?v=3.8.0");
+        let r = await fetch(f + "?v=3.8.1");
         if (!r.ok) throw Error(f + " : HTTP " + r.status);
         return r.json();
       }),

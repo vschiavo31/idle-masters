@@ -559,3 +559,39 @@ test("equipment filters support multiple categories and preserve explicit empty 
   run("D.inventorySlots=[]");
   assert.equal(run("visibleInventorySlots().length"), 0);
 });
+
+test("all class spells reach rank six with costs 1 to 5 and reject insufficient or repeated upgrades", () => {
+  const { run } = game();
+  const ids = JSON.parse(run("JSON.stringify(CLASSES.map(c=>c.id))"));
+  for (const id of ids) {
+    run(`D.classId='${id}';D.lv=40`);
+    for (let i = 0; i < 8; i++) {
+      let spent = 0;
+      for (let rank = 1; rank <= 5; rank++) {
+        assert.equal(run(`spellUpgradeCost(${i})`), rank);
+        run(`D.spellPts=${rank - 1}`);
+        assert.equal(run(`upSpell(${i})`), false);
+        assert.equal(run(`spellRank(${i})`), rank);
+        run(`D.spellPts=${rank}`);
+        assert.equal(run(`upSpell(${i})`), true);
+        assert.equal(run("D.spellPts"), 0);
+        spent += rank;
+      }
+      assert.equal(spent, 15);
+      assert.equal(run(`spellRank(${i})`), 6);
+      assert.equal(
+        run(
+          `spell(${i})[3]===spellBook()[${i}].lo+10 && spell(${i})[4]===spellBook()[${i}].hi+20`,
+        ),
+        true,
+      );
+      run("D.spellPts=50");
+      assert.equal(run(`upSpell(${i})`), false);
+      assert.equal(run("D.spellPts"), 50);
+    }
+  }
+  run("D.lv=1;D.spellPts=50");
+  assert.equal(run("upSpell(7)"), false);
+  assert.equal(run("upSpell(-1)"), false);
+  assert.equal(run("upSpell(999)"), false);
+});

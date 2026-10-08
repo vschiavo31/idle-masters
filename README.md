@@ -114,3 +114,10 @@ La remise à zéro des caractéristiques est gratuite hors combat, avec
 confirmation et remboursement exact des points selon les paliers (Sagesse : 3).
 Le sac permet de cocher plusieurs catégories d’équipement ; les filtres
 sont conservés avec le personnage, même si tout est décoché.
+
+### V3.8.1 — sorts au rang 6
+
+Tous les sorts de classe montent jusqu’au rang 6. Les améliorations coûtent
+respectivement 1, 2, 3, 4 et 5 points, soit 15 points du rang 1 au rang 6.
+Le bouton affiche le prix et bloque une amélioration sans assez de points.
+Les anciens rangs restent acquis sans prélèvement rétroactif.
