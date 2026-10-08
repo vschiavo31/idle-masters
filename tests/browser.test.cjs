@@ -147,6 +147,18 @@ async function main() {
         await page.locator("#mobs button").first().click();
         assert.equal(await page.locator("#mobs button").count(), 3);
         assert.equal(await page.locator("#enemyGroup button").count(), 1);
+        assert.equal(
+          await page.locator("#combatLevel").textContent(),
+          "Niveau 1",
+        );
+        assert.equal(
+          await page.locator("#combatXpTrack").getAttribute("aria-valuenow"),
+          "0",
+        );
+        assert.equal(
+          await page.locator("#combatXpTrack").getAttribute("aria-valuemax"),
+          "100",
+        );
         const firstMob = await page.evaluate(() => D.mid);
         await page.locator("#combatSpells button").first().click();
         assert.equal(
@@ -169,6 +181,11 @@ async function main() {
           }
         }
         await page.waitForFunction(() => mode === "result");
+        assert.equal(await page.locator("#resultLevelUp").isVisible(), false);
+        assert.equal(
+          await page.locator("#combatXpTrack").getAttribute("aria-valuenow"),
+          String(await page.evaluate(() => D.xp)),
+        );
         assert.equal(await page.evaluate((id) => D.master[id], firstMob), 1);
         assert.equal(await page.evaluate(() => D.encounterWins["0:0"]), 1);
         await page
@@ -242,6 +259,57 @@ async function main() {
             "Navigation exceeds screen at " + width,
           );
         }
+        // Verify actual level-up results and the reset XP bar, without replaying long fights.
+        for (const wisdom of [0, 1000]) {
+          await page.evaluate((w) => {
+            D.lv = 1;
+            D.xp = 99;
+            D.inv.Sagesse = w;
+            startEncounter(0, 2);
+            encounter.members.forEach((e) => (e.hp = 0));
+            victory();
+          }, wisdom);
+          const levels = await page.evaluate(() => lastResult.levelsGained);
+          assert.equal(wisdom === 0 ? levels === 1 : levels > 1, true);
+          assert.equal(await page.locator("#resultLevelUp").isVisible(), true);
+          assert.ok(
+            (await page.locator("#resultLevelUp").textContent()).includes(
+              "+" + levels + " niveau",
+            ),
+          );
+          assert.equal(
+            await page.locator("#combatLevel").textContent(),
+            "Niveau " + (await page.evaluate(() => D.lv)),
+          );
+          assert.equal(
+            await page.locator("#combatXpTrack").getAttribute("aria-valuenow"),
+            String(await page.evaluate(() => D.xp)),
+          );
+          assert.equal(
+            await page.locator("#combatXpTrack").getAttribute("aria-valuemax"),
+            String(await page.evaluate(() => need(D.lv))),
+          );
+          assert.equal(
+            await page.evaluate(
+              () => document.documentElement.scrollWidth > innerWidth,
+            ),
+            false,
+          );
+          await page.locator("#changeZone").click();
+        }
+        await page.evaluate(() => {
+          D.inv.Sagesse = 0;
+          startEncounter(0, 0);
+          D.xp = 0;
+          encounter.members.forEach((e) => (e.hp = 0));
+          victory();
+        });
+        assert.equal(
+          await page.locator("#resultLevelUp").isVisible(),
+          false,
+          "Previous level-up message must disappear",
+        );
+        await page.locator("#changeZone").click();
         // Open every added zone and all three difficulties through the mobile controls.
         await page.evaluate(() => {
           D.lv = 40;

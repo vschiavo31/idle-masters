@@ -313,3 +313,27 @@ test("every added monster has nonempty level-1–40 loot and the same global gat
   assert.equal(run("wins()"), before + 3);
   assert.equal(run("D.bag.length"), 3);
 });
+
+test("victory level announcement follows actual XP, including multiple levels and no level", () => {
+  const { run } = game();
+  run(
+    "Math.random=()=>0;D.xp=0;startEncounter(0,0);encounter.members.forEach(e=>e.hp=0);victory()",
+  );
+  assert.equal(run("lastResult.levelsGained"), 0);
+  assert.equal(run("lastResult.levelBefore"), 1);
+  assert.equal(run("lastResult.levelAfter"), 1);
+  run(
+    "D.xp=need(D.lv)-1;startEncounter(0,0);encounter.members.forEach(e=>e.hp=0);victory()",
+  );
+  assert.equal(run("lastResult.levelsGained"), 1);
+  assert.equal(run("lastResult.levelAfter"), 2);
+  run(
+    "D.lv=1;D.xp=99;D.inv.Sagesse=1000;startEncounter(0,2);encounter.members.forEach(e=>e.hp=0);victory()",
+  );
+  assert.ok(run("lastResult.levelsGained") > 1);
+  assert.equal(
+    run("lastResult.levelAfter-lastResult.levelBefore"),
+    run("lastResult.levelsGained"),
+  );
+  assert.ok(run("D.xp>=0&&D.xp<need(D.lv)"));
+});

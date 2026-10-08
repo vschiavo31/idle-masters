@@ -411,6 +411,7 @@ function victory() {
     D.master[m.id] = (D.master[m.id] || 0) + 1;
     if (m.boss) D.boss[m.boss] = (D.boss[m.boss] || 0) + 1;
   }
+  const levelBefore = D.lv;
   const xg = gainxp(baseXp);
   D.k += kg;
   if (key) D.encounterWins[key] = (D.encounterWins[key] || 0) + 1;
@@ -425,6 +426,9 @@ function victory() {
     zone,
     tier,
     xp: xg,
+    levelBefore,
+    levelAfter: D.lv,
+    levelsGained: D.lv - levelBefore,
     k: kg,
     drops,
   };
@@ -1081,11 +1085,45 @@ function fight() {
       : "Mode automatique"
     : "Auto : " + autoWins() + "/10 victoires sur ce combat";
 }
+function combatProgress() {
+  const next = need(D.lv);
+  const xp = Math.max(0, Math.min(next, D.xp));
+  const percent = (100 * xp) / next;
+  $("combatLevel").textContent = "Niveau " + D.lv;
+  $("combatXpPercent").textContent = Math.floor(percent) + " %";
+  $("combatXpText").textContent =
+    xp +
+    " / " +
+    next +
+    " XP · " +
+    (next - xp) +
+    " XP avant le niveau " +
+    (D.lv + 1);
+  $("combatXpBar").style.width = percent + "%";
+  $("combatXpTrack").setAttribute("aria-valuemin", "0");
+  $("combatXpTrack").setAttribute("aria-valuemax", String(next));
+  $("combatXpTrack").setAttribute("aria-valuenow", String(xp));
+  $("combatXpTrack").setAttribute(
+    "aria-valuetext",
+    $("combatXpText").textContent,
+  );
+}
 function result() {
   let m = M.find((x) => x.id === lastResult.mid);
   $("resultMob").textContent = (lastResult.ids || [m.id])
     .map((id) => M.find((x) => x.id === id).n)
     .join(" + ");
+  const levels = lastResult.levelsGained || 0;
+  $("resultLevelUp").hidden = levels === 0;
+  $("resultLevelUp").textContent =
+    levels > 0
+      ? "Niveau " +
+        lastResult.levelAfter +
+        " atteint ! · +" +
+        levels +
+        " niveau" +
+        (levels > 1 ? "x" : "")
+      : "";
   $("resultXp").textContent = "+" + lastResult.xp;
   $("resultK").textContent = "+" + lastResult.k;
   $("resultDrops").innerHTML = lastResult.drops.length
@@ -1097,6 +1135,7 @@ function result() {
     : '<span class="mut">Aucun équipement cette fois</span>';
 }
 function render() {
+  combatProgress();
   dashboard();
   inventory();
   spells();
@@ -1176,7 +1215,7 @@ async function boot() {
     ];
     let [eq, sets, bestiary] = await Promise.all(
       files.map(async (f) => {
-        let r = await fetch(f + "?v=3.5.0");
+        let r = await fetch(f + "?v=3.5.1");
         if (!r.ok) throw Error(f + " : HTTP " + r.status);
         return r.json();
       }),

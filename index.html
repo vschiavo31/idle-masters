@@ -6,7 +6,7 @@
       name="viewport"
       content="width=device-width,initial-scale=1,viewport-fit=cover"
     />
-    <title>Idle Masters V3.5.0</title>
+    <title>Idle Masters V3.5.1</title>
     <style>
       :root {
         --bg: #100e0b;
@@ -481,7 +481,7 @@
     <div class="wrap">
       <div class="top">
         <div class="brand">Idle Masters</div>
-        <span class="version">V3.5.0 · Zones niveau 1–40</span>
+        <span class="version">V3.5.1 · Progression en combat</span>
       </div>
       <div class="row" style="margin-bottom: 12px">
         <small id="saveStatus" class="mut" role="status"
@@ -606,6 +606,21 @@
         </div>
       </section>
       <section id="combat" class="page">
+        <div class="panel">
+          <div class="row">
+            <b id="combatLevel"></b
+            ><span id="combatXpPercent" class="gold"></span>
+          </div>
+          <div
+            id="combatXpTrack"
+            class="bar"
+            role="progressbar"
+            aria-label="Progression d’expérience"
+          >
+            <div id="combatXpBar" class="fill xp"></div>
+          </div>
+          <div id="combatXpText" class="mut"></div>
+        </div>
         <div id="picker">
           <div class="panel">
             <h2>Choisir une zone</h2>
@@ -653,6 +668,12 @@
           <div class="panel" style="text-align: center">
             <h1>Victoire</h1>
             <h2 id="resultMob"></h2>
+            <div
+              id="resultLevelUp"
+              class="card gold"
+              aria-live="polite"
+              hidden
+            ></div>
             <div class="grid2">
               <div class="card">
                 XP
@@ -683,9 +704,9 @@
       ><button data-page="collection">COLLECTION</button
       ><button data-page="combat">COMBAT</button>
     </nav>
-    <script src="local-data.js?v=3.5.0"></script>
-    <script src="bestiary-ui.js?v=3.5.0"></script>
-    <script src="saving.js?v=3.5.0"></script>
-    <script src="game.js?v=3.5.0"></script>
+    <script src="local-data.js?v=3.5.1"></script>
+    <script src="bestiary-ui.js?v=3.5.1"></script>
+    <script src="saving.js?v=3.5.1"></script>
+    <script src="game.js?v=3.5.1"></script>
   </body>
 </html>

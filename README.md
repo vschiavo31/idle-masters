@@ -1,4 +1,4 @@
-# Idle Masters V3.5.0
+# Idle Masters V3.5.1
 
 Jeu solo HTML/JavaScript, avec données Dofus embarquées. Aucun appel DoduAPI au démarrage.
 
@@ -55,3 +55,7 @@ La progression est stockée côté serveur dans D1 et isolée par l’identité 
 Les nouvelles familles utilisent la panoplie correspondante lorsqu’elle existe : Champ Champ, Champêtre, Larvesque, Tofu, Arakne, Mousse, Kardorim, Abraknyde, Bandit, Kwaks et Sanglier. Les Vampires donnent la Cape du Vampire. Certaines panoplies ne sont que partiellement représentées jusqu’au niveau 40 (Abraknyde : deux pièces ; Kwaks : une pièce par élément). Les familles sans équipement associé disponible, dont les Scarafeuilles, donnent un pool explicitement nommé par tranche de dix niveaux ; les panoplies et objets réservés aux familles en sont exclus. Ce sont des tables Idle Masters, pas les tables officielles de Dofus. La probabilité totale reste identique par monstre. Les tables sont mises en cache pour limiter les calculs sur mobile.
 
 Les pools des nouveaux combats sont partitionnés par PV croissants. Chaque monstre sélectionné est accessible et les PV totaux augmentent strictement d’une difficulté à la suivante, même en comparant le tirage le plus léger au plus lourd. Les tests couvrent l’intégrité et l’accessibilité de chaque monstre, les 25 zones, leurs déblocages, les pools et taux de drops, les récompenses en groupe et l’ouverture de chacun des 63 nouveaux combats via l’interface mobile Chromium et WebKit. Le test de récupération de sauvegarde vérifie aussi le niveau et la nouvelle zone choisie.
+
+## Progression en combat (3.5.1)
+
+L’interface de combat affiche le niveau, une barre d’XP accessible, le pourcentage et les XP restantes avant le prochain niveau. Elle reste visible au choix de zone, pendant le combat et au résultat. Chaque victoire retient les niveaux avant et après l’attribution réelle d’XP (sagesse et plusieurs niveaux compris) et affiche les niveaux gagnés au résultat. Le message est masqué si aucun niveau n’a été gagné. Les règles d’XP et le format de la sauvegarde restent identiques.
