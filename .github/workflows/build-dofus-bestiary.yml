@@ -1,4 +1,4 @@
-name: Build Dofus bestiary
+name: Build Dofus local data
 on:
   workflow_dispatch:
   push:
@@ -20,17 +20,19 @@ jobs:
           RELEASE=$(curl -fsSL -H "Authorization: Bearer $GH_TOKEN" -H "Accept: application/vnd.github+json" https://api.github.com/repos/dofusdude/dofus3-main/releases/latest)
           TAG=$(printf '%s' "$RELEASE" | python3 -c "import sys,json; print(json.load(sys.stdin)['tag_name'])")
           echo "$TAG" > /tmp/dofus_version
-          MONSTERS_URL=$(printf '%s' "$RELEASE" | python3 -c "import sys,json; r=json.load(sys.stdin); print(next(a['browser_download_url'] for a in r['assets'] if a['name']=='monsters.json'))")
-          FR_URL=$(printf '%s' "$RELEASE" | python3 -c "import sys,json; r=json.load(sys.stdin); print(next((a['browser_download_url'] for a in r['assets'] if a['name']=='fr.json'),''))")
-          curl -fL --retry 3 "$MONSTERS_URL" -o /tmp/monsters.json
-          if [ -n "$FR_URL" ]; then curl -fL --retry 3 "$FR_URL" -o /tmp/fr.json; else printf '{}' > /tmp/fr.json; fi
-      - name: Build level 1-40 bestiary
+          for NAME in monsters.json fr.json items.json item_sets.json effects.json characteristics.json; do
+            URL=$(printf '%s' "$RELEASE" | python3 -c "import sys,json; r=json.load(sys.stdin); n='$NAME'; print(next((a['browser_download_url'] for a in r['assets'] if a['name']==n),''))")
+            if [ -n "$URL" ]; then curl -fL --retry 3 "$URL" -o "/tmp/$NAME"; else printf '{}' > "/tmp/$NAME"; fi
+          done
+      - name: Build local game data
         run: |
           python3 - <<'PY'
           import json,re
           from pathlib import Path
-          root=json.load(open('/tmp/monsters.json',encoding='utf-8'));fr=json.load(open('/tmp/fr.json',encoding='utf-8'))
           version=Path('/tmp/dofus_version').read_text().strip()
+          def load(n):
+              try:return json.load(open('/tmp/'+n,encoding='utf-8'))
+              except:return {}
           def norm(k):return ''.join(c for c in str(k).lower() if c.isalnum())
           def get(d,*names):
               if not isinstance(d,dict):return None
@@ -46,26 +48,27 @@ jobs:
           def num(v):
               if isinstance(v,(int,float)) and not isinstance(v,bool):return int(v)
               if isinstance(v,str) and v.lstrip('-').isdigit():return int(v)
-          refs=array(get(get(root,'references'),'RefIds'))
-          monsters=[r.get('data') for r in refs if isinstance(r,dict) and isinstance(r.get('data'),dict) and get(r['data'],'grades') is not None and get(r['data'],'id') is not None]
+          def refdata(root):
+              return [r.get('data') for r in array(get(get(root,'references'),'RefIds')) if isinstance(r,dict) and isinstance(r.get('data'),dict)]
           translations={}
           def texts(v,depth=0):
               if depth>10:return
               if isinstance(v,dict):
-                  keys=array(get(v,'m_keys'));vals=array(get(v,'m_values'))
-                  if keys and len(keys)==len(vals):
-                      for k,x in zip(keys,vals):
+                  ks=array(get(v,'m_keys'));vs=array(get(v,'m_values'))
+                  if ks and len(ks)==len(vs):
+                      for k,x in zip(ks,vs):
                           if isinstance(x,str):translations[str(k)]=x
                   for k,x in v.items():
                       if isinstance(x,str) and str(k).isdigit():translations[str(k)]=x
                       elif isinstance(x,(dict,list)):texts(x,depth+1)
               elif isinstance(v,list):
                   for x in v:texts(x,depth+1)
-          texts(fr)
+          texts(load('fr.json'))
+          monsters=refdata(load('monsters.json'))
           raw=[]
           for m in monsters:
-              gs=[g for g in array(get(m,'grades')) if isinstance(g,dict)]
-              levels=[];hp=[];pa=[];pm=[]
+              if get(m,'grades') is None or get(m,'id') is None:continue
+              gs=[g for g in array(get(m,'grades')) if isinstance(g,dict)]; levels=[];hp=[];pa=[];pm=[]
               for g in gs:
                   lv=num(get(g,'level','gradeLevel'));life=num(get(g,'lifePoints','life','health','hp'));ap=num(get(g,'actionPoints','pa','ap'));mp=num(get(g,'movementPoints','pm','mp'))
                   if lv is not None:levels.append(lv)
@@ -74,29 +77,44 @@ jobs:
                   if mp is not None:pm.append(mp)
               if not levels or min(levels)>40 or max(levels)<1:continue
               name=translations.get(str(get(m,'nameId')))
-              if not name:continue
-              raw.append({'id':get(m,'id'),'name':name,'minLevel':max(1,min(levels)),'maxLevel':min(40,max(levels)),'hpMin':min(hp) if hp else None,'hpMax':max(hp) if hp else None,'pa':max(pa) if pa else None,'pm':max(pm) if pm else None,'raceId':get(m,'race'),'boss':bool(get(m,'isBoss','boss'))})
-          # Conservative gameplay filter: remove obvious summons, combat objects and scripted/NPC entries.
-          blocked=re.compile(r"(?i)(balise|bombe|bomb'|tourelle|cadran|cawotte|coffre|curseur|glyphe|piège|portail|arbre|arbuste|tentacule|invocation|double|chaton|lapino|sac animé|épée volante|aiguille|boufballe|attaquant |capitaine |bloqueur|caisse|cherche trésor|coffiot|coquille|surveillante|sentinelle)")
+              if name:raw.append({'id':get(m,'id'),'name':name,'minLevel':max(1,min(levels)),'maxLevel':min(40,max(levels)),'hpMin':min(hp) if hp else None,'hpMax':max(hp) if hp else None,'pa':max(pa) if pa else None,'pm':max(pm) if pm else None,'raceId':get(m,'race'),'boss':bool(get(m,'isBoss','boss'))})
+          blocked=re.compile(r"(?i)(balise|bombe|bomb'|tourelle|cadran|cawotte|coffre|curseur|glyphe|piège|portail|tentacule|invocation|double|chaton|lapino|sac animé|épée volante|aiguille|boufballe|attaquant |capitaine |bloqueur|caisse|cherche trésor|coffiot|coquille|surveillante|sentinelle)")
           clean=[];seen=set()
           for x in sorted(raw,key=lambda x:(x['minLevel'],x['name'],str(x['id']))):
-              if x['id'] in seen:continue
+              if x['id'] in seen or blocked.search(x['name']):continue
               seen.add(x['id'])
-              # Normal PvM candidates should have real HP and usable AP/MP; keep bosses even if unusual.
-              if blocked.search(x['name']):continue
               if not x['boss'] and ((x['hpMax'] or 0)<=1 or (x['pa'] or 0)<=0 or (x['pm'] is not None and x['pm']<0)):continue
               clean.append(x)
-          print('RAW',len(raw),'PLAYABLE_CANDIDATES',len(clean),'version',version,'SAMPLE',clean[:20])
-          if len(clean)<50:raise SystemExit('PvM filtering suspiciously small')
-          Path('dofus-bestiary-1-40.json').write_text(json.dumps({'source':'dofusdude/dofus3-main','version':version,'range':[1,40],'rawCount':len(raw),'count':len(clean),'filter':'playable-pvm-candidates-v1','monsters':clean},ensure_ascii=False,separators=(',',':')),encoding='utf-8')
+          Path('dofus-bestiary-1-40.json').write_text(json.dumps({'source':'dofusdude/dofus3-main','version':version,'range':[1,40],'rawCount':len(raw),'count':len(clean),'filter':'playable-pvm-candidates-v2','monsters':clean},ensure_ascii=False,separators=(',',':')),encoding='utf-8')
+          items=refdata(load('items.json')); sets=refdata(load('item_sets.json'))
+          out=[]
+          for x in items:
+              iid=get(x,'id'); level=num(get(x,'level')); name=translations.get(str(get(x,'nameId')))
+              if iid is None or level is None or not 1<=level<=40 or not name:continue
+              typ=get(x,'typeId','type'); setid=get(x,'itemSetId','setId')
+              effects=[]
+              for e in array(get(x,'possibleEffects','effects')):
+                  if not isinstance(e,dict):continue
+                  effects.append({k:get(e,'effectId','id'),v:get(e,'value','diceNum','min'),m:get(e,'diceSide','max')})
+              out.append({'id':iid,'name':name,'level':level,'typeId':typ,'setId':setid,'effects':effects})
+          sout=[]
+          for s in sets:
+              sid=get(s,'id'); name=translations.get(str(get(s,'nameId'))); ids=array(get(s,'items','itemIds'))
+              if sid is None or not name:continue
+              sout.append({'id':sid,'name':name,'itemIds':ids,'effects':get(s,'effects','setEffects')})
+          print('BESTIARY',len(clean),'ITEMS_1_40',len(out),'SETS',len(sout),'version',version)
+          if len(clean)<50:raise SystemExit('Bestiary suspiciously small')
+          if len(out)<50:raise SystemExit('Equipment extraction suspiciously small')
+          Path('dofus-equipment-1-40.json').write_text(json.dumps({'source':'dofusdude/dofus3-main','version':version,'range':[1,40],'count':len(out),'items':out},ensure_ascii=False,separators=(',',':')),encoding='utf-8')
+          Path('dofus-item-sets.json').write_text(json.dumps({'source':'dofusdude/dofus3-main','version':version,'count':len(sout),'sets':sout},ensure_ascii=False,separators=(',',':')),encoding='utf-8')
           PY
-      - name: Commit generated bestiary
+      - name: Commit generated local data
         shell: bash
         run: |
           set -e
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add dofus-bestiary-1-40.json
+          git add dofus-bestiary-1-40.json dofus-equipment-1-40.json dofus-item-sets.json
           git diff --cached --quiet && exit 0
-          git commit -m 'Update filtered Dofus 3 level 1-40 bestiary data'
+          git commit -m 'Update local Dofus level 1-40 game data'
           git push
