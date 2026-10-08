@@ -27,7 +27,7 @@ jobs:
       - name: Build level 1-40 bestiary
         run: |
           python3 - <<'PY'
-          import json
+          import json,re
           from pathlib import Path
           root=json.load(open('/tmp/monsters.json',encoding='utf-8'));fr=json.load(open('/tmp/fr.json',encoding='utf-8'))
           version=Path('/tmp/dofus_version').read_text().strip()
@@ -48,13 +48,11 @@ jobs:
               if isinstance(v,str) and v.lstrip('-').isdigit():return int(v)
           refs=array(get(get(root,'references'),'RefIds'))
           monsters=[r.get('data') for r in refs if isinstance(r,dict) and isinstance(r.get('data'),dict) and get(r['data'],'grades') is not None and get(r['data'],'id') is not None]
-          print('REFS',len(refs),'MONSTERS',len(monsters))
-          # fr.json commonly exposes text through a Unity dictionary; index numeric keys wherever they occur.
           translations={}
           def texts(v,depth=0):
               if depth>10:return
               if isinstance(v,dict):
-                  keys=array(get(v,'m_keys')); vals=array(get(v,'m_values'))
+                  keys=array(get(v,'m_keys'));vals=array(get(v,'m_values'))
                   if keys and len(keys)==len(vals):
                       for k,x in zip(keys,vals):
                           if isinstance(x,str):translations[str(k)]=x
@@ -64,31 +62,33 @@ jobs:
               elif isinstance(v,list):
                   for x in v:texts(x,depth+1)
           texts(fr)
-          print('TRANSLATIONS',len(translations))
-          if monsters:
-              print('FIRST_MONSTER', {k:monsters[0].get(k) for k in ('id','nameId','race')})
-              gs=array(get(monsters[0],'grades')); print('FIRST_GRADES',len(gs),'GRADE_KEYS',list(gs[0])[:40] if gs and isinstance(gs[0],dict) else None,'GRADE0',gs[0] if gs else None)
-          out=[]
+          raw=[]
           for m in monsters:
               gs=[g for g in array(get(m,'grades')) if isinstance(g,dict)]
               levels=[];hp=[];pa=[];pm=[]
               for g in gs:
-                  lv=num(get(g,'level','gradeLevel'));life=num(get(g,'lifePoints','life','health','hp'))
-                  ap=num(get(g,'actionPoints','pa','ap'));mp=num(get(g,'movementPoints','pm','mp'))
+                  lv=num(get(g,'level','gradeLevel'));life=num(get(g,'lifePoints','life','health','hp'));ap=num(get(g,'actionPoints','pa','ap'));mp=num(get(g,'movementPoints','pm','mp'))
                   if lv is not None:levels.append(lv)
                   if life is not None:hp.append(life)
                   if ap is not None:pa.append(ap)
                   if mp is not None:pm.append(mp)
               if not levels or min(levels)>40 or max(levels)<1:continue
-              nid=get(m,'nameId');name=translations.get(str(nid))
+              name=translations.get(str(get(m,'nameId')))
               if not name:continue
-              out.append({'id':get(m,'id'),'name':name,'minLevel':max(1,min(levels)),'maxLevel':min(40,max(levels)),'hpMin':min(hp) if hp else None,'hpMax':max(hp) if hp else None,'pa':max(pa) if pa else None,'pm':max(pm) if pm else None,'raceId':get(m,'race'),'boss':bool(get(m,'isBoss','boss'))})
-          seen=set();clean=[]
-          for x in sorted(out,key=lambda x:(x['minLevel'],x['name'],str(x['id']))):
-              if x['id'] not in seen:seen.add(x['id']);clean.append(x)
-          print('BUILT',len(clean),'version',version,'SAMPLE',clean[:10])
-          if len(clean)<20:raise SystemExit('Extraction suspiciously small')
-          Path('dofus-bestiary-1-40.json').write_text(json.dumps({'source':'dofusdude/dofus3-main','version':version,'range':[1,40],'count':len(clean),'monsters':clean},ensure_ascii=False,separators=(',',':')),encoding='utf-8')
+              raw.append({'id':get(m,'id'),'name':name,'minLevel':max(1,min(levels)),'maxLevel':min(40,max(levels)),'hpMin':min(hp) if hp else None,'hpMax':max(hp) if hp else None,'pa':max(pa) if pa else None,'pm':max(pm) if pm else None,'raceId':get(m,'race'),'boss':bool(get(m,'isBoss','boss'))})
+          # Conservative gameplay filter: remove obvious summons, combat objects and scripted/NPC entries.
+          blocked=re.compile(r"(?i)(balise|bombe|bomb'|tourelle|cadran|cawotte|coffre|curseur|glyphe|piège|portail|arbre|arbuste|tentacule|invocation|double|chaton|lapino|sac animé|épée volante|aiguille|boufballe|attaquant |capitaine |bloqueur|caisse|cherche trésor|coffiot|coquille|surveillante|sentinelle)")
+          clean=[];seen=set()
+          for x in sorted(raw,key=lambda x:(x['minLevel'],x['name'],str(x['id']))):
+              if x['id'] in seen:continue
+              seen.add(x['id'])
+              # Normal PvM candidates should have real HP and usable AP/MP; keep bosses even if unusual.
+              if blocked.search(x['name']):continue
+              if not x['boss'] and ((x['hpMax'] or 0)<=1 or (x['pa'] or 0)<=0 or (x['pm'] is not None and x['pm']<0)):continue
+              clean.append(x)
+          print('RAW',len(raw),'PLAYABLE_CANDIDATES',len(clean),'version',version,'SAMPLE',clean[:20])
+          if len(clean)<50:raise SystemExit('PvM filtering suspiciously small')
+          Path('dofus-bestiary-1-40.json').write_text(json.dumps({'source':'dofusdude/dofus3-main','version':version,'range':[1,40],'rawCount':len(raw),'count':len(clean),'filter':'playable-pvm-candidates-v1','monsters':clean},ensure_ascii=False,separators=(',',':')),encoding='utf-8')
           PY
       - name: Commit generated bestiary
         shell: bash
@@ -98,5 +98,5 @@ jobs:
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add dofus-bestiary-1-40.json
           git diff --cached --quiet && exit 0
-          git commit -m 'Update Dofus 3 level 1-40 bestiary data'
+          git commit -m 'Update filtered Dofus 3 level 1-40 bestiary data'
           git push
