@@ -1,0 +1,107 @@
+name: Build Dofus bestiary
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - '.github/workflows/build-dofus-bestiary.yml'
+permissions:
+  contents: write
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download latest Dofus 3 data
+        shell: bash
+        run: |
+          set -euo pipefail
+          TAG=$(curl -fsSL https://api.github.com/repos/dofusdude/dofus3-main/releases/latest | python3 -c "import sys,json; print(json.load(sys.stdin)['tag_name'])")
+          echo "$TAG" > /tmp/dofus_version
+          curl -fL "https://github.com/dofusdude/dofus3-main/releases/download/$TAG/monsters.json" -o /tmp/monsters.json
+          curl -fL "https://github.com/dofusdude/dofus3-main/releases/download/$TAG/fr.json" -o /tmp/fr.json
+      - name: Build lightweight level 1-40 bestiary
+        run: |
+          python3 - <<'PY'
+          import json, re
+          from pathlib import Path
+          monsters=json.load(open('/tmp/monsters.json',encoding='utf-8'))
+          fr=json.load(open('/tmp/fr.json',encoding='utf-8'))
+          version=Path('/tmp/dofus_version').read_text().strip()
+          def tr(v):
+              if isinstance(v,str) and not v.isdigit(): return v
+              keys=[v,str(v)]
+              containers=[fr]
+              if isinstance(fr,dict):
+                  for k in ('texts','entries','translations','data'):
+                      if isinstance(fr.get(k),dict): containers.append(fr[k])
+              for c in containers:
+                  for k in keys:
+                      if k in c:
+                          x=c[k]
+                          if isinstance(x,str): return x
+                          if isinstance(x,dict):
+                              for z in ('text','value','name'):
+                                  if isinstance(x.get(z),str): return x[z]
+              return None
+          def walk(obj,keynames):
+              if isinstance(obj,dict):
+                  for k,v in obj.items():
+                      if k.lower() in keynames: yield v
+                      yield from walk(v,keynames)
+              elif isinstance(obj,list):
+                  for v in obj: yield from walk(v,keynames)
+          def get(d,*names):
+              if not isinstance(d,dict): return None
+              low={str(k).lower():v for k,v in d.items()}
+              for n in names:
+                  if n.lower() in low:return low[n.lower()]
+          src=monsters if isinstance(monsters,list) else next((monsters[k] for k in ('monsters','data','items') if isinstance(monsters.get(k),list)),[])
+          out=[]
+          for m in src:
+              if not isinstance(m,dict): continue
+              grades=get(m,'grades','monsterGrades') or []
+              levels=[]; hp=[]; pa=[]; pm=[]
+              if isinstance(grades,list):
+                  for g in grades:
+                      if not isinstance(g,dict): continue
+                      lv=get(g,'level','gradeLevel')
+                      if isinstance(lv,(int,float)): levels.append(int(lv))
+                      life=get(g,'lifePoints','life_points','health','hp')
+                      if isinstance(life,(int,float)): hp.append(int(life))
+                      ap=get(g,'actionPoints','action_points','pa')
+                      mp=get(g,'movementPoints','movement_points','pm')
+                      if isinstance(ap,(int,float)):pa.append(int(ap))
+                      if isinstance(mp,(int,float)):pm.append(int(mp))
+              direct=get(m,'level')
+              if isinstance(direct,(int,float)): levels.append(int(direct))
+              if not levels or min(levels)>40 or max(levels)<1: continue
+              name=get(m,'name')
+              if not isinstance(name,str):
+                  nid=get(m,'nameId','name_id')
+                  name=tr(nid) if nid is not None else None
+              if not name: continue
+              mid=get(m,'id','monsterId','monster_id')
+              race=get(m,'raceId','race_id')
+              boss=bool(get(m,'isBoss','is_boss','boss'))
+              out.append({'id':mid,'name':name,'minLevel':max(1,min(levels)),'maxLevel':min(40,max(levels)),'hpMin':min(hp) if hp else None,'hpMax':max(hp) if hp else None,'pa':max(pa) if pa else None,'pm':max(pm) if pm else None,'raceId':race,'boss':boss})
+          # de-duplicate, stable sort
+          seen=set(); clean=[]
+          for x in sorted(out,key=lambda x:(x['minLevel'],x['name'],str(x['id']))):
+              key=x['id'] if x['id'] is not None else (x['name'],x['minLevel'])
+              if key in seen: continue
+              seen.add(key); clean.append(x)
+          payload={'source':'dofusdude/dofus3-main','version':version,'range':[1,40],'count':len(clean),'monsters':clean}
+          Path('dofus-bestiary-1-40.json').write_text(json.dumps(payload,ensure_ascii=False,separators=(',',':')),encoding='utf-8')
+          print('Built',len(clean),'monsters from Dofus',version)
+          if len(clean)<20: raise SystemExit('Extraction suspiciously small; refusing to publish')
+          PY
+      - name: Commit generated bestiary
+        shell: bash
+        run: |
+          set -e
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add dofus-bestiary-1-40.json
+          git diff --cached --quiet && exit 0
+          git commit -m 'Update Dofus 3 level 1-40 bestiary data'
+          git push
