@@ -490,3 +490,34 @@ test("class confirmation is free initially, costs 20000 thereafter, and cannot d
   assert.equal(run('chooseClass("iop")'), false);
   assert.equal(run("D.k"), 20000);
 });
+
+test("Astrub includes all Incarnam areas, all combat tiers and older saves", () => {
+  const { run } = game();
+  run('D.master={};D.encounterWins={"8:2":9}');
+  assert.equal(run("!!zoneOpen(1)"), false);
+  run('D.encounterWins["8:2"]=10');
+  assert.equal(run("!!zoneOpen(1)"), true);
+  run('D.encounterWins={"8:0":5,"8:1":1,"8:2":17}');
+  assert.equal(
+    run("!!zoneOpen(1)"),
+    true,
+    "Reported cemetery save unlocks Astrub",
+  );
+  run('D.encounterWins={"0:0":2,"7:1":3,"8:2":5}');
+  assert.equal(run("incarnamWins()"), 10);
+  assert.equal(run("!!zoneOpen(1)"), true);
+  run('D.encounterWins={"1:2":50,"4:2":50};D.master={}');
+  assert.equal(
+    run("!!zoneOpen(1)"),
+    false,
+    "Other regions cannot unlock Astrub",
+  );
+  run("D.encounterWins={};D.master.m4046=10");
+  assert.equal(
+    run("!!zoneOpen(1)"),
+    true,
+    "Legacy cemetery victories remain valid",
+  );
+  run("D.master={};D.boss.incarnam=1");
+  assert.equal(run("!!zoneOpen(1)"), true);
+});

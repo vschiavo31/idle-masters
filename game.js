@@ -1048,10 +1048,28 @@ function zoneWins(z) {
     0,
   );
 }
+// Stable zone IDs stay unchanged: saves reference them in encounterWins.
+function incarnamWins() {
+  const zones = Z.map((zone, id) => ({ zone, id }))
+    .filter(({ zone }) => zone[0].includes("Incarnam"))
+    .map(({ id }) => id);
+  const combats = zones.reduce(
+    (total, id) =>
+      total +
+      [0, 1, 2].reduce(
+        (sum, tier) => sum + (D.encounterWins[id + ":" + tier] || 0),
+        0,
+      ),
+    0,
+  );
+  // Retain unlocks from older saves that only tracked monster victories.
+  const legacy = zones.reduce((total, id) => total + zoneWins(id), 0);
+  return Math.max(combats, legacy);
+}
 function zoneOpen(i) {
   return (
     i === 0 ||
-    (i === 1 && (D.boss.incarnam || zoneWins(0) >= 10)) ||
+    (i === 1 && (D.boss.incarnam || incarnamWins() >= 10)) ||
     (i === 2 && (D.boss.astrub || zoneWins(1) >= 10)) ||
     (i === 3 && (D.boss.tainela || D.master.m147 >= 1)) ||
     (i >= 4 && !!Z[i] && D.lv >= Z[i][1])
@@ -1082,7 +1100,13 @@ function picker() {
             ? "— personnage niveau " + x[1]
             : i === 3
               ? "— vaincre le Bouftou Royal"
-              : "— 10 victoires dans la zone précédente");
+              : i === 1
+                ? "— 10 victoires à Incarnam (toutes zones) · " +
+                  Math.min(10, incarnamWins()) +
+                  "/10"
+                : "— 10 victoires à Astrub · " +
+                  Math.min(10, zoneWins(1)) +
+                  "/10");
       b.onclick = () => {
         D.z = i;
         render();
@@ -1444,7 +1468,7 @@ async function boot() {
     ];
     let [eq, sets, bestiary] = await Promise.all(
       files.map(async (f) => {
-        let r = await fetch(f + "?v=3.7.0");
+        let r = await fetch(f + "?v=3.7.1");
         if (!r.ok) throw Error(f + " : HTTP " + r.status);
         return r.json();
       }),

@@ -459,6 +459,29 @@ async function main() {
           D.spellPts += 1;
           upSpell(0);
         });
+        // Reproduce the reported save: 5 easy, 1 medium and 17 hard cemetery wins.
+        const gateBackup = await page.evaluate(() => ({
+          master: D.master,
+          encounterWins: D.encounterWins,
+          boss: D.boss,
+        }));
+        await page.evaluate(() => {
+          D.master = {};
+          D.boss = {};
+          D.encounterWins = { "8:0": 5, "8:1": 1, "8:2": 17 };
+          D.z = 8;
+          show("combat");
+        });
+        assert.equal(
+          await page.locator('#zones button[data-zone="1"]').isEnabled(),
+          true,
+        );
+        await page.locator('#zones button[data-zone="1"]').click();
+        assert.equal(await page.evaluate(() => D.z), 1);
+        await page.evaluate((backup) => {
+          Object.assign(D, backup);
+          render();
+        }, gateBackup);
         // Open every added zone and all three difficulties through the mobile controls.
         await page.evaluate(() => {
           D.lv = 40;

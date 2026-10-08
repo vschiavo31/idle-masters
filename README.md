@@ -90,3 +90,9 @@ pas encore de validation anti-triche des gains côté serveur.
 Les copies locales sont désormais séparées par compte et ne sont jamais importées
 pour un nouvel utilisateur. Si le serveur n'est pas joignable au démarrage,
 le jeu bloque le chargement et propose de réessayer pour éviter de perdre une partie.
+
+### V3.7.1 — déblocage d’Astrub
+
+Les victoires dans Incarnam, les Prairies et le Cimetière d’Incarnam
+comptent toutes pour débloquer Astrub. La condition affiche désormais
+la région concernée et la progression sur 10. Les anciens déblocages sont conservés.
