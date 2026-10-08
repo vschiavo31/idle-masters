@@ -131,3 +131,44 @@ test("character names are unique, immutable and ladder exposes only public chara
     DB.close();
   }
 });
+
+test("save API enforces the character level and XP cap", async () => {
+  const { DB, request } = await setup();
+  try {
+    for (const patch of [
+      { lv: 201, xp: 0 },
+      { lv: 200, xp: 1 },
+    ])
+      assert.equal(
+        (
+          await request("cap", "PUT", {
+            revision: 0,
+            state: { ...state, ...patch },
+          })
+        ).status,
+        400,
+      );
+    assert.equal(
+      (
+        await request("cap", "PUT", {
+          revision: 0,
+          state: {
+            ...state,
+            lv: 200,
+            xp: 0,
+            rosterDraft: {
+              sourceVersion: "3.7.4.4",
+              selectedIds: [],
+              validated: false,
+            },
+          },
+        })
+      ).status,
+      200,
+    );
+    const saved = await (await request("cap")).json();
+    assert.deepEqual(saved.state.rosterDraft.selectedIds, []);
+  } finally {
+    DB.close();
+  }
+});

@@ -640,3 +640,43 @@ test("bulk confirmation refuses a changed snapshot and cannot pay twice", () => 
   assert.equal(run("confirmSale()"), 0);
   assert.equal(run("D.k"), 10);
 });
+
+test("level 200 caps XP, rewards the last level once and preserves progression", () => {
+  const { run } = game();
+  run(
+    "D.lv=199;D.xp=0;D.inv.Sagesse=0;D.w={};D.pts=0;D.spellPts=0;D.k=1234;gainxp(need(199)*2)",
+  );
+  assert.equal(run("D.lv"), 200);
+  assert.equal(run("D.xp"), 0);
+  assert.equal(run("D.pts"), 5);
+  assert.equal(run("D.spellPts"), 1);
+  assert.equal(run("gainxp(100000)"), 0);
+  assert.equal(run("D.pts"), 5);
+  assert.equal(run("D.k"), 1234);
+});
+test("full catalogue has every source ID exactly once and all zones are sorted by level", () => {
+  const c = data("monster-catalogue.json"),
+    byId = new Map(c.monsters.map((m) => [m.id, m]));
+  assert.equal(c.monsters.length, 5129);
+  assert.equal(byId.size, 5129);
+  assert.equal(c.sourceVersion, "3.7.4.4");
+  assert.equal(Math.max(...c.monsters.map((m) => m.maxLevel || 0)), 2400);
+  const placed = new Set();
+  let previous = 0;
+  for (const z of c.zones) {
+    if (z.id !== -1) {
+      assert.ok(z.minLevel >= previous);
+      previous = z.minLevel;
+    }
+    let level = 0;
+    for (const id of z.monsters) {
+      assert.ok(byId.has(id));
+      const m = byId.get(id);
+      assert.ok(m.minLevel >= level);
+      level = m.minLevel;
+      placed.add(id);
+    }
+  }
+  assert.equal(placed.size, 5129);
+  assert.ok(c.monsters.every((m) => m.name && m.minLevel > 0));
+});

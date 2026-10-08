@@ -6,7 +6,7 @@
       name="viewport"
       content="width=device-width,initial-scale=1,viewport-fit=cover"
     />
-    <title>Idle Masters V3.9.0</title>
+    <title>Idle Masters V3.10.0</title>
     <style>
       :root {
         --bg: #100e0b;
@@ -535,6 +535,35 @@
         padding: 6px;
         font-size: 12px;
       }
+      .rosterMonster {
+        display: flex;
+        gap: 12px;
+        align-items: flex-start;
+        padding: 14px 0;
+        border-bottom: 1px solid var(--line);
+        cursor: pointer;
+        overflow-wrap: anywhere;
+      }
+      .rosterMonster input {
+        width: 22px;
+        height: 22px;
+        flex: 0 0 22px;
+        margin-top: 3px;
+        accent-color: var(--gold);
+      }
+      #rosterSelection select,
+      #rosterSelection input:not([type="checkbox"]) {
+        padding: 12px;
+        background: var(--bg);
+        color: var(--text);
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        max-width: 100%;
+      }
+      #rosterSelection .row {
+        flex-wrap: wrap;
+        gap: 10px;
+      }
     </style>
   </head>
   <body>
@@ -810,7 +839,59 @@
           <div id="spellList" class="spellgrid"></div>
         </div>
       </section>
+      <section id="rosterSelection" class="page">
+        <div class="panel">
+          <button id="rosterBack">← Retour à la collection</button>
+          <h2>Monstres pour l’extension</h2>
+          <p class="mut">
+            Liste exacte de la base 3.7.4.4. Coche les monstres que tu veux
+            garder. Les monstres déjà jouables sont cochés au départ. Ces choix
+            préparent l’extension et ne modifient pas les combats actuels.
+          </p>
+          <p class="mut">
+            La base contient aussi des invocations, des monstres de quête et des
+            variantes. Les entrées sans zone sont regroupées à la fin. Les
+            niveaux des monstres peuvent dépasser 200 ; ton personnage sera
+            limité au niveau 200.
+          </p>
+          <b id="rosterCount" class="gold"></b>
+          <p id="rosterStatus" role="status" aria-live="polite"></p>
+          <label for="rosterZone">Zones, du plus bas niveau au plus haut</label>
+          <select id="rosterZone" style="width: 100%; margin: 12px 0"></select>
+          <div class="row">
+            <button id="rosterPrevious">← Zone précédente</button
+            ><button id="rosterNext">Zone suivante →</button>
+          </div>
+          <input
+            id="rosterSearch"
+            placeholder="Rechercher un nom dans toutes les zones…"
+            aria-label="Rechercher un monstre"
+            style="width: 100%; margin: 12px 0"
+          />
+          <label
+            ><input type="checkbox" id="rosterOnlySelected" /> Voir uniquement
+            les monstres cochés</label
+          >
+          <h3 id="rosterHeading"></h3>
+          <p id="rosterZoneInfo" class="mut"></p>
+          <div id="rosterList"></div>
+          <div class="row" style="margin-top: 16px">
+            <button id="rosterValidate">Valider mes choix</button
+            ><button id="rosterExport">Télécharger ma sélection</button>
+          </div>
+        </div>
+      </section>
       <section id="collection" class="page">
+        <div class="panel">
+          <h2>Préparer les prochaines zones</h2>
+          <p class="mut">
+            Choisis les monstres à conserver dans la liste complète, zone par
+            zone.
+          </p>
+          <button id="openRosterSelection">
+            Choisir les monstres de l’extension
+          </button>
+        </div>
         <div class="grid2">
           <div class="panel">
             <div class="eyebrow">Encyclopédie</div>
@@ -941,11 +1022,12 @@
       ><button data-page="collection">COLLECTION</button
       ><button data-page="combat">COMBAT</button>
     </nav>
-    <script src="local-data.js?v=3.9.0"></script>
-    <script src="bestiary-ui.js?v=3.9.0"></script>
-    <script src="saving.js?v=3.9.0"></script>
-    <script src="classes.js?v=3.9.0"></script>
-    <script src="combat-effects.js?v=3.9.0"></script>
-    <script src="game.js?v=3.9.0"></script>
+    <script src="local-data.js?v=3.10.0"></script>
+    <script src="bestiary-ui.js?v=3.10.0"></script>
+    <script src="saving.js?v=3.10.0"></script>
+    <script src="classes.js?v=3.10.0"></script>
+    <script src="combat-effects.js?v=3.10.0"></script>
+    <script src="roster-selection.js?v=3.10.0"></script>
+    <script src="game.js?v=3.10.0"></script>
   </body>
 </html>

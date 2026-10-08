@@ -140,6 +140,8 @@ export default {
           !state ||
           !Number.isSafeInteger(state.lv) ||
           state.lv < 1 ||
+          state.lv > 200 ||
+          (state.lv === 200 && state.xp !== undefined && state.xp !== 0) ||
           (state.xp !== undefined &&
             (!Number.isSafeInteger(state.xp) || state.xp < 0)) ||
           !Array.isArray(state.bag) ||

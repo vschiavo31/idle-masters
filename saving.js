@@ -185,6 +185,9 @@ window.GameSave = (() => {
     get profile() {
       return profile;
     },
+    get confirmed() {
+      return ready && !pending && !conflict;
+    },
     get authenticated() {
       return authenticated;
     },

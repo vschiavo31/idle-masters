@@ -360,15 +360,25 @@ function dropRate(id, m = mob()) {
   let pool = mobDrops(m);
   return pool.includes(id) ? equipmentChance() / pool.length : 0;
 }
+const MAX_LEVEL = 200;
 function gainxp(x) {
+  if (D.lv >= MAX_LEVEL) {
+    D.lv = MAX_LEVEL;
+    D.xp = 0;
+    return 0;
+  }
   let g = Math.floor(x * (1 + wis() / 100));
   D.xp += g;
-  while (D.xp >= need(D.lv)) {
+  while (D.lv < MAX_LEVEL && D.xp >= need(D.lv)) {
     D.xp -= need(D.lv);
     D.lv++;
     D.pts += 5;
     D.bh += 8;
     if (D.lv % 2 === 0) D.spellPts++;
+  }
+  if (D.lv === MAX_LEVEL) {
+    g = Math.max(0, g - D.xp);
+    D.xp = 0;
   }
   return g;
 }
@@ -952,8 +962,11 @@ function dashboard() {
     };
   $("lv").textContent = D.lv;
   $("levelBadge").textContent = D.lv;
-  $("xpTxt").textContent = D.xp + " / " + n + " XP";
-  $("xpBar").style.width = (D.xp / n) * 100 + "%";
+  $("xpTxt").textContent =
+    D.lv === MAX_LEVEL
+      ? "Niveau 200 · maximum atteint"
+      : D.xp + " / " + n + " XP";
+  $("xpBar").style.width = D.lv === MAX_LEVEL ? "100%" : (D.xp / n) * 100 + "%";
   $("dashHp").textContent = mh();
   $("dashPa").textContent = maxpa();
   $("dashK").textContent = D.k;
@@ -1441,19 +1454,21 @@ function fight() {
     : "Auto : " + autoWins() + "/10 victoires sur ce combat";
 }
 function combatProgress() {
-  const next = need(D.lv);
-  const xp = Math.max(0, Math.min(next, D.xp));
+  const next = D.lv === MAX_LEVEL ? 1 : need(D.lv);
+  const xp = D.lv === MAX_LEVEL ? 1 : Math.max(0, Math.min(next, D.xp));
   const percent = (100 * xp) / next;
   $("combatLevel").textContent = "Niveau " + D.lv;
   $("combatXpPercent").textContent = Math.floor(percent) + " %";
   $("combatXpText").textContent =
-    xp +
-    " / " +
-    next +
-    " XP · " +
-    (next - xp) +
-    " XP avant le niveau " +
-    (D.lv + 1);
+    D.lv === MAX_LEVEL
+      ? "Niveau 200 · maximum atteint"
+      : xp +
+        " / " +
+        next +
+        " XP · " +
+        (next - xp) +
+        " XP avant le niveau " +
+        (D.lv + 1);
   $("combatXpBar").style.width = percent + "%";
   $("combatXpTrack").setAttribute("aria-valuemin", "0");
   $("combatXpTrack").setAttribute("aria-valuemax", String(next));
@@ -1514,8 +1529,18 @@ function show(p) {
   document
     .querySelectorAll(".nav button")
     .forEach((x) => x.classList.toggle("on", x.dataset.page === p));
-  if (GameSave.authenticated) render();
+  if (GameSave.authenticated) {
+    render();
+    if (p === "rosterSelection")
+      RosterSelection.open(
+        D,
+        M.map((m) => m.sourceId),
+        save,
+      );
+  }
 }
+$("openRosterSelection").onclick = () => show("rosterSelection");
+$("rosterBack").onclick = () => show("collection");
 document
   .querySelectorAll(".nav button")
   .forEach((b) => (b.onclick = () => show(b.dataset.page)));
@@ -1698,6 +1723,8 @@ async function boot() {
     let x = JSON.parse(originalSave);
     if (x) D = { ...D, ...x };
   } catch (e) {}
+  D.lv = Math.min(MAX_LEVEL, Math.max(1, D.lv || 1));
+  if (D.lv === MAX_LEVEL) D.xp = 0;
   D.master = D.master || {};
   D.encounterWins = D.encounterWins || {};
   D.boss = D.boss || {};
@@ -1724,7 +1751,7 @@ async function boot() {
     ];
     let [eq, sets, bestiary] = await Promise.all(
       files.map(async (f) => {
-        let r = await fetch(f + "?v=3.9.0");
+        let r = await fetch(f + "?v=3.10.0");
         if (!r.ok) throw Error(f + " : HTTP " + r.status);
         return r.json();
       }),

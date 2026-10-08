@@ -131,3 +131,6 @@ après équipement, retrait et reconnexion. Le verrouillage empêche la vente.
 La sélection multiple respecte les filtres ; les objets masqués et verrouillés
 en sont exclus. Toute vente passe par une confirmation avec liste et montant
 (5 kamas par objet). Une sélection modifiée depuis la confirmation bloque la vente.
+
+
+V3.10.0: Complete monster selection catalogue from dofusdude/dofus3-main 3.7.4.4 (5,129 IDs, 446 nonempty zone groups). Subarea memberships are the union of the monster and subarea declarations in that pinned snapshot. Unplaced entries stay visible in the last group; quest monsters, summons and variants are intentionally included. Source SHA-256 hashes and release URL are in monster-catalogue.json. Rebuild with scripts/import-monster-catalogue.py and the four raw source files. Choices are private account-owned drafts in the existing durable save, preselect the 195 live monsters, and do not alter current combat. Character level is capped at 200, including save API validation and maximum-level XP displays.

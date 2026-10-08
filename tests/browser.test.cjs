@@ -686,6 +686,85 @@ async function main() {
           Object.assign(D, backup);
           show("combat");
         }, statsBackup);
+        // Catalogue choices, empty draft, validation and level cap on the real mobile UI.
+        await page.evaluate(() => show("collection"));
+        await page.locator("#openRosterSelection").click();
+        await page.waitForFunction(() =>
+          document.getElementById("rosterCount").textContent.includes("5129"),
+        );
+        assert.equal(await page.locator("#rosterZone option").count(), 446);
+        assert.equal(
+          await page.evaluate(() => D.rosterDraft.selectedIds.length),
+          195,
+        );
+        const firstCheckbox = page.locator("#rosterList input").first();
+        const mid = Number(await firstCheckbox.getAttribute("data-monster"));
+        const checked = await firstCheckbox.isChecked();
+        await firstCheckbox.setChecked(!checked);
+        await page.evaluate(() => GameSave.flush());
+        await page.reload();
+        await page.waitForFunction(() => !!M.length);
+        await page.evaluate(() => show("rosterSelection"));
+        await page.waitForFunction(() =>
+          document.querySelector("#rosterList input"),
+        );
+        assert.equal(
+          await page.evaluate(
+            (id) => D.rosterDraft.selectedIds.includes(id),
+            mid,
+          ),
+          !checked,
+        );
+        await page.evaluate(() => {
+          D.rosterDraft.selectedIds = [];
+          D.rosterDraft.validated = false;
+          save();
+        });
+        await page.evaluate(() => GameSave.flush());
+        await page.reload();
+        await page.waitForFunction(() => !!M.length);
+        await page.evaluate(() => show("rosterSelection"));
+        await page.waitForFunction(() =>
+          document.getElementById("rosterCount").textContent.startsWith("0 /"),
+        );
+        assert.equal(
+          await page.locator("#rosterList input:checked").count(),
+          0,
+        );
+        await page.locator("#rosterSearch").fill("Bouftou");
+        assert.ok((await page.locator("#rosterList input").count()) > 0);
+        await page.locator("#rosterList input").first().check();
+        await page.locator("#rosterValidate").click();
+        await page.waitForFunction(
+          () => D.rosterDraft.validated && GameSave.confirmed,
+        );
+        assert.equal(
+          await page.evaluate(() => D.rosterDraft.selectedIds.length),
+          1,
+        );
+        const capBackup = await page.evaluate(() => ({
+          lv: D.lv,
+          xp: D.xp,
+          pts: D.pts,
+          bh: D.bh,
+          spellPts: D.spellPts,
+        }));
+        await page.evaluate(() => {
+          D.lv = 200;
+          D.xp = 0;
+          gainxp(9999);
+          show("combat");
+        });
+        assert.ok(
+          (await page.locator("#combatXpText").textContent()).includes(
+            "maximum atteint",
+          ),
+        );
+        assert.equal(await page.evaluate(() => D.xp), 0);
+        await page.evaluate((backup) => {
+          Object.assign(D, backup);
+          render();
+        }, capBackup);
         // Open every added zone and all three difficulties through the mobile controls.
         await page.evaluate(() => {
           D.lv = 40;
