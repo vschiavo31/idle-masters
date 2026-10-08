@@ -103,14 +103,15 @@ function renderLocalBestiary(source, combat) {
               const drops = document.createElement("details");
               const ds = document.createElement("summary");
               ds.textContent =
-                "Drops Idle Masters · " +
+                lootLabel(live) +
+                " · " +
                 equipmentChance().toFixed(1) +
                 " % de chance d’équipement";
               drops.append(ds);
               const info = document.createElement("div");
               info.className = "mut";
               info.textContent =
-                "Au maximum un équipement par victoire, choisi uniformément dans cette table. Ces taux sont propres au jeu ; les drops officiels Dofus ne figurent pas dans le fichier source.";
+                "Un équipement maximum par victoire, choisi dans cette panoplie. La chance totale est identique pour tous les monstres à prospection égale. Les taux sont propres à Idle Masters.";
               drops.append(info);
               for (const item of lootPool(live)) {
                 const row = document.createElement("div");

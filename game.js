@@ -94,9 +94,22 @@ function localBaseRate(l) {
 }
 // These are Idle Masters equipment tables, not official Dofus drops.
 function lootPool(m) {
-  let hi = Math.min(40, (m.maxLevel || m.l) + 5),
-    lo = Math.max(1, m.l - 5);
-  return EQ.filter((x) => x.level >= lo && x.level <= hi && I["d" + x.id]);
+  const table = FAMILY_LOOT[m.sourceId];
+  if (!table) return [];
+  return EQ.filter(
+    (x) =>
+      I["d" + x.id] &&
+      (table.setId != null
+        ? x.setId === table.setId
+        : (table.itemIds || []).includes(x.id)),
+  );
+}
+function lootLabel(m) {
+  const table = FAMILY_LOOT[m.sourceId];
+  return table?.setId != null
+    ? SETS.find((s) => s.id === table.setId)?.name ||
+        "Équipements de la famille"
+    : "Équipements du Chafer";
 }
 function mobDrops(m) {
   return lootPool(m).map((x) => "d" + x.id);
@@ -199,7 +212,17 @@ function meta(id) {
 }
 function sourceOf(id) {
   let x = meta(id);
-  return x ? "Équipement Dofus niv. " + x.l : "Inconnue";
+  if (!x) return "Inconnue";
+  const names = [
+    ...new Set(M.filter((m) => mobDrops(m).includes(id)).map((m) => m.n)),
+  ];
+  return (
+    "Équipement Dofus niv. " +
+    x.l +
+    (names.length
+      ? " · Drops : " + names.join(", ")
+      : " · Aucun monstre actuel")
+  );
 }
 function ranges(id) {
   let x = meta(id);
@@ -1005,7 +1028,7 @@ async function boot() {
     ];
     let [eq, sets, bestiary] = await Promise.all(
       files.map(async (f) => {
-        let r = await fetch(f + "?v=3.3.2");
+        let r = await fetch(f + "?v=3.3.3");
         if (!r.ok) throw Error(f + " : HTTP " + r.status);
         return r.json();
       }),
@@ -1013,6 +1036,8 @@ async function boot() {
     buildLocalData(eq, sets);
     BESTIARY = bestiary.monsters || [];
     M = buildCombatData(BESTIARY);
+    if (M.some((m) => !lootPool(m).length))
+      throw Error("Table de drop de famille incomplète");
     if (!M.length || !Object.keys(I).length)
       throw Error("Données locales incomplètes");
     if (originalSave && !D.localCombatMigration) {

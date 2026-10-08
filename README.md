@@ -1,4 +1,4 @@
-# Idle Masters V3.3.2
+# Idle Masters V3.3.3
 
 Jeu solo HTML/JavaScript, avec données Dofus embarquées. Aucun appel DoduAPI au démarrage.
 
@@ -14,7 +14,7 @@ Les trois fichiers JSON sont un instantané Dofus 3.7.4.4 déjà présent dans c
 
 Les zones, éléments d’attaque, dégâts, XP, kamas, statut de boss du Bouftou Royal et parcours de donjon sont des règles Idle Masters. Les zones suivantes se débloquent après 10 victoires en Incarnam, 10 à Astrub, puis une victoire sur le Bouftou Royal. Le donjon est un parcours de quatre rencontres dans Tainéla, pas une reproduction du donjon officiel.
 
-Les fichiers ne contiennent **aucune table de drop officielle ni condition d’équipement Dofus**. Le jeu conserve donc une table d’équipements par tranche de niveau, affichée explicitement comme drops Idle Masters : 30 % de chance d’un équipement, modifiée par la prospection (plafond 72 %), puis choix uniforme dans la table complète. Le niveau requis est appliqué ; les autres conditions Dofus ne sont pas disponibles. Les effets sont repris tels que normalisés dans les JSON existants : aucune nouvelle vérification des libellés, signes ou effets manquants auprès des données brutes n’est revendiquée.
+Les fichiers ne contiennent **aucune table de drop officielle ni condition d’équipement Dofus**. Le jeu conserve donc une table d’équipements explicite par famille, affichée explicitement comme drops Idle Masters : 30 % de chance d’un équipement, modifiée par la prospection (plafond 72 %), puis choix uniforme parmi les pièces de la panoplie associée. Le niveau requis est appliqué ; les autres conditions Dofus ne sont pas disponibles. Les effets sont repris tels que normalisés dans les JSON existants : aucune nouvelle vérification des libellés, signes ou effets manquants auprès des données brutes n’est revendiquée.
 
 Les bonus de panoplie utilisent le palier correspondant au nombre de pièces distinctes, sans additionner les paliers précédents. Deux exemplaires d’un même anneau ne comptent qu’une fois pour une panoplie. Dégâts fixes, dégâts élémentaires et soins sont pris en compte. PM, portée, tacle, fuite, initiative et résistances ne sont pas simulés par le combat simplifié.
 
@@ -31,3 +31,7 @@ La clé `idleMastersV2` est conservée. Avant la migration 3.3.2, une copie est 
 Le projet Sites associé est déclaré dans `.openai/hosting.json`. Les mises à jour conservent ce projet et son adresse, afin de garder la sauvegarde navigateur sur la même origine. La publication nécessite `node scripts/build-static.cjs` pour créer `dist`, puis le workflow Sites. Les futures modifications doivent être vérifiées et publiées sur ce même site avant de remettre le lien d’essai.
 
 À chaque push GitHub, `.github/workflows/check-game.yml` vérifie les règles et lance le parcours mobile dans Chromium et WebKit (moteur Safari). Les anciens workflows qui réinjectaient des scripts sont archivés dans `retired-workflows` et ne s’exécutent plus. Ces tests couvrent les parcours connus, sans garantir l’absence de tous les bugs.
+
+## Drops par famille (3.3.3)
+
+Les Bouftous ordinaires et chefs donnent la panoplie du Bouftou, le Bouftou Royal donne la Royale. Chaque Piou donne sa couleur. Tofus, Prespic, Sanglier, Arakne, Moskito et Larve donnent leurs panoplies respectives. Le Chafer donne l’Amulette du Chafer car aucune panoplie Chafer n’est disponible dans la source locale. Toutes les pièces présentes sont accessibles, sans filtrage par niveau du monstre ; le niveau requis reste appliqué pour les porter. La chance globale reste de 30 % à prospection nulle pour tous les monstres, au maximum une pièce par victoire. Les objets déjà possédés restent conservés.

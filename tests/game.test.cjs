@@ -97,3 +97,64 @@ test("progression gates and existing unlocked zones", () => {
   run("D.master.m147=1");
   assert.equal(run("!!zoneOpen(3)"), true);
 });
+
+test("family drops are exact, complete and never leak into unrelated families", () => {
+  const { run } = game();
+  const cases = [
+    [36, 1, 6],
+    [101, 1, 6],
+    [148, 1, 6],
+    [147, 4, 6],
+    [4785, 50, 6],
+    [489, 60, 6],
+    [491, 61, 6],
+    [236, 62, 6],
+    [492, 70, 6],
+    [493, 71, 6],
+    [490, 72, 6],
+    [52, 22, 3],
+    [61, 23, 4],
+    [31, 33, 4],
+    [103, 31, 4],
+    [104, 21, 3],
+  ];
+  for (const [id, setId, count] of cases) {
+    assert.equal(run(`lootPool(M.find(m=>m.sourceId===${id})).length`), count);
+    assert.equal(
+      run(
+        `lootPool(M.find(m=>m.sourceId===${id})).every(x=>x.setId===${setId})`,
+      ),
+      true,
+    );
+    assert.ok(
+      Math.abs(
+        run(
+          `mobDrops(M.find(m=>m.sourceId===${id})).reduce((n,item)=>n+dropRate(item,M.find(m=>m.sourceId===${id})),0)`,
+        ) - 30,
+      ) < 1e-9,
+    );
+  }
+  assert.equal(run("mobDrops(M.find(m=>m.sourceId===54)).join()"), "d458");
+  assert.equal(
+    run("lootPool(M.find(m=>m.sourceId===36)).some(x=>x.level===20)"),
+    true,
+    "Bouftou level 1 can drop all Bouftou pieces",
+  );
+  assert.equal(
+    run("dropRate('d8214',M.find(m=>m.sourceId===489))"),
+    0,
+    "Red Piou never drops blue Piou equipment",
+  );
+});
+test("actual rolls reach every family piece and preserve the no-drop chance", () => {
+  const { run } = game();
+  run('D.mid="m36";Math.random=()=>0.9');
+  assert.equal(run("loot().length"), 0);
+  for (let index = 0; index < 6; index++) {
+    run(
+      `let calls${index}=0;Math.random=()=>++calls${index}===1?0:(calls${index}===2?${(index + 0.5) / 6}:0);`,
+    );
+    assert.equal(run("loot()[0].id"), run(`mobDrops(mob())[${index}]`));
+  }
+  assert.equal(run("new Set(D.bag.map(q=>q.id)).size"), 6);
+});

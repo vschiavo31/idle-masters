@@ -24,6 +24,31 @@ const COMBAT_ROSTER = [
   [104, 3, "Terre"],
   [54, 3, "Neutre"],
 ];
+// Explicit Idle Masters loot assignments. Set IDs come from local equipment data.
+const FAMILY_LOOT = {
+  4785: { setId: 50 },
+  4784: { setId: 50 },
+  4561: { setId: 50 },
+  36: { setId: 1 },
+  2781: { setId: 1 },
+  101: { setId: 1 },
+  4822: { setId: 1 },
+  148: { setId: 1 },
+  147: { setId: 4 },
+  489: { setId: 60 },
+  491: { setId: 61 },
+  236: { setId: 62 },
+  492: { setId: 70 },
+  493: { setId: 71 },
+  490: { setId: 72 },
+  52: { setId: 22 },
+  61: { setId: 23 },
+  31: { setId: 33 },
+  103: { setId: 31 },
+  104: { setId: 21 },
+  // No Chafer set in the local snapshot; use its named equipment instead.
+  54: { itemIds: [458] },
+};
 function buildCombatData(monsters) {
   const source = new Map(monsters.map((m) => [m.id, m]));
   return COMBAT_ROSTER.map(([id, z, e, boss]) => {
