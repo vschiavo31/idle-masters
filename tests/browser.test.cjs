@@ -58,6 +58,24 @@ async function main() {
         page.on("request", (request) => {
           if (!request.url().startsWith(origin)) external.push(request.url());
         });
+        await page.addInitScript(() => {
+          if (!localStorage.getItem("legacySeeded")) {
+            localStorage.setItem(
+              "idleMastersV2",
+              JSON.stringify({
+                lv: 1,
+                k: 123,
+                master: { m36: 2 },
+                claimed: { first: 1 },
+                bag: [
+                  { uid: 77, id: "d2411", st: { Force: 16, Intelligence: 16 } },
+                ],
+                localCombatMigration: 1,
+              }),
+            );
+            localStorage.setItem("legacySeeded", "1");
+          }
+        });
         await page.goto(origin);
         await page.waitForFunction(
           () => document.getElementById("lv").textContent === "1",
@@ -67,7 +85,26 @@ async function main() {
           1,
           "Duplicate bestiary script",
         );
-        assert.equal(await page.evaluate(() => M.length), 21);
+        assert.equal(await page.evaluate(() => M.length), 23);
+        assert.equal(
+          await page.evaluate(() => D.k),
+          123,
+          "Legacy kamas preserved",
+        );
+        assert.equal(
+          await page.evaluate(() => D.master.m36),
+          2,
+          "Legacy victories preserved",
+        );
+        assert.equal(
+          await page.evaluate(() => D.bag.some((q) => q.uid === 77)),
+          true,
+          "Legacy equipment preserved",
+        );
+        assert.equal(
+          await page.evaluate(() => Object.keys(D.encounterWins).length),
+          0,
+        );
         await page
           .getByRole("button", { name: "COLLECTION", exact: true })
           .click();
@@ -83,11 +120,32 @@ async function main() {
         );
         await page.getByRole("button", { name: "COMBAT", exact: true }).click();
         await page.locator("#mobs button").first().click();
+        assert.equal(await page.locator("#mobs button").count(), 3);
+        assert.equal(await page.locator("#enemyGroup button").count(), 1);
+        const firstMob = await page.evaluate(() => D.mid);
         await page.locator("#combatSpells button").first().click();
-        if (await page.evaluate(() => mode === "fight"))
-          await page.locator("#combatSpells button").first().click();
+        assert.equal(
+          await page.evaluate(() => mode),
+          "fight",
+          "Basic spell must not one-shot",
+        );
+        for (
+          let step = 0;
+          step < 30 && (await page.evaluate(() => mode === "fight"));
+          step++
+        ) {
+          if (await page.locator("#combatSpells button").first().isEnabled())
+            await page.locator("#combatSpells button").first().click();
+          else {
+            await page
+              .getByRole("button", { name: "Fin du tour", exact: true })
+              .click();
+            await page.waitForFunction(() => D.tr || mode !== "fight");
+          }
+        }
         await page.waitForFunction(() => mode === "result");
-        assert.equal(await page.evaluate(() => D.master.m4785), 1);
+        assert.equal(await page.evaluate((id) => D.master[id], firstMob), 1);
+        assert.equal(await page.evaluate(() => D.encounterWins["0:0"]), 1);
         await page
           .getByRole("button", { name: "Refaire", exact: true })
           .click();
@@ -110,10 +168,28 @@ async function main() {
           () => document.getElementById("lv").textContent !== "",
         );
         assert.equal(
-          await page.evaluate(() => D.master.m4785),
+          await page.evaluate((id) => D.master[id], firstMob),
           1,
           "Victory lost on reload",
         );
+        // A real three-enemy encounter: target switching, all living enemies attack,
+        // and no reward is granted when the player abandons the fight.
+        await page.getByRole("button", { name: "COMBAT", exact: true }).click();
+        await page.locator("#mobs button").nth(2).click();
+        assert.equal(await page.locator("#enemyGroup button").count(), 3);
+        await page.locator("#enemyGroup button").nth(1).click();
+        assert.equal(await page.evaluate(() => targetIndex), 1);
+        const hpBefore = await page.evaluate(() => D.hp);
+        await page
+          .getByRole("button", { name: "Fin du tour", exact: true })
+          .click();
+        await page.waitForFunction(() => D.rd === 2);
+        assert.ok((await page.evaluate(() => D.hp)) < hpBefore);
+        assert.equal(await page.locator("#log div").count(), 3);
+        await page
+          .getByRole("button", { name: "Quitter", exact: true })
+          .click();
+        assert.equal(await page.evaluate(() => D.encounterWins["0:2"] || 0), 0);
         for (const width of [320, 390, 430]) {
           await page.setViewportSize({ width, height: 844 });
           assert.equal(

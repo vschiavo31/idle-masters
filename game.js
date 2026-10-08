@@ -115,12 +115,12 @@ function mobDrops(m) {
   return lootPool(m).map((x) => "d" + x.id);
 }
 const BASE = [
-  ["Pression", "Terre", 3, 16, 22, "dmg"],
-  ["Flamiche", "Feu", 2, 9, 13, "dmg"],
-  ["Vague", "Eau", 3, 15, 21, "dmg"],
-  ["Lame de vent", "Air", 3, 14, 23, "dmg"],
-  ["Coup brutal", "Neutre", 4, 25, 32, "dmg"],
-  ["Soin mineur", "Soin", 3, 13, 20, "heal"],
+  ["Pression", "Terre", 3, 6, 8, "dmg"],
+  ["Flamiche", "Feu", 2, 3, 5, "dmg"],
+  ["Vague", "Eau", 3, 6, 8, "dmg"],
+  ["Lame de vent", "Air", 3, 5, 8, "dmg"],
+  ["Coup brutal", "Neutre", 4, 8, 11, "dmg"],
+  ["Soin mineur", "Soin", 3, 10, 14, "heal"],
 ];
 const ACH = [
   ["first", "Premier sang", "Gagner 1 combat", (s) => wins(s) >= 1, 50],
@@ -182,6 +182,7 @@ let D = {
     },
     uid: 1,
     master: {},
+    encounterWins: {},
     boss: {},
     seen: {},
     claimed: {},
@@ -195,6 +196,8 @@ let D = {
   auto = false,
   autoTimer = null,
   fightToken = 0,
+  encounter = null,
+  targetIndex = 0,
   $ = (x) => document.getElementById(x),
   R = (a, b) => Math.floor(a + Math.random() * (b - a + 1)),
   need = (l) => Math.round(100 * Math.pow(1.45, l - 1));
@@ -352,9 +355,9 @@ function gainxp(x) {
   }
   return g;
 }
-function loot() {
+function loot(m = mob()) {
   let out = [],
-    pool = mobDrops(mob());
+    pool = mobDrops(m);
   if (pool.length && Math.random() * 100 < equipmentChance()) {
     let id = pool[R(0, pool.length - 1)],
       q = roll(id);
@@ -379,22 +382,48 @@ function lg(t) {
   $("log").prepend(d);
 }
 function victory() {
-  let m = mob(),
-    kg = R(m.k[0], m.k[1]),
-    xg = gainxp(m.xp),
-    drops = loot();
+  if (D.end || encounter?.members.some((e) => e.hp > 0)) return;
+  const defeated = encounter
+    ? encounter.members.map((e) => M.find((m) => m.id === e.id))
+    : [mob()];
+  const key = encounter?.key,
+    zone = D.z,
+    tier = encounter?.tier;
+  let kg = 0,
+    baseXp = 0,
+    drops = [];
+  for (const m of defeated) {
+    kg += R(m.k[0], m.k[1]);
+    baseXp += m.xp;
+    drops.push(...loot(m));
+    D.master[m.id] = (D.master[m.id] || 0) + 1;
+    if (m.boss) D.boss[m.boss] = (D.boss[m.boss] || 0) + 1;
+  }
+  const xg = gainxp(baseXp);
   D.k += kg;
-  D.master[m.id] = (D.master[m.id] || 0) + 1;
-  if (m.boss) D.boss[m.boss] = (D.boss[m.boss] || 0) + 1;
+  if (key) D.encounterWins[key] = (D.encounterWins[key] || 0) + 1;
   D.hp = mh();
   D.end = true;
   D.tr = false;
   checkAch();
+  lastResult = {
+    mid: D.mid,
+    ids: defeated.map((m) => m.id),
+    key,
+    zone,
+    tier,
+    xp: xg,
+    k: kg,
+    drops,
+  };
   if (auto && !dungeon) {
-    lastResult = { mid: m.id, xp: xg, k: kg, drops };
     save();
     render();
-    return (autoTimer = setTimeout(() => startFight(m.id, false, true), 650));
+    return (autoTimer = setTimeout(
+      () =>
+        key ? startEncounter(zone, tier, true) : startFight(D.mid, false, true),
+      650,
+    ));
   }
   if (dungeon && dungeon.step < 3) {
     dungeon.step++;
@@ -410,10 +439,23 @@ function victory() {
     dungeon = null;
     checkAch();
   }
-  lastResult = { mid: m.id, xp: xg, k: kg, drops };
   mode = "result";
   save();
   render();
+}
+function selectTarget(index, internal = false) {
+  if (
+    !encounter ||
+    !encounter.members[index] ||
+    encounter.members[index].hp <= 0 ||
+    D.end ||
+    (!internal && (!D.tr || auto))
+  )
+    return;
+  targetIndex = index;
+  D.mid = encounter.members[index].id;
+  D.eh = encounter.members[index].hp;
+  if (!internal) render();
 }
 function cast(i) {
   if (!D.tr || D.end) return;
@@ -436,7 +478,13 @@ function cast(i) {
     );
     D.eh = Math.max(0, D.eh - d);
     lg(p[0] + " : " + d + " dégâts");
-    if (D.eh <= 0) return victory();
+    if (encounter) encounter.members[targetIndex].hp = D.eh;
+    if (D.eh <= 0) {
+      lg(mob().n + " est vaincu.");
+      let next = encounter?.members.findIndex((e) => e.hp > 0) ?? -1;
+      if (next < 0) return victory();
+      selectTarget(next, true);
+    }
   }
   render();
 }
@@ -447,11 +495,18 @@ function enemy() {
   render();
   setTimeout(() => {
     if (token !== fightToken || mode !== "fight") return;
-    let m = mob(),
-      d = R(m.a[0], m.a[1]);
-    if (m.boss && D.rd % 3 === 0) d = Math.floor(d * 1.5);
-    D.hp = Math.max(0, D.hp - d);
-    lg(m.n + " : -" + d + " PV");
+    const attackers = encounter
+      ? encounter.members
+          .filter((e) => e.hp > 0)
+          .map((e) => M.find((m) => m.id === e.id))
+      : [mob()];
+    for (const m of attackers) {
+      let d = R(m.a[0], m.a[1]);
+      if (m.boss && D.rd % 3 === 0) d = Math.floor(d * 1.5);
+      D.hp = Math.max(0, D.hp - d);
+      lg(m.n + " : -" + d + " PV");
+      if (D.hp <= 0) break;
+    }
     if (D.hp <= 0) {
       auto = false;
       D.hp = mh();
@@ -493,25 +548,44 @@ function scheduleAuto() {
     } else enemy();
   }, 300);
 }
+function autoWins() {
+  return encounter?.key
+    ? D.encounterWins[encounter.key] || 0
+    : D.master[D.mid] || 0;
+}
 function toggleAuto() {
-  if ((D.master[D.mid] || 0) < 10) {
-    alert("Mode automatique débloqué après 10 victoires sur ce monstre.");
-    return;
-  }
+  if (autoWins() < 10 || dungeon) return;
   auto = !auto;
   if (auto) scheduleAuto();
   else clearTimeout(autoTimer);
   render();
 }
-function startFight(id, keepDungeon = false, fromAuto = false) {
+function beginFight(
+  ids,
+  key = null,
+  tier = null,
+  keepDungeon = false,
+  fromAuto = false,
+) {
+  const chosen = ids.map((id) => M.find((m) => m.id === id));
+  if (
+    chosen.some((m) => !m) ||
+    !chosen.length ||
+    chosen.some((m) => m.z !== chosen[0].z) ||
+    !zoneOpen(chosen[0].z)
+  )
+    return;
   clearTimeout(autoTimer);
-  let chosen = M.find((x) => x.id === id);
-  if (!chosen || !zoneOpen(chosen.z)) return;
   fightToken++;
-  D.mid = id;
-  let m = mob();
-  D.z = m.z;
-  D.eh = m.h;
+  encounter = {
+    key,
+    tier,
+    members: chosen.map((m) => ({ id: m.id, hp: m.h })),
+  };
+  targetIndex = 0;
+  D.mid = ids[0];
+  D.z = chosen[0].z;
+  D.eh = chosen[0].h;
   D.hp = mh();
   D.rd = 1;
   PA = maxpa();
@@ -523,6 +597,18 @@ function startFight(id, keepDungeon = false, fromAuto = false) {
   $("log").innerHTML = "";
   render();
   if (auto) scheduleAuto();
+}
+function startFight(id, keepDungeon = false, fromAuto = false) {
+  beginFight([id], null, null, keepDungeon, fromAuto);
+}
+function startEncounter(zone, tier, fromAuto = false) {
+  beginFight(
+    rollEncounter(zone, tier),
+    zone + ":" + tier,
+    tier,
+    false,
+    fromAuto,
+  );
 }
 function startDungeon() {
   auto = false;
@@ -870,21 +956,31 @@ function picker() {
   });
   let e = $("mobs");
   e.innerHTML = "";
-  M.filter((m) => m.z === D.z).forEach((m) => {
-    let n = D.master[m.id] || 0,
+  ENCOUNTER_TIERS[D.z].forEach((slots, tier) => {
+    const key = D.z + ":" + tier,
+      n = D.encounterWins[key] || 0,
       b = document.createElement("button");
-    b.className = "choice " + (m.boss ? "boss" : "");
+    b.className = "choice";
+    const names = slots
+      .map((pool) =>
+        pool.map((id) => M.find((m) => m.sourceId === id).n).join(" / "),
+      )
+      .join(" + ");
     b.innerHTML =
-      "<b>" +
-      m.n +
-      "</b> · Niv. " +
-      m.l +
-      '<br><span class="mut">' +
+      "<b>Combat " +
+      (tier + 1) +
+      " · " +
+      ["Facile", "Intermédiaire", "Difficile"][tier] +
+      '</b><br><span class="mut">' +
+      slots.length +
+      " monstre(s) · " +
+      names +
+      "<br>" +
       n +
       " victoire(s)" +
       (n >= 10 ? " · Auto disponible" : "") +
       "</span>";
-    b.onclick = () => startFight(m.id);
+    b.onclick = () => startEncounter(D.z, tier);
     e.append(b);
   });
   if (D.z === 2) {
@@ -898,13 +994,31 @@ function picker() {
 function fight() {
   let m = mob(),
     h = mh(),
-    unlocked = (D.master[m.id] || 0) >= 10;
+    unlocked = autoWins() >= 10;
   $("fightZone").textContent = Z[m.z][0];
   $("turn").textContent = auto
     ? "Combat automatique"
     : D.tr
       ? "À toi de jouer"
       : "Tour ennemi";
+  $("enemyGroup").innerHTML = "";
+  if (encounter)
+    encounter.members.forEach((enemy, index) => {
+      let type = M.find((x) => x.id === enemy.id),
+        button = document.createElement("button");
+      button.className = "choice " + (targetIndex === index ? "sel" : "");
+      button.disabled = enemy.hp <= 0 || auto || !D.tr || D.end;
+      button.textContent =
+        type.n +
+        " · " +
+        enemy.hp +
+        "/" +
+        type.h +
+        " PV" +
+        (enemy.hp <= 0 ? " · Vaincu" : index === targetIndex ? " · Cible" : "");
+      button.onclick = () => selectTarget(index);
+      $("enemyGroup").append(button);
+    });
   $("mobName").textContent = m.n;
   $("mobInfo").textContent =
     "Niv. " +
@@ -937,11 +1051,13 @@ function fight() {
     ? auto
       ? "Arrêter le mode automatique"
       : "Mode automatique"
-    : "Auto : " + (D.master[m.id] || 0) + "/10 victoires";
+    : "Auto : " + autoWins() + "/10 victoires sur ce combat";
 }
 function result() {
   let m = M.find((x) => x.id === lastResult.mid);
-  $("resultMob").textContent = m.n;
+  $("resultMob").textContent = (lastResult.ids || [m.id])
+    .map((id) => M.find((x) => x.id === id).n)
+    .join(" + ");
   $("resultXp").textContent = "+" + lastResult.xp;
   $("resultK").textContent = "+" + lastResult.k;
   $("resultDrops").innerHTML = lastResult.drops.length
@@ -989,7 +1105,10 @@ $("backMob").onclick = () => {
   mode = "picker";
   render();
 };
-$("again").onclick = () => startFight(lastResult.mid);
+$("again").onclick = () =>
+  lastResult.key
+    ? startEncounter(lastResult.zone, lastResult.tier)
+    : startFight(lastResult.mid);
 $("changeMob").onclick = () => {
   mode = "picker";
   render();
@@ -1006,6 +1125,7 @@ async function boot() {
     if (x) D = { ...D, ...x };
   } catch (e) {}
   D.master = D.master || {};
+  D.encounterWins = D.encounterWins || {};
   D.boss = D.boss || {};
   D.seen = D.seen || {};
   D.claimed = D.claimed || {};
@@ -1028,7 +1148,7 @@ async function boot() {
     ];
     let [eq, sets, bestiary] = await Promise.all(
       files.map(async (f) => {
-        let r = await fetch(f + "?v=3.3.3");
+        let r = await fetch(f + "?v=3.4.0");
         if (!r.ok) throw Error(f + " : HTTP " + r.status);
         return r.json();
       }),

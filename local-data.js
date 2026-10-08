@@ -16,6 +16,8 @@ const COMBAT_ROSTER = [
   [52, 1, "Terre"],
   [61, 1, "Air"],
   [31, 1, "Eau"],
+  [134, 2, "Terre"],
+  [149, 2, "Neutre"],
   [101, 2, "Terre"],
   [4822, 2, "Terre"],
   [148, 2, "Neutre"],
@@ -30,6 +32,8 @@ const FAMILY_LOOT = {
   4784: { setId: 50 },
   4561: { setId: 50 },
   36: { setId: 1 },
+  134: { setId: 1 },
+  149: { setId: 1 },
   2781: { setId: 1 },
   101: { setId: 1 },
   4822: { setId: 1 },
@@ -70,8 +74,8 @@ function buildCombatData(monsters) {
       e,
       boss,
       a: [
-        Math.max(2, Math.round(l * 0.8 + 3)),
-        Math.max(4, Math.round(l * 1.1 + 6)),
+        Math.max(2, Math.round(l * 0.35 + 2)),
+        Math.max(4, Math.round(l * 0.5 + 4)),
       ],
       xp: Math.round(25 + l * 12 + (boss ? 200 : 0)),
       k: [Math.max(1, l), Math.max(3, l * 2)],
@@ -108,4 +112,45 @@ function migrateCombatSave(state, monsters) {
       state.w[slot] = null;
     }
   }
+}
+
+// Each slot rolls independently within its pool; groups grow from one to three enemies.
+const ENCOUNTER_TIERS = [
+  [[[4785, 4784]], [[4785, 4784], [36]], [[4785, 4784], [36], [4561, 2781]]],
+  [
+    [[489, 490, 491, 492, 493, 236]],
+    [
+      [489, 490, 491, 492, 493, 236],
+      [52, 61, 31],
+    ],
+    [
+      [489, 490, 491, 492, 493, 236],
+      [52, 61, 31],
+      [52, 61, 31],
+    ],
+  ],
+  [
+    [[134, 149]],
+    [
+      [134, 149],
+      [101, 4822],
+    ],
+    [[134, 149], [101, 4822], [148]],
+  ],
+  [
+    [[103, 104]],
+    [
+      [103, 104],
+      [103, 104],
+    ],
+    [[103, 104], [103, 104], [54]],
+  ],
+];
+function rollEncounter(zone, tier, random = Math.random) {
+  const slots = ENCOUNTER_TIERS[zone]?.[tier];
+  if (!slots) throw Error("Combat inconnu");
+  return slots.map(
+    (pool) =>
+      "m" + pool[Math.min(pool.length - 1, Math.floor(random() * pool.length))],
+  );
 }

@@ -33,7 +33,7 @@ function game() {
 }
 test("combat records share source IDs, levels, HP; roster avoids unselected entries", () => {
   const { run } = game();
-  assert.equal(run("M.length"), 21);
+  assert.equal(run("M.length"), 23);
   assert.equal(
     run(
       "M.every(m=>monsters.some(x=>x.id===m.sourceId&&x.name===m.n&&x.hpMin===m.h&&x.minLevel===m.l))",
@@ -157,4 +157,88 @@ test("actual rolls reach every family piece and preserve the no-drop chance", ()
     assert.equal(run("loot()[0].id"), run(`mobDrops(mob())[${index}]`));
   }
   assert.equal(run("new Set(D.bag.map(q=>q.id)).size"), 6);
+});
+
+test("every zone has increasing groups, correct species, and actual random variants", () => {
+  const { run } = game();
+  for (let zone = 0; zone < 4; zone++)
+    for (let tier = 0; tier < 3; tier++) {
+      assert.equal(
+        run(`rollEncounter(${zone},${tier},()=>0).length`),
+        tier + 1,
+      );
+      assert.equal(
+        run(
+          `rollEncounter(${zone},${tier},()=>0).every(id=>M.some(m=>m.id===id&&m.z===${zone}))`,
+        ),
+        true,
+      );
+    }
+  assert.equal(run("rollEncounter(2,2,()=>0).join()"), "m134,m101,m148");
+  assert.equal(run("rollEncounter(2,2,()=>0.999).join()"), "m149,m4822,m148");
+  assert.notEqual(
+    run("rollEncounter(0,0,()=>0).join()"),
+    run("rollEncounter(0,0,()=>0.999).join()"),
+  );
+  for (let z = 0; z < 4; z++) {
+    const low = run(
+      `ENCOUNTER_TIERS[${z}].map(slots=>slots.reduce((n,pool)=>n+Math.min(...pool.map(id=>M.find(m=>m.sourceId===id).h)),0))`,
+    );
+    const high = run(
+      `ENCOUNTER_TIERS[${z}].map(slots=>slots.reduce((n,pool)=>n+Math.max(...pool.map(id=>M.find(m=>m.sourceId===id).h)),0))`,
+    );
+    assert.ok(low[1] > high[0] && low[2] > high[1]);
+  }
+});
+test("basic unmodified spells cannot one-shot level-one Tofu", () => {
+  const { run } = game();
+  assert.equal(run('BASE.filter(s=>s[5]==="dmg").every(s=>s[4]<17)'), true);
+  run('Math.random=()=>0.999;startFight("m4785");cast(0)');
+  assert.equal(run("D.eh"), 9);
+  assert.equal(run("mode"), "fight");
+  run("cast(0)");
+  assert.equal(run("D.eh"), 1);
+  assert.equal(run("D.master.m4785||0"), 0);
+  run("PA=3;cast(0)");
+  assert.equal(run("mode"), "result");
+  assert.equal(run("D.master.m4785"), 1);
+});
+test("target HP is independent and full-group victory pays each enemy exactly once", () => {
+  const { run } = game();
+  run("Math.random=()=>0;startEncounter(0,2);D.inv.Terre=1000;cast(0)");
+  assert.equal(run("encounter.members[0].hp"), 0);
+  assert.equal(run("targetIndex"), 1);
+  assert.equal(run("D.master.m4785||0"), 0);
+  assert.equal(run("D.xp"), 0);
+  assert.equal(run("D.bag.length"), 0);
+  run("selectTarget(2);cast(0)");
+  assert.equal(run("encounter.members[2].hp"), 0);
+  assert.equal(run("targetIndex"), 1);
+  assert.equal(run("D.eh"), 29);
+  run("PA=3;cast(0)");
+  assert.equal(run("mode"), "result");
+  assert.equal(run('D.encounterWins["0:2"]'), 1);
+  assert.equal(run("D.master.m4785+D.master.m36+D.master.m4561"), 3);
+  assert.equal(run("D.bag.length"), 3);
+  assert.equal(run("lastResult.ids.length"), 3);
+  run("victory()");
+  assert.equal(run("D.bag.length"), 3);
+  assert.equal(run('D.encounterWins["0:2"]'), 1);
+});
+test("dead enemies do not attack and group auto progress is separate from individual kills", async () => {
+  const { run } = game();
+  run(
+    "Math.random=()=>0;startEncounter(0,2);encounter.members[0].hp=0;selectTarget(1,true);enemy()",
+  );
+  await new Promise((r) => setTimeout(r, 350));
+  assert.equal(
+    run("D.hp"),
+    96,
+    "only two surviving enemies deal 2 damage each",
+  );
+  assert.equal(run("D.rd"), 2);
+  run("D.master.m36=50");
+  assert.equal(run("autoWins()"), 0);
+  run('D.encounterWins["0:2"]=10');
+  assert.equal(run("autoWins()"), 10);
 });
