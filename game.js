@@ -573,6 +573,15 @@ function beginFight(
   keepDungeon = false,
   fromAuto = false,
 ) {
+  if (
+    typeof GameSave !== "undefined" &&
+    GameSave.authenticated &&
+    !GameSave.profile
+  ) {
+    show("spellsPage");
+    previewClass(D.classId || "iop");
+    return;
+  }
   const chosen = ids.map((id) => M.find((m) => m.id === id));
   if (
     !playerClass() ||
@@ -681,6 +690,8 @@ function renderClassChoice() {
   }
   select.value = pendingClass;
   const candidate = CLASSES.find((c) => c.id === pendingClass) || CLASSES[0];
+  $("characterName").textContent = GameSave.profile?.nickname || "Aventurier";
+  $("nicknameField").hidden = !!GameSave.profile;
   $("classCurrent").textContent = playerClass()
     ? "Classe : " + playerClass().name
     : "Choisis ta classe";
@@ -732,12 +743,15 @@ function renderClassChoice() {
           ? " · Il manque " + (cost - D.k).toLocaleString("fr-FR") + " kamas"
           : "")
       : "Premier choix gratuit";
-  $("confirmClassBtn").disabled = mode === "fight" || current || D.k < cost;
-  $("confirmClassBtn").textContent = current
-    ? "Classe actuelle"
-    : cost
-      ? "Confirmer · 20 000 kamas"
-      : "Confirmer la classe · gratuit";
+  $("confirmClassBtn").disabled =
+    mode === "fight" || (current && !!GameSave.profile) || D.k < cost;
+  $("confirmClassBtn").textContent = !GameSave.profile
+    ? "Confirmer le personnage"
+    : current
+      ? "Classe actuelle"
+      : cost
+        ? "Confirmer · 20 000 kamas"
+        : "Confirmer la classe · gratuit";
 }
 function slot(q) {
   let x = meta(q.id);
@@ -1279,7 +1293,7 @@ function show(p) {
   document
     .querySelectorAll(".nav button")
     .forEach((x) => x.classList.toggle("on", x.dataset.page === p));
-  render();
+  if (GameSave.authenticated) render();
 }
 document
   .querySelectorAll(".nav button")
@@ -1311,7 +1325,81 @@ $("changeZone").onclick = () => {
 };
 $("classSelect").onchange = () => previewClass($("classSelect").value);
 $("chooseClassBtn").onclick = () => previewClass(pendingClass);
-$("confirmClassBtn").onclick = () => chooseClass(pendingClass);
+let creatingCharacter = false;
+$("confirmClassBtn").onclick = async () => {
+  if (creatingCharacter || mode === "fight") return;
+  const id = pendingClass;
+  if (D.k < classChangeCost(id)) return;
+  creatingCharacter = true;
+  $("confirmClassBtn").disabled = true;
+  $("characterError").textContent = "";
+  try {
+    if (!GameSave.profile)
+      await GameSave.createCharacter($("nicknameInput").value);
+    if (D.classId !== id) chooseClass(id);
+    else {
+      classPreviewOpen = false;
+      render();
+    }
+    await GameSave.flush();
+  } catch (error) {
+    $("characterError").textContent = error.message;
+  } finally {
+    creatingCharacter = false;
+    renderClassChoice();
+  }
+};
+async function loadLadder() {
+  $("ladderStatus").textContent = "Chargement du classement…";
+  $("ladderEntries").replaceChildren();
+  try {
+    if (GameSave.authenticated) await GameSave.flush();
+    const response = await fetch("/api/ladder", {
+      credentials: "same-origin",
+      cache: "no-store",
+    });
+    if (!response.ok) throw Error("Classement indisponible. Réessaie.");
+    const { entries } = await response.json();
+    $("ladderStatus").textContent = entries.length
+      ? ""
+      : "Aucun personnage classé pour le moment.";
+    entries.forEach((entry) => {
+      const row = document.createElement("div");
+      row.className = "card";
+      const name = document.createElement("b");
+      name.textContent =
+        "#" + entry.rank + " · " + entry.nickname + (entry.own ? " · Toi" : "");
+      const detail = document.createElement("div");
+      detail.className = "mut";
+      detail.textContent =
+        (CLASSES.find((c) => c.id === entry.classId)?.name || "Aventurier") +
+        " · Niveau " +
+        entry.level +
+        " · " +
+        Number(entry.xp).toLocaleString("fr-FR") +
+        " XP";
+      row.style.overflowWrap = "anywhere";
+      row.append(name, detail);
+      $("ladderEntries").append(row);
+    });
+  } catch (error) {
+    $("ladderStatus").textContent = error.message;
+  }
+}
+$("ladderBtn").onclick = () => {
+  show("ladderPage");
+  loadLadder();
+};
+$("ladderRefresh").onclick = loadLadder;
+$("shareBtn").onclick = async () => {
+  const url = location.origin + "/";
+  try {
+    await navigator.clipboard.writeText(url);
+    $("shareStatus").textContent = "Lien copié : envoie-le à tes amis.";
+  } catch {
+    $("shareStatus").textContent = "Lien à partager : " + url;
+  }
+};
 $("backClassBtn").onclick = () => {
   classPreviewOpen = false;
   renderClassChoice();
@@ -1319,6 +1407,13 @@ $("backClassBtn").onclick = () => {
 $("classDashboardBtn").onclick = () => show("spellsPage");
 async function boot() {
   let originalSave = await GameSave.initialize();
+  if (!GameSave.authenticated) {
+    document.querySelectorAll(".page").forEach((p) => p.classList.remove("on"));
+    document.querySelector(".nav").hidden = true;
+    $("saveNow").disabled = true;
+    $("authGate").hidden = false;
+    return;
+  }
   try {
     let x = JSON.parse(originalSave);
     if (x) D = { ...D, ...x };
@@ -1349,7 +1444,7 @@ async function boot() {
     ];
     let [eq, sets, bestiary] = await Promise.all(
       files.map(async (f) => {
-        let r = await fetch(f + "?v=3.6.1");
+        let r = await fetch(f + "?v=3.7.0");
         if (!r.ok) throw Error(f + " : HTTP " + r.status);
         return r.json();
       }),
@@ -1374,7 +1469,10 @@ async function boot() {
     PA = maxpa();
     checkAch();
     render();
-    if (!playerClass()) show("spellsPage");
+    if (!playerClass() || !GameSave.profile) {
+      show("spellsPage");
+      if (playerClass()) previewClass(D.classId);
+    }
   } catch (e) {
     console.error(e);
     let status = document.createElement("div");

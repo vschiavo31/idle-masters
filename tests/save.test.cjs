@@ -81,3 +81,53 @@ test("stale tabs cannot replace newer saves; invalid and cross-origin writes are
     DB.close();
   }
 });
+test("character names are unique, immutable and ladder exposes only public character fields", async () => {
+  const { default: worker } = await import("../worker/index.mjs");
+  const { DB, request } = await setup();
+  const call = (user, route, nickname) =>
+    worker.fetch(
+      new Request("https://game.test/api/" + route, {
+        method: nickname === undefined ? "GET" : "POST",
+        headers: {
+          ...(user ? { "oai-authenticated-user-id": user } : {}),
+          "content-type": "application/json",
+        },
+        body: nickname === undefined ? undefined : JSON.stringify({ nickname }),
+      }),
+      { DB },
+    );
+  try {
+    assert.equal((await call(null, "character", "Hero")).status, 401);
+    assert.equal((await call("a", "character", "<script>")).status, 400);
+    assert.equal((await call("a", "character", "Hero")).status, 200);
+    assert.equal((await call("b", "character", "hERO")).status, 409);
+    assert.equal(
+      (await (await call("a", "character", "Changed")).json()).profile.nickname,
+      "Hero",
+    );
+    await call("b", "character", "Cra-ami");
+    await request("a", "PUT", {
+      revision: 0,
+      state: { ...state, lv: 5, xp: 1, classId: "iop" },
+    });
+    await request("b", "PUT", {
+      revision: 0,
+      state: { ...state, lv: 5, xp: 2, classId: "cra" },
+    });
+    const entries = (await (await call("a", "ladder")).json()).entries;
+    assert.deepEqual(
+      entries.map((e) => e.nickname),
+      ["Cra-ami", "Hero"],
+    );
+    assert.equal(entries[1].own, true);
+    assert.equal(JSON.stringify(entries).includes("user_id"), false);
+    assert.equal(JSON.stringify(entries).includes("bag"), false);
+    assert.equal(
+      (await request("b", "PUT", { revision: 1, accountKey: "a", state }))
+        .status,
+      409,
+    );
+  } finally {
+    DB.close();
+  }
+});

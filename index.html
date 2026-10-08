@@ -6,7 +6,7 @@
       name="viewport"
       content="width=device-width,initial-scale=1,viewport-fit=cover"
     />
-    <title>Idle Masters V3.6.1</title>
+    <title>Idle Masters V3.7.0</title>
     <style>
       :root {
         --bg: #100e0b;
@@ -487,21 +487,57 @@
         border-radius: 8px;
         font: inherit;
       }
+      [hidden] {
+        display: none !important;
+      }
     </style>
   </head>
   <body>
     <div class="wrap">
       <div class="top">
         <div class="brand">Idle Masters</div>
-        <span class="version">V3.6.1 · Classes et sorts</span>
+        <span class="version">V3.7 · Personnages et ladder</span>
       </div>
       <div class="row" style="margin-bottom: 12px">
         <small id="saveStatus" class="mut" role="status"
           >Chargement de la sauvegarde…</small
         ><button id="saveNow" onclick="GameSave.flush()">Sauvegarder</button>
       </div>
+      <div id="authGate" class="panel" hidden>
+        <h2>Ton personnage, ta progression</h2>
+        <p>
+          Connecte-toi avec ChatGPT pour créer ton personnage ou retrouver ta
+          partie.
+        </p>
+        <a href="/signin-with-chatgpt?return_to=%2F" target="_top" class="gold"
+          >Se connecter avec ChatGPT</a
+        >
+        <button onclick="location.reload()" class="wide">
+          Réessayer le chargement
+        </button>
+        <button
+          onclick="
+            show('ladderPage');
+            loadLadder();
+          "
+          class="wide"
+        >
+          Voir le ladder
+        </button>
+      </div>
       <section id="dashboard" class="page on">
         <div class="panel">
+          <div class="row">
+            <button id="ladderBtn">Ladder</button
+            ><button id="shareBtn">Copier le lien du jeu</button>
+          </div>
+          <p id="shareStatus" class="mut" role="status"></p>
+          <a
+            href="/signout-with-chatgpt?return_to=%2F"
+            target="_top"
+            class="mut"
+            >Changer de compte</a
+          >
           <b id="classDashboard"></b
           ><button id="classDashboardBtn" class="wide">
             Choisir / changer de classe
@@ -514,7 +550,7 @@
               <span class="levelBadge" id="levelBadge">1</span>
             </div>
             <div>
-              <h1>Aventurier</h1>
+              <h1 id="characterName">Aventurier</h1>
               <div class="mut">Niveau <b id="lv"></b></div>
               <div class="bar"><div id="xpBar" class="fill xp"></div></div>
               <div id="xpTxt" class="mut"></div>
@@ -584,6 +620,23 @@
           <div id="bag"></div>
         </div>
       </section>
+      <section id="ladderPage" class="page">
+        <div class="panel">
+          <div class="row">
+            <h2>Ladder des personnages</h2>
+            <button id="ladderRefresh">Actualiser</button>
+          </div>
+          <p class="mut">
+            Niveau puis XP dans le niveau · 100 premiers et ta position. Le
+            classement suit la progression sauvegardée.
+          </p>
+          <p id="ladderStatus" role="status"></p>
+          <div id="ladderEntries"></div>
+          <button onclick="show('dashboard')" class="wide">
+            Retour au personnage
+          </button>
+        </div>
+      </section>
       <section id="spellsPage" class="page">
         <div class="panel">
           <h2 id="classCurrent">Choisis ta classe</h2>
@@ -593,6 +646,28 @@
             <button id="chooseClassBtn" class="wide">Voir les sorts</button>
           </div>
           <div id="classDetail" hidden>
+            <div id="nicknameField">
+              <label for="nicknameInput">Pseudo du personnage</label>
+              <input
+                id="nicknameInput"
+                maxlength="20"
+                minlength="3"
+                autocomplete="off"
+                placeholder="3 à 20 caractères"
+                class="wide"
+                style="
+                  max-width: 100%;
+                  box-sizing: border-box;
+                  padding: 12px;
+                  font: inherit;
+                "
+              />
+              <p class="mut">
+                Lettres, chiffres, tirets et _ · Un personnage par compte. Ton
+                pseudo sera visible dans le ladder.
+              </p>
+            </div>
+            <p id="characterError" role="status" class="bad"></p>
             <h3 id="classPreviewName"></h3>
             <p id="classPreview"></p>
             <div id="classPreviewSpells" class="spellgrid"></div>
@@ -749,11 +824,11 @@
       ><button data-page="collection">COLLECTION</button
       ><button data-page="combat">COMBAT</button>
     </nav>
-    <script src="local-data.js?v=3.6.1"></script>
-    <script src="bestiary-ui.js?v=3.6.1"></script>
-    <script src="saving.js?v=3.6.1"></script>
-    <script src="classes.js?v=3.6.1"></script>
-    <script src="combat-effects.js?v=3.6.1"></script>
-    <script src="game.js?v=3.6.1"></script>
+    <script src="local-data.js?v=3.7.0"></script>
+    <script src="bestiary-ui.js?v=3.7.0"></script>
+    <script src="saving.js?v=3.7.0"></script>
+    <script src="classes.js?v=3.7.0"></script>
+    <script src="combat-effects.js?v=3.7.0"></script>
+    <script src="game.js?v=3.7.0"></script>
   </body>
 </html>

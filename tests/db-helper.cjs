@@ -14,6 +14,9 @@ function createDB() {
       return {
         bind(...args) {
           return {
+            async all() {
+              return { results: db.prepare(sql).all(...args) };
+            },
             async first() {
               return db.prepare(sql).get(...args) || null;
             },

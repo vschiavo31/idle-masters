@@ -6,21 +6,25 @@ window.GameSave = (() => {
     timer = null,
     inflight = null,
     conflict = false,
-    ready = false;
+    ready = false,
+    localKey = null,
+    profile = null,
+    authenticated = false;
   const status = (text) => {
     const e = document.getElementById("saveStatus");
     if (e) e.textContent = text;
   };
   const localRead = () => {
     try {
-      return localStorage.getItem("idleMastersV2");
+      return localKey ? localStorage.getItem(localKey) : null;
     } catch {
       return null;
     }
   };
   const localWrite = (text) => {
     try {
-      localStorage.setItem("idleMastersV2", text);
+      if (!localKey) return false;
+      localStorage.setItem(localKey, text);
       return true;
     } catch {
       return false;
@@ -50,24 +54,41 @@ window.GameSave = (() => {
     }
   }
   async function initialize() {
-    const local = localRead();
     status("Chargement de la sauvegarde…");
     try {
       const cloud = await api("GET");
+      authenticated = true;
+      profile = cloud.profile || null;
+      localKey = "idleMastersAccount:" + cloud.accountKey;
       revision = cloud.revision;
       saved = cloud.state ? JSON.stringify(cloud.state) : null;
       if (saved) localWrite(saved);
       ready = true;
       status(saved ? "Sauvegarde retrouvée" : "Nouvelle partie");
-      return saved || local;
-    } catch {
-      ready = true;
+      return saved;
+    } catch (error) {
       status(
-        "Sauvegarde en ligne indisponible. Nouvelle tentative avec Sauvegarder.",
+        error.status === 401
+          ? "Connecte-toi pour jouer et sauvegarder."
+          : "Chargement impossible. Recharge pour retrouver ta partie.",
       );
-      return local;
+      return null;
     }
   }
+  async function createCharacter(nickname) {
+    const response = await fetch("/api/character", {
+      method: "POST",
+      credentials: "same-origin",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ nickname }),
+    });
+    const data = await response.json();
+    if (!response.ok)
+      throw new Error(data.error || "Création impossible. Réessaie.");
+    profile = data.profile;
+    return profile;
+  }
+
   function queue(state) {
     if (!ready) return;
     const { hp, eh, rd, tr, end, ...progress } = state;
@@ -96,7 +117,11 @@ window.GameSave = (() => {
       }
       const result = await api(
         "PUT",
-        JSON.stringify({ revision, state: JSON.parse(snapshot) }),
+        JSON.stringify({
+          revision,
+          accountKey: localKey?.slice("idleMastersAccount:".length),
+          state: JSON.parse(snapshot),
+        }),
       );
       revision = result.revision;
       saved = snapshot;
@@ -145,11 +170,23 @@ window.GameSave = (() => {
     } finally {
       inflight = null;
     }
-
   }
   document.addEventListener("visibilitychange", () => {
     if (document.visibilityState === "hidden") flush();
   });
   window.addEventListener("pagehide", () => flush());
-  return { initialize, queue, flush, localRead, localWrite };
+  return {
+    initialize,
+    queue,
+    flush,
+    localRead,
+    localWrite,
+    createCharacter,
+    get profile() {
+      return profile;
+    },
+    get authenticated() {
+      return authenticated;
+    },
+  };
 })();

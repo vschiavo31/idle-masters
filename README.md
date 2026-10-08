@@ -73,3 +73,20 @@ Les nouveaux sorts débloqués sont annoncés au résultat du combat. Les tests 
 ## Aperçu et changement de classe (3.6.1)
 
 Sélectionner une classe ouvre une fiche de ses huit sorts : niveaux de déblocage, élément, PA, effets et relances. Les rangs déjà acquis dans cette classe sont affichés. L’aperçu utilise le passif de la classe consultée, sans modifier la classe active ni dépenser de kamas. Retour permet de consulter une autre classe. Confirmer est gratuit pour le premier choix, puis coûte 20 000 kamas par changement (`CLASS_CHANGE_PRICE`). Un solde insuffisant ou un combat en cours interdit la confirmation. Confirmer la classe actuelle ne dépense rien ; les confirmations répétées ne débitent pas deux fois. Les rangs et la progression restent conservés. Les tests de sauvegarde vérifient aussi le solde après changement.
+
+### V3.7 — partage, pseudo et ladder
+
+Le jeu est accessible par lien. Chaque joueur se connecte avec ChatGPT et possède
+un personnage avec un pseudo unique (3–20 caractères). Les pseudonymes sont publics,
+les comptes et les inventaires restent privés. Un personnage existant conserve sa
+progression et choisit son pseudo lors de la première ouverture de cette version.
+Le changement de classe conserve le pseudo et coûte toujours 20 000 kamas.
+
+Le ladder affiche les 100 premiers ainsi que la position du joueur connecté,
+triés par niveau, XP du niveau, puis date de création. Il suit la sauvegarde durable.
+Les combats étant calculés dans le navigateur, ce classement entre amis n'offre
+pas encore de validation anti-triche des gains côté serveur.
+
+Les copies locales sont désormais séparées par compte et ne sont jamais importées
+pour un nouvel utilisateur. Si le serveur n'est pas joignable au démarrage,
+le jeu bloque le chargement et propose de réessayer pour éviter de perdre une partie.

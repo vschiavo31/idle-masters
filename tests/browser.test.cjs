@@ -11,7 +11,7 @@ async function main() {
   const DB = createDB();
   const worker = (await import("../worker/index.mjs")).default;
   const server = http.createServer(async (req, res) => {
-    if (new URL(req.url, "http://test").pathname === "/api/save") {
+    if (new URL(req.url, "http://test").pathname.startsWith("/api/")) {
       const chunks = [];
       for await (const chunk of req) chunks.push(chunk);
       const user =
@@ -19,8 +19,15 @@ async function main() {
       const response = await worker.fetch(
         new Request("http://" + req.headers.host + req.url, {
           method: req.method,
-          headers: { ...req.headers, "oai-authenticated-user-id": user },
-          body: req.method === "PUT" ? Buffer.concat(chunks) : undefined,
+          headers: {
+            ...req.headers,
+            ...(user === "anonymous"
+              ? {}
+              : { "oai-authenticated-user-id": user }),
+          },
+          body: ["PUT", "POST"].includes(req.method)
+            ? Buffer.concat(chunks)
+            : undefined,
         }),
         { DB },
       );
@@ -101,6 +108,26 @@ async function main() {
             localStorage.setItem("legacySeeded", "1");
           }
         });
+        // Existing account's durable save must survive the new profile onboarding.
+        await DB.prepare(
+          "INSERT INTO game_saves (user_id, revision, payload, updated_at) VALUES (?, 1, ?, ?) ON CONFLICT DO NOTHING RETURNING revision",
+        )
+          .bind(
+            engine.name(),
+            JSON.stringify({
+              lv: 1,
+              k: 123,
+              w: {},
+              bag: [
+                { uid: 77, id: "d2411", st: { Force: 16, Intelligence: 16 } },
+              ],
+              master: { m36: 2 },
+              claimed: { first: 1 },
+              localCombatMigration: 1,
+            }),
+            Date.now(),
+          )
+          .first();
         await page.goto(origin);
         await page.waitForFunction(
           () => document.getElementById("lv").textContent === "1",
@@ -114,7 +141,23 @@ async function main() {
         assert.equal(await page.evaluate(() => D.k), 123);
         await page.locator("#backClassBtn").click();
         await page.locator("#classSelect").selectOption("iop");
+        await page
+          .locator("#nicknameInput")
+          .fill("Aventurier-" + engine.name());
         await page.locator("#confirmClassBtn").click();
+        await page.waitForFunction(
+          () => D.classId === "iop" && !!GameSave.profile,
+        );
+        assert.equal(
+          await page.locator("#characterName").textContent(),
+          "Aventurier-" + engine.name(),
+        );
+        await page.evaluate(() => show("dashboard"));
+        await page.locator("#ladderBtn").click();
+        await page.waitForFunction(() =>
+          document.getElementById("ladderEntries").textContent.includes("Toi"),
+        );
+        await page.evaluate(() => show("spellsPage"));
         // Previewing and backing out is free, even when a change is unaffordable.
         await page.locator("#classSelect").selectOption("xelor");
         assert.equal(
@@ -528,6 +571,83 @@ async function main() {
         );
         assert.equal(await reopened.evaluate(() => D.k), kept.k + 7);
         await recovered.close();
+        // Switching accounts in the same browser must not import the former save.
+        const isolated = await browser.newContext({
+          viewport: { width: 320, height: 700 },
+        });
+        await isolated.addCookies([
+          { name: "test-user", value: "new-" + engine.name(), url: origin },
+        ]);
+        const fresh = await isolated.newPage();
+        fresh.on("pageerror", (e) => errors.push(e.message));
+        await fresh.addInitScript(() =>
+          localStorage.setItem(
+            "idleMastersV2",
+            JSON.stringify({
+              lv: 40,
+              k: 999999,
+              bag: [{ uid: 88 }],
+              w: {},
+              classId: "iop",
+            }),
+          ),
+        );
+        await fresh.goto(origin);
+        await fresh.waitForFunction(
+          () => document.getElementById("lv").textContent === "1",
+        );
+        assert.equal(await fresh.evaluate(() => D.classId), null);
+        assert.equal(await fresh.evaluate(() => D.bag.length), 0);
+        await fresh.locator("#classSelect").selectOption("cra");
+        await fresh
+          .locator("#nicknameInput")
+          .fill("Aventurier-" + engine.name());
+        await fresh.locator("#confirmClassBtn").click();
+        await fresh.waitForFunction(() =>
+          document
+            .getElementById("characterError")
+            .textContent.includes("déjà pris"),
+        );
+        assert.equal(await fresh.evaluate(() => D.classId), null);
+        await fresh.locator("#nicknameInput").fill("Nouvel-" + engine.name());
+        await fresh.locator("#confirmClassBtn").click();
+        await fresh.waitForFunction(
+          () => D.classId === "cra" && !!GameSave.profile,
+        );
+        await fresh.evaluate(() => show("dashboard"));
+        await fresh.locator("#ladderBtn").click();
+        await fresh.waitForFunction(() =>
+          document
+            .getElementById("ladderEntries")
+            .textContent.includes("Nouvel-"),
+        );
+        assert.equal(
+          await fresh.evaluate(
+            () => document.documentElement.scrollWidth > innerWidth,
+          ),
+          false,
+        );
+        await isolated.addCookies([
+          { name: "test-user", value: "anonymous", url: origin },
+        ]);
+        await fresh.reload();
+        await fresh.waitForFunction(
+          () => !document.getElementById("authGate").hidden,
+        );
+        assert.equal(await fresh.locator("#saveNow").isDisabled(), true);
+        await fresh.getByRole("button", { name: "Voir le ladder" }).click();
+        await fresh.waitForFunction(() =>
+          document
+            .getElementById("ladderEntries")
+            .textContent.includes("Nouvel-"),
+        );
+        assert.equal(
+          await fresh
+            .locator('a[href^="/signin-with-chatgpt"]')
+            .getAttribute("target"),
+          "_top",
+        );
+        await isolated.close();
         assert.deepEqual(errors, []);
         assert.deepEqual(external, []);
         console.log(
