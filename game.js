@@ -636,6 +636,27 @@ function statCost(n) {
   if (n === "Sagesse") return 3;
   return Math.floor((D.inv[n] || 0) / 50) + 1;
 }
+function investedStatPoints() {
+  return Object.entries(D.inv).reduce((total, [name, count]) => {
+    const blocks = Math.floor(count / 50),
+      remainder = count % 50;
+    return (
+      total +
+      (name === "Sagesse"
+        ? count * 3
+        : (50 * blocks * (blocks + 1)) / 2 + remainder * (blocks + 1))
+    );
+  }, 0);
+}
+function resetCharacteristics() {
+  if (mode === "fight") return false;
+  const refund = investedStatPoints();
+  if (!refund) return false;
+  D.pts += refund;
+  Object.keys(D.inv).forEach((name) => (D.inv[name] = 0));
+  render();
+  return true;
+}
 function spend(n) {
   let c = statCost(n);
   if (D.pts >= c) {
@@ -855,6 +876,9 @@ function dashboard() {
   $("spellPts").textContent = D.spellPts;
   $("quickSeen").textContent = Object.keys(D.seen || {}).length;
   $("quickBag").textContent = D.bag.length;
+  $("resetStatsBtn").disabled = mode === "fight" || !investedStatPoints();
+  $("resetStatsInfo").textContent =
+    "Gratuit, hors combat · " + investedStatPoints() + " point(s) à récupérer.";
   $("stats").innerHTML = "";
   Object.keys(map).forEach((x) => {
     let g = st(map[x]),
@@ -882,6 +906,19 @@ function dashboard() {
     " / " +
     ACH.length +
     " succès débloqués";
+}
+const INVENTORY_SLOTS = [
+  "Coiffe",
+  "Cape",
+  "Amulette",
+  "Anneau",
+  "Ceinture",
+  "Bottes",
+];
+function visibleInventorySlots() {
+  return Array.isArray(D.inventorySlots)
+    ? D.inventorySlots.filter((slot) => INVENTORY_SLOTS.includes(slot))
+    : INVENTORY_SLOTS;
 }
 const INVENTORY_SORTS = ["levelAsc", "levelDesc", "jetAsc", "jetDesc"];
 function sortedInventory(items, order) {
@@ -931,7 +968,20 @@ function inventory() {
   $("bagSort").value = INVENTORY_SORTS.includes(D.inventorySort)
     ? D.inventorySort
     : "jetDesc";
+  document
+    .querySelectorAll("#bagFilters input")
+    .forEach(
+      (input) =>
+        (input.checked = visibleInventorySlots().includes(input.value)),
+    );
+  $("bagFilteredCount").textContent =
+    ready.filter(
+      (q) =>
+        visibleInventorySlots().includes(meta(q.id).s) &&
+        meta(q.id).n.toLowerCase().includes(search),
+    ).length + " objet(s) affiché(s)";
   sortedInventory(ready, $("bagSort").value)
+    .filter((q) => visibleInventorySlots().includes(meta(q.id).s))
     .filter((q) => meta(q.id).n.toLowerCase().includes(search))
     .forEach((q) => {
       let x = meta(q.id),
@@ -1005,7 +1055,8 @@ function inventory() {
     e.append(d);
   }
   if (!e.children.length)
-    e.innerHTML = '<div class="mut">Aucun objet dans le sac.</div>';
+    e.innerHTML =
+      '<div class="mut">Aucun objet ne correspond aux filtres.</div>';
 }
 function spells() {
   $("spPtsTop").textContent = D.spellPts + " point(s)";
@@ -1323,6 +1374,36 @@ document
   .querySelectorAll(".nav button")
   .forEach((b) => (b.onclick = () => show(b.dataset.page)));
 $("bagSearch").oninput = inventory;
+$("resetStatsBtn").onclick = () => {
+  $("resetStatsConfirm").hidden = false;
+};
+$("cancelResetStats").onclick = () => {
+  $("resetStatsConfirm").hidden = true;
+};
+$("confirmResetStats").onclick = () => {
+  resetCharacteristics();
+  $("resetStatsConfirm").hidden = true;
+};
+document.querySelectorAll("#bagFilters input").forEach(
+  (input) =>
+    (input.onchange = () => {
+      D.inventorySlots = [
+        ...document.querySelectorAll("#bagFilters input:checked"),
+      ].map((x) => x.value);
+      inventory();
+      save();
+    }),
+);
+$("bagAll").onclick = () => {
+  D.inventorySlots = [...INVENTORY_SLOTS];
+  inventory();
+  save();
+};
+$("bagNone").onclick = () => {
+  D.inventorySlots = [];
+  inventory();
+  save();
+};
 $("bagSort").onchange = () => {
   D.inventorySort = $("bagSort").value;
   inventory();

@@ -521,7 +521,69 @@ async function main() {
             true,
           );
         }
-        await page.evaluate(() => show("combat"));
+        await page.evaluate(() => {
+          for (const slot of INVENTORY_SLOTS) {
+            const id = Object.keys(I).find((id) => meta(id).s === slot);
+            D.bag.push(roll(id));
+          }
+          show("inventory");
+        });
+        await page.locator("#bagNone").click();
+        assert.equal(await page.locator("#bag .item").count(), 0);
+        await page.locator('#bagFilters input[value="Anneau"]').check();
+        assert.equal((await page.locator("#bag .item").count()) > 0, true);
+        assert.equal(
+          await page
+            .locator("#bag .item .eyebrow")
+            .evaluateAll((items) =>
+              items.every((item) => item.textContent.startsWith("Anneau")),
+            ),
+          true,
+        );
+        await page.locator('#bagFilters input[value="Cape"]').check();
+        assert.equal(
+          await page
+            .locator("#bag .item .eyebrow")
+            .evaluateAll((items) =>
+              items.every((item) => /^(Anneau|Cape)/.test(item.textContent)),
+            ),
+          true,
+        );
+        await page.locator('#bagFilters input[value="Anneau"]').uncheck();
+        assert.equal(
+          await page
+            .locator("#bag .item .eyebrow")
+            .evaluateAll((items) =>
+              items.every((item) => item.textContent.startsWith("Cape")),
+            ),
+          true,
+        );
+        const statsBackup = await page.evaluate(() => ({
+          inv: D.inv,
+          pts: D.pts,
+        }));
+        await page.evaluate(() => {
+          D.inv = { Terre: 0, Feu: 0, Eau: 0, Air: 0, Neutre: 0, Sagesse: 0 };
+          D.pts = 100;
+          for (let i = 0; i < 51; i++) spend("Terre");
+          for (let i = 0; i < 3; i++) spend("Sagesse");
+          show("dashboard");
+        });
+        await page.locator("#resetStatsBtn").click();
+        await page.locator("#cancelResetStats").click();
+        assert.equal(await page.evaluate(() => D.inv.Terre), 51);
+        await page.locator("#resetStatsBtn").click();
+        await page.locator("#confirmResetStats").click();
+        assert.equal(await page.evaluate(() => D.pts), 100);
+        assert.equal(
+          await page.evaluate(() => Object.values(D.inv).every((v) => v === 0)),
+          true,
+        );
+        assert.equal(await page.locator("#resetStatsBtn").isDisabled(), true);
+        await page.evaluate((backup) => {
+          Object.assign(D, backup);
+          show("combat");
+        }, statsBackup);
         // Open every added zone and all three difficulties through the mobile controls.
         await page.evaluate(() => {
           D.lv = 40;
@@ -575,6 +637,7 @@ async function main() {
           classId: D.classId,
           spellRanks: D.spellRanks,
           inventorySort: D.inventorySort,
+          inventorySlots: D.inventorySlots,
         }));
         await page
           .getByRole("button", { name: "Sauvegarder", exact: true })
@@ -615,6 +678,7 @@ async function main() {
             classId: D.classId,
             spellRanks: D.spellRanks,
             inventorySort: D.inventorySort,
+            inventorySlots: D.inventorySlots,
           })),
           kept,
         );

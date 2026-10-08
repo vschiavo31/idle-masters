@@ -109,3 +109,8 @@ précédentes ne sont pas terminées.
 
 L’inventaire propose les tris niveau et perfection du jet, chacun dans les
 deux sens. Le choix est sauvegardé avec le personnage.
+
+La remise à zéro des caractéristiques est gratuite hors combat, avec
+confirmation et remboursement exact des points selon les paliers (Sagesse : 3).
+Le sac permet de cocher plusieurs catégories d’équipement ; les filtres
+sont conservés avec le personnage, même si tout est décoché.

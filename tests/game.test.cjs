@@ -529,3 +529,33 @@ test("inventory sorts support all four directions without changing items or bag 
   }
   assert.equal(run("JSON.stringify(D.bag)===original"), true);
 });
+
+test("reset characteristics refunds exact tier costs and wisdom without double refund", () => {
+  const { run } = game();
+  run(
+    'D.pts=1000;D.inv={Terre:0,Feu:0,Eau:0,Air:0,Neutre:0,Sagesse:0};for(let i=0;i<125;i++)spend("Terre");for(let i=0;i<51;i++)spend("Air");for(let i=0;i<10;i++)spend("Sagesse");pointsBefore=D.pts;equipmentBefore=JSON.stringify(D.w);levelBefore=D.lv;spellBefore=D.spellPts',
+  );
+  assert.equal(run("investedStatPoints()"), 307);
+  assert.equal(run("resetCharacteristics()"), true);
+  assert.equal(run("D.pts"), 1000);
+  assert.equal(run("Object.values(D.inv).every(v=>v===0)"), true);
+  assert.equal(run("resetCharacteristics()"), false);
+  assert.equal(run("D.pts"), 1000);
+  assert.equal(
+    run(
+      "JSON.stringify(D.w)===equipmentBefore && D.lv===levelBefore && D.spellPts===spellBefore",
+    ),
+    true,
+  );
+  run('spend("Feu");mode="fight"');
+  assert.equal(run("resetCharacteristics()"), false);
+  assert.equal(run("D.inv.Feu"), 1);
+});
+test("equipment filters support multiple categories and preserve explicit empty selection", () => {
+  const { run } = game();
+  assert.equal(run("visibleInventorySlots().length"), 6);
+  run('D.inventorySlots=["Anneau","Cape"]');
+  assert.equal(run('visibleInventorySlots().join(",")'), "Anneau,Cape");
+  run("D.inventorySlots=[]");
+  assert.equal(run("visibleInventorySlots().length"), 0);
+});
