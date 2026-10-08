@@ -10,7 +10,7 @@ function game() {
     setTimeout,
     clearTimeout,
     localStorage: { setItem() {} },
-    GameSave: {queue(){}},
+    GameSave: { queue() {} },
     document: {
       getElementById() {
         return { innerHTML: "", prepend() {} };
@@ -34,7 +34,7 @@ function game() {
 }
 test("combat records share source IDs, levels, HP; roster avoids unselected entries", () => {
   const { run } = game();
-  assert.equal(run("M.length"), 23);
+  assert.equal(run("M.length"), 195);
   assert.equal(
     run(
       "M.every(m=>monsters.some(x=>x.id===m.sourceId&&x.name===m.n&&x.hpMin===m.h&&x.minLevel===m.l))",
@@ -162,7 +162,7 @@ test("actual rolls reach every family piece and preserve the no-drop chance", ()
 
 test("every zone has increasing groups, correct species, and actual random variants", () => {
   const { run } = game();
-  for (let zone = 0; zone < 4; zone++)
+  for (let zone = 0; zone < run("Z.length"); zone++)
     for (let tier = 0; tier < 3; tier++) {
       assert.equal(
         run(`rollEncounter(${zone},${tier},()=>0).length`),
@@ -181,7 +181,7 @@ test("every zone has increasing groups, correct species, and actual random varia
     run("rollEncounter(0,0,()=>0).join()"),
     run("rollEncounter(0,0,()=>0.999).join()"),
   );
-  for (let z = 0; z < 4; z++) {
+  for (let z = 0; z < run("Z.length"); z++) {
     const low = run(
       `ENCOUNTER_TIERS[${z}].map(slots=>slots.reduce((n,pool)=>n+Math.min(...pool.map(id=>M.find(m=>m.sourceId===id).h)),0))`,
     );
@@ -242,4 +242,74 @@ test("dead enemies do not attack and group auto progress is separate from indivi
   assert.equal(run("autoWins()"), 0);
   run('D.encounterWins["0:2"]=10');
   assert.equal(run("autoWins()"), 10);
+});
+
+test("expanded zones cover level 1–40, are reachable, and keep original saves valid", () => {
+  const { run } = game();
+  assert.equal(run("Z.length"), 25);
+  assert.equal(run("new Set(M.map(m=>m.sourceId)).size"), 195);
+  assert.equal(run("Math.min(...M.map(m=>m.l))"), 1);
+  assert.equal(run("Math.max(...M.map(m=>m.l))"), 40);
+  assert.equal(run("M.every(m=>m.l>=1&&m.l<=40)"), true);
+  assert.equal(
+    run(
+      "M.filter(m=>!m.boss).every(m=>ENCOUNTER_TIERS[m.z].flat(2).includes(m.sourceId))",
+    ),
+    true,
+  );
+  for (let z = 4; z < run("Z.length"); z++) {
+    run(`D.lv=Z[${z}][1]-1`);
+    assert.equal(run(`!!zoneOpen(${z})`), false);
+    run(`D.lv=Z[${z}][1]`);
+    assert.equal(run(`!!zoneOpen(${z})`), true);
+  }
+  assert.equal(run("!!zoneOpen(500)"), false);
+});
+
+test("every added monster has nonempty level-1–40 loot and the same global gate", () => {
+  const { run } = game();
+  assert.equal(run("M.every(m=>lootPool(m).length>0)"), true);
+  assert.equal(
+    run("M.every(m=>lootPool(m).every(x=>x.level>=1&&x.level<=40))"),
+    true,
+  );
+  assert.equal(
+    run(
+      "M.every(m=>Math.abs(mobDrops(m).reduce((sum,id)=>sum+dropRate(id,m),0)-30)<1e-8)",
+    ),
+    true,
+  );
+  assert.equal(
+    run(
+      "M.filter(m=>FAMILY_LOOT[m.sourceId].levelRange).every(m=>lootPool(m).every(x=>!RESERVED_LOOT_SETS.has(x.setId)&&!RESERVED_LOOT_ITEMS.has(x.id)))",
+    ),
+    true,
+  );
+  for (const [id, set] of [
+    [59, 24],
+    [79, 18],
+    [46, 33],
+    [47, 3],
+    [98, 50],
+    [921, 63],
+    [4046, 375],
+    [153, 25],
+    [267, 15],
+  ]) {
+    assert.equal(
+      run(`lootPool(M.find(m=>m.sourceId===${id})).every(x=>x.setId===${set})`),
+      true,
+    );
+  }
+  run("D.z=20;D.lv=40;Math.random=()=>0;startEncounter(20,2)");
+  assert.equal(run("encounter.members.length"), 3);
+  const earned = run(
+    "encounter.members.reduce((n,e)=>n+M.find(m=>m.id===e.id).xp,0)",
+  );
+  const before = run("wins()");
+  run("encounter.members.forEach(e=>e.hp=0);victory()");
+  assert.equal(run("D.encounterWins['20:2']"), 1);
+  assert.equal(run("lastResult.xp"), earned);
+  assert.equal(run("wins()"), before + 3);
+  assert.equal(run("D.bag.length"), 3);
 });

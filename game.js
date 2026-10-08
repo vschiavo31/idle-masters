@@ -1,4 +1,4 @@
-const Z = [["Incarnam"], ["Astrub"], ["Tainéla"], ["Forêt d’Astrub"]];
+const Z = ZONE_DATA;
 let M = [],
   BESTIARY = [];
 let EQ = [],
@@ -42,7 +42,9 @@ function statKey(s) {
 function slotName(s) {
   return s === "Chapeau" ? "Coiffe" : s;
 }
+const lootPools = new Map();
 function buildLocalData(eq, sets) {
+  lootPools.clear();
   EQ = eq.items || [];
   SETS = sets.sets || [];
   I = {};
@@ -94,22 +96,30 @@ function localBaseRate(l) {
 }
 // These are Idle Masters equipment tables, not official Dofus drops.
 function lootPool(m) {
+  if (lootPools.has(m.sourceId)) return lootPools.get(m.sourceId);
   const table = FAMILY_LOOT[m.sourceId];
   if (!table) return [];
-  return EQ.filter(
-    (x) =>
-      I["d" + x.id] &&
-      (table.setId != null
-        ? x.setId === table.setId
-        : (table.itemIds || []).includes(x.id)),
-  );
+  const pool = EQ.filter((x) => {
+    if (!I["d" + x.id]) return false;
+    if (table.setId != null) return x.setId === table.setId;
+    if (table.levelRange)
+      return (
+        x.level >= table.levelRange[0] &&
+        x.level <= table.levelRange[1] &&
+        !RESERVED_LOOT_SETS.has(x.setId) &&
+        !RESERVED_LOOT_ITEMS.has(x.id)
+      );
+    return (table.itemIds || []).includes(x.id);
+  });
+  lootPools.set(m.sourceId, pool);
+  return pool;
 }
 function lootLabel(m) {
   const table = FAMILY_LOOT[m.sourceId];
   return table?.setId != null
     ? SETS.find((s) => s.id === table.setId)?.name ||
         "Équipements de la famille"
-    : "Équipements du Chafer";
+    : table?.label || "Équipements du Chafer";
 }
 function mobDrops(m) {
   return lootPool(m).map((x) => "d" + x.id);
@@ -223,7 +233,9 @@ function sourceOf(id) {
     "Équipement Dofus niv. " +
     x.l +
     (names.length
-      ? " · Drops : " + names.join(", ")
+      ? " · Drops : " +
+        names.slice(0, 4).join(", ") +
+        (names.length > 4 ? " et " + (names.length - 4) + " autres" : "")
       : " · Aucun monstre actuel")
   );
 }
@@ -928,32 +940,43 @@ function zoneOpen(i) {
     i === 0 ||
     (i === 1 && (D.boss.incarnam || zoneWins(0) >= 10)) ||
     (i === 2 && (D.boss.astrub || zoneWins(1) >= 10)) ||
-    (i === 3 && (D.boss.tainela || D.master.m147 >= 1))
+    (i === 3 && (D.boss.tainela || D.master.m147 >= 1)) ||
+    (i >= 4 && !!Z[i] && D.lv >= Z[i][1])
   );
 }
 function picker() {
   let z = $("zones");
   z.innerHTML = "";
-  Z.forEach((x, i) => {
-    let ok = zoneOpen(i),
-      b = document.createElement("button");
-    b.className = "choice " + (D.z === i ? "sel" : "");
-    b.disabled = !ok;
-    b.innerHTML =
-      "<b>" +
-      x[0] +
-      "</b> " +
-      (ok
-        ? ""
-        : i === 3
-          ? "— vaincre le Bouftou Royal"
-          : "— 10 victoires dans la zone précédente");
-    b.onclick = () => {
-      D.z = i;
-      render();
-    };
-    z.append(b);
-  });
+  Z.map((x, i) => ({ x, i }))
+    .sort((a, b) => a.x[1] - b.x[1] || a.i - b.i)
+    .forEach(({ x, i }) => {
+      let ok = zoneOpen(i),
+        b = document.createElement("button");
+      b.dataset.zone = String(i);
+      b.className = "choice " + (D.z === i ? "sel" : "");
+      b.disabled = !ok;
+      b.innerHTML =
+        "<b>" +
+        x[0] +
+        "</b> · niv. " +
+        Z[i][1] +
+        "–" +
+        Math.max(...M.filter((m) => m.z === i).map((m) => m.l)) +
+        " " +
+        (ok
+          ? ""
+          : i >= 4
+            ? "— personnage niveau " + x[1]
+            : i === 3
+              ? "— vaincre le Bouftou Royal"
+              : "— 10 victoires dans la zone précédente");
+      b.onclick = () => {
+        D.z = i;
+        render();
+      };
+      z.append(b);
+    });
+  $("zoneTitle").textContent = Z[D.z][0] + " · choisir un combat";
   let e = $("mobs");
   e.innerHTML = "";
   ENCOUNTER_TIERS[D.z].forEach((slots, tier) => {
@@ -962,8 +985,13 @@ function picker() {
       b = document.createElement("button");
     b.className = "choice";
     const names = slots
-      .map((pool) =>
-        pool.map((id) => M.find((m) => m.sourceId === id).n).join(" / "),
+      .map(
+        (pool) =>
+          pool
+            .slice(0, 3)
+            .map((id) => M.find((m) => m.sourceId === id).n)
+            .join(" / ") +
+          (pool.length > 3 ? " / +" + (pool.length - 3) + " variantes" : ""),
       )
       .join(" + ");
     b.innerHTML =
@@ -1148,7 +1176,7 @@ async function boot() {
     ];
     let [eq, sets, bestiary] = await Promise.all(
       files.map(async (f) => {
-        let r = await fetch(f + "?v=3.4.1");
+        let r = await fetch(f + "?v=3.5.0");
         if (!r.ok) throw Error(f + " : HTTP " + r.status);
         return r.json();
       }),

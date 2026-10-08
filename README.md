@@ -1,4 +1,4 @@
-# Idle Masters V3.4.1
+# Idle Masters V3.5.0
 
 Jeu solo HTML/JavaScript, avec données Dofus embarquées. Aucun appel DoduAPI au démarrage.
 
@@ -10,7 +10,7 @@ Servir le dossier via HTTP (par exemple `python -m http.server 8000`) puis ouvri
 
 Les trois fichiers JSON sont un instantané Dofus 3.7.4.4 déjà présent dans ce dépôt : 817 entrées candidates de bestiaire, 504 équipements, 99 panoplies. Leur source déclarée est `dofusdude/dofus3-main`. Ce ne sont pas forcément les données actuelles de Dofus.
 
-23 monstres sélectionnées dans `local-data.js` utilisent les noms, IDs, niveaux minimums et PV minimums du bestiaire. Le reste est consultable dans l’encyclopédie. La sélection explicite évite de rendre combattables toutes les invocations et tous les acteurs de quête présents dans le fichier. Les regroupements utilisent le raceId de la source, qui peut mélanger plusieurs espèces.
+195 monstres sélectionnés dans `local-data.js` utilisent les noms, IDs, niveaux minimums et PV minimums du bestiaire. Le reste est consultable dans l’encyclopédie. La sélection explicite évite de rendre combattables toutes les invocations et tous les acteurs de quête présents dans le fichier. Les regroupements utilisent le raceId de la source, qui peut mélanger plusieurs espèces.
 
 Les zones, éléments d’attaque, dégâts, XP, kamas, statut de boss du Bouftou Royal et parcours de donjon sont des règles Idle Masters. Les zones suivantes se débloquent après 10 victoires en Incarnam, 10 à Astrub, puis une victoire sur le Bouftou Royal. Le donjon est un parcours de quatre rencontres dans Tainéla, pas une reproduction du donjon officiel.
 
@@ -47,3 +47,11 @@ Les attaques initiales sont réduites (Pression 6–8, Flamiche 3–5, Vague 6�
 La progression est stockée côté serveur dans D1 et isolée par l’identité transmise par Sites. Le même compte sur le même Site retrouve sa progression entre les appareils et les versions. La copie `idleMastersV2` sert à migrer une ancienne partie et à récupérer en cas de coupure ; un stockage navigateur inaccessible ne bloque plus le jeu. Le statut visible confirme la sauvegarde ; un bouton force l’envoi. Une révision protège les parties contre l’écrasement par un onglet plus ancien. Les erreurs restent visibles et n’effacent pas la partie. La fermeture du jeu tente un dernier envoi. Les données déjà perdues et absentes du navigateur ne peuvent pas être reconstruites.
 
 `npm test` vérifie aussi l’API de sauvegarde contre SQLite. Le test mobile ferme la session, ouvre une session vide avec le stockage navigateur bloqué, retrouve la progression, la modifie et vérifie une nouvelle récupération. La publication utilise `npm run build` (Worker ESM), avec les migrations Drizzle dans `drizzle/`.
+
+## Zones niveau 1–40 (3.5.0)
+
+25 zones, dont 21 nouvelles, conservent les quatre IDs initiaux et leurs règles de déblocage. Les nouvelles zones se débloquent au niveau minimum affiché (sans imposer un nouveau boss aux parties existantes). Elles sont affichées par niveau dans une liste à défilement. Les noms, niveaux et PV des 195 monstres viennent du fichier local ; les lieux et éléments restent des associations Idle Masters. Les 817 fiches restent consultables, y compris les invocations et personnages de quête non sélectionnés. Aucun monstre absent du snapshot n’est inventé : les Biblops sont disponibles, les Blops présents dans le fichier sont des invocations et restent exclus.
+
+Les nouvelles familles utilisent la panoplie correspondante lorsqu’elle existe : Champ Champ, Champêtre, Larvesque, Tofu, Arakne, Mousse, Kardorim, Abraknyde, Bandit, Kwaks et Sanglier. Les Vampires donnent la Cape du Vampire. Certaines panoplies ne sont que partiellement représentées jusqu’au niveau 40 (Abraknyde : deux pièces ; Kwaks : une pièce par élément). Les familles sans équipement associé disponible, dont les Scarafeuilles, donnent un pool explicitement nommé par tranche de dix niveaux ; les panoplies et objets réservés aux familles en sont exclus. Ce sont des tables Idle Masters, pas les tables officielles de Dofus. La probabilité totale reste identique par monstre. Les tables sont mises en cache pour limiter les calculs sur mobile.
+
+Les pools des nouveaux combats sont partitionnés par PV croissants. Chaque monstre sélectionné est accessible et les PV totaux augmentent strictement d’une difficulté à la suivante, même en comparant le tirage le plus léger au plus lourd. Les tests couvrent l’intégrité et l’accessibilité de chaque monstre, les 25 zones, leurs déblocages, les pools et taux de drops, les récompenses en groupe et l’ouverture de chacun des 63 nouveaux combats via l’interface mobile Chromium et WebKit. Le test de récupération de sauvegarde vérifie aussi le niveau et la nouvelle zone choisie.

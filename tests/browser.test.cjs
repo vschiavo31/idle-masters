@@ -110,7 +110,7 @@ async function main() {
           1,
           "Duplicate bestiary script",
         );
-        assert.equal(await page.evaluate(() => M.length), 23);
+        assert.equal(await page.evaluate(() => M.length), 195);
         assert.equal(
           await page.evaluate(() => D.k),
           123,
@@ -242,12 +242,56 @@ async function main() {
             "Navigation exceeds screen at " + width,
           );
         }
+        // Open every added zone and all three difficulties through the mobile controls.
+        await page.evaluate(() => {
+          D.lv = 40;
+          render();
+        });
+        assert.equal(await page.locator("#zones button").count(), 25);
+        for (let zone = 4; zone < 25; zone++) {
+          await page.locator(`#zones button[data-zone="${zone}"]`).click();
+          for (let tier = 0; tier < 3; tier++) {
+            await page.locator("#mobs button").nth(tier).click();
+            assert.equal(
+              await page.locator("#enemyGroup button").count(),
+              tier + 1,
+            );
+            assert.equal(
+              await page.evaluate(
+                (z) =>
+                  encounter.members.every(
+                    (e) => M.find((m) => m.id === e.id).z === z,
+                  ),
+                zone,
+              ),
+              true,
+            );
+            assert.equal(
+              await page.evaluate(
+                () => document.documentElement.scrollWidth > innerWidth,
+              ),
+              false,
+            );
+            await page.locator("#backMob").click();
+          }
+        }
+        await page
+          .getByRole("button", { name: "INVENTAIRE", exact: true })
+          .click();
+        assert.equal(
+          await page.evaluate(
+            () => document.documentElement.scrollWidth > innerWidth,
+          ),
+          false,
+        );
         // Close the original session entirely, then recover from the server in a
         // fresh session where Safari-like browser storage is unavailable.
         const kept = await page.evaluate(() => ({
           k: D.k,
           bag: D.bag.length,
           wins: D.encounterWins["0:0"],
+          level: D.lv,
+          zone: D.z,
         }));
         await page
           .getByRole("button", { name: "Sauvegarder", exact: true })
@@ -283,6 +327,8 @@ async function main() {
             k: D.k,
             bag: D.bag.length,
             wins: D.encounterWins["0:0"],
+            level: D.lv,
+            zone: D.z,
           })),
           kept,
         );

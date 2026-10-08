@@ -6,7 +6,7 @@
       name="viewport"
       content="width=device-width,initial-scale=1,viewport-fit=cover"
     />
-    <title>Idle Masters V3.4.1</title>
+    <title>Idle Masters V3.5.0</title>
     <style>
       :root {
         --bg: #100e0b;
@@ -470,13 +470,18 @@
           grid-template-columns: 1fr;
         }
       }
+      #zones {
+        max-height: 340px;
+        overflow-y: auto;
+        overscroll-behavior: contain;
+      }
     </style>
   </head>
   <body>
     <div class="wrap">
       <div class="top">
         <div class="brand">Idle Masters</div>
-        <span class="version">V3.4.1 · Combats en groupe</span>
+        <span class="version">V3.5.0 · Zones niveau 1–40</span>
       </div>
       <div class="row" style="margin-bottom: 12px">
         <small id="saveStatus" class="mut" role="status"
@@ -607,7 +612,7 @@
             <div id="zones"></div>
           </div>
           <div class="panel">
-            <h2>Choisir un combat</h2>
+            <h2 id="zoneTitle">Choisir un combat</h2>
             <div id="mobs"></div>
           </div>
         </div>
@@ -678,9 +683,9 @@
       ><button data-page="collection">COLLECTION</button
       ><button data-page="combat">COMBAT</button>
     </nav>
-    <script src="local-data.js?v=3.4.1"></script>
-    <script src="bestiary-ui.js?v=3.4.1"></script>
-    <script src="saving.js?v=3.4.1"></script>
-    <script src="game.js?v=3.4.1"></script>
+    <script src="local-data.js?v=3.5.0"></script>
+    <script src="bestiary-ui.js?v=3.5.0"></script>
+    <script src="saving.js?v=3.5.0"></script>
+    <script src="game.js?v=3.5.0"></script>
   </body>
 </html>

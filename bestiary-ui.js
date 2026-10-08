@@ -106,11 +106,16 @@ function renderLocalBestiary(source, combat) {
                 lootLabel(live) +
                 " · " +
                 equipmentChance().toFixed(1) +
-                " % par monstre";
+                " % par monstre · " +
+                lootPool(live).length +
+                " équipement(s)";
               drops.append(ds);
               const info = document.createElement("div");
               info.className = "mut";
               info.textContent =
+                (FAMILY_LOOT[live.sourceId]?.levelRange
+                  ? "Aucun équipement de cette famille dans les données niveau 1–40 : sélection par niveau. "
+                  : "") +
                 "Un équipement maximum par monstre vaincu, choisi parmi les objets affichés. La chance totale est identique pour tous les monstres à prospection égale. Les taux sont propres à Idle Masters.";
               drops.append(info);
               for (const item of lootPool(live)) {
