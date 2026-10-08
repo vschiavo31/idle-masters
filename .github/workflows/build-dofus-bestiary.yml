@@ -32,50 +32,63 @@ jobs:
           root=json.load(open('/tmp/monsters.json',encoding='utf-8'))
           fr=json.load(open('/tmp/fr.json',encoding='utf-8'))
           version=Path('/tmp/dofus_version').read_text().strip()
+          objects=root.get('objectsById',{}) if isinstance(root,dict) else {}
+          refs=root.get('references',{}) if isinstance(root,dict) else {}
+          print('root keys',list(root)[:20] if isinstance(root,dict) else type(root).__name__)
+          print('objectsById',type(objects).__name__,len(objects) if hasattr(objects,'__len__') else 0,'references',type(refs).__name__,len(refs) if hasattr(refs,'__len__') else 0)
           def norm(k): return ''.join(c for c in str(k).lower() if c.isalnum())
           def get(d,*names):
               if not isinstance(d,dict): return None
               low={norm(k):v for k,v in d.items()}
               for n in names:
                   if norm(n) in low:return low[norm(n)]
-          def records(obj,depth=0):
-              if depth>4:return []
-              if isinstance(obj,list):
-                  if obj and sum(isinstance(x,dict) for x in obj)>=max(1,len(obj)//2): return obj
-                  return []
-              if not isinstance(obj,dict):return []
-              # Dofus release exports can use a metadata envelope; recursively find the monster collection.
-              preferred=('monsters','data','items','entries','values','records','objects','content')
-              for k in preferred:
-                  v=get(obj,k)
-                  r=records(v,depth+1)
-                  if r:return r
-              vals=list(obj.values())
-              dictvals=[x for x in vals if isinstance(x,dict)]
-              if len(dictvals)>=20:return dictvals
+          def lookup(rid):
+              for pool in (objects,refs):
+                  if isinstance(pool,dict):
+                      for k in (rid,str(rid)):
+                          if k in pool:return pool[k]
+                  elif isinstance(pool,list):
+                      n=int(rid) if str(rid).isdigit() else None
+                      if n is not None and 0<=n<len(pool):return pool[n]
+              return None
+          def resolve(v,depth=0,seen=None):
+              if depth>10:return v
+              if seen is None:seen=set()
+              if isinstance(v,dict):
+                  if set(v.keys())=={'rid'} or ('rid' in v and len(v)<=2):
+                      rid=v.get('rid'); key=str(rid)
+                      if key in seen:return v
+                      target=lookup(rid)
+                      if target is not None:
+                          return resolve(target,depth+1,seen|{key})
+                  return {k:resolve(x,depth+1,seen) for k,x in v.items()}
+              if isinstance(v,list):return [resolve(x,depth+1,seen) for x in v]
+              return v
+          def candidates():
+              vals=list(objects.values()) if isinstance(objects,dict) else list(objects) if isinstance(objects,list) else []
+              # Resolve every top-level object; monster records reveal themselves through grades/levels.
               for v in vals:
-                  r=records(v,depth+1)
-                  if len(r)>=20:return r
-              return []
-          def grade_records(v):
-              if isinstance(v,list):return [x for x in v if isinstance(x,dict)]
-              if isinstance(v,dict):return [x for x in v.values() if isinstance(x,dict)]
-              return []
+                  if isinstance(v,dict):yield resolve(v)
           def num(v):
               if isinstance(v,(int,float)) and not isinstance(v,bool):return int(v)
               if isinstance(v,str) and v.lstrip('-').isdigit():return int(v)
+          def grade_records(v):
+              v=resolve(v)
+              if isinstance(v,list):return [resolve(x) for x in v if isinstance(x,dict)]
+              if isinstance(v,dict):return [resolve(x) for x in v.values() if isinstance(x,dict)]
+              return []
           def tr(v):
               if isinstance(v,str) and not v.isdigit():return v
+              key=str(v)
               def walk(o,depth=0):
-                  if depth>3:return None
+                  if depth>5:return None
                   if isinstance(o,dict):
-                      for key in (v,str(v)):
-                          if key in o:
-                              x=o[key]
-                              if isinstance(x,str):return x
-                              if isinstance(x,dict):
-                                  for z in ('text','value','name'):
-                                      if isinstance(x.get(z),str):return x[z]
+                      if key in o:
+                          x=o[key]
+                          if isinstance(x,str):return x
+                          if isinstance(x,dict):
+                              for z in ('text','value','name'):
+                                  if isinstance(x.get(z),str):return x[z]
                       for x in o.values():
                           if isinstance(x,dict):
                               y=walk(x,depth+1)
@@ -83,20 +96,21 @@ jobs:
                   return None
               return walk(fr)
           def stat(g,*names):
+              g=resolve(g)
               n=num(get(g,*names))
               if n is not None:return n
               for sk in ('stats','characteristics','characteristic'):
-                  s=get(g,sk)
+                  s=resolve(get(g,sk))
                   if isinstance(s,dict):
                       n=num(get(s,*names))
                       if n is not None:return n
-          src=records(root)
-          print('Root type:',type(root).__name__,'root keys:',list(root.keys())[:40] if isinstance(root,dict) else 'n/a','records:',len(src))
-          if src:print('Sample keys:',list(src[0].keys())[:80])
-          out=[]
-          for m in src:
+          out=[]; inspected=0; monsterish=0
+          for m in candidates():
+              inspected+=1
               if not isinstance(m,dict):continue
               grades=grade_records(get(m,'grades','monsterGrades','monster_grades'))
+              if not grades and get(m,'level','minLevel','maxLevel') is None:continue
+              monsterish+=1
               levels=[]; hp=[]; pa=[]; pm=[]
               for g in grades:
                   for bucket,names in ((levels,('level','gradeLevel')),(hp,('lifePoints','life_points','health','hp','life')),(pa,('actionPoints','action_points','pa','ap')),(pm,('movementPoints','movement_points','pm','mp'))):
@@ -106,7 +120,7 @@ jobs:
                   n=num(v)
                   if n is not None:levels.append(n)
               if not levels or min(levels)>40 or max(levels)<1:continue
-              name=get(m,'name','nameFr','name_fr')
+              name=resolve(get(m,'name','nameFr','name_fr'))
               if isinstance(name,dict):name=get(name,'fr','frFR','fr_fr','value','text')
               if not isinstance(name,str) or not name.strip():
                   nid=get(m,'nameId','name_id'); name=tr(nid) if nid is not None else None
@@ -117,7 +131,8 @@ jobs:
           for x in sorted(out,key=lambda x:(x['minLevel'],x['name'],str(x['id']))):
               key=x['id'] if x['id'] is not None else (x['name'],x['minLevel'])
               if key not in seen:seen.add(key);clean.append(x)
-          print('Built',len(clean),'monsters from Dofus',version)
+          print('inspected',inspected,'monster-like',monsterish,'built',len(clean),'Dofus',version)
+          print('sample',clean[:5])
           if len(clean)<20:raise SystemExit('Extraction suspiciously small; refusing to publish')
           Path('dofus-bestiary-1-40.json').write_text(json.dumps({'source':'dofusdude/dofus3-main','version':version,'range':[1,40],'count':len(clean),'monsters':clean},ensure_ascii=False,separators=(',',':')),encoding='utf-8')
           PY
