@@ -24,112 +24,70 @@ jobs:
           FR_URL=$(printf '%s' "$RELEASE" | python3 -c "import sys,json; r=json.load(sys.stdin); print(next((a['browser_download_url'] for a in r['assets'] if a['name']=='fr.json'),''))")
           curl -fL --retry 3 "$MONSTERS_URL" -o /tmp/monsters.json
           if [ -n "$FR_URL" ]; then curl -fL --retry 3 "$FR_URL" -o /tmp/fr.json; else printf '{}' > /tmp/fr.json; fi
-      - name: Inspect and build level 1-40 bestiary
+      - name: Build level 1-40 bestiary
         run: |
           python3 - <<'PY'
           import json
           from pathlib import Path
-          root=json.load(open('/tmp/monsters.json',encoding='utf-8'))
-          fr=json.load(open('/tmp/fr.json',encoding='utf-8'))
+          root=json.load(open('/tmp/monsters.json',encoding='utf-8'));fr=json.load(open('/tmp/fr.json',encoding='utf-8'))
           version=Path('/tmp/dofus_version').read_text().strip()
-          def shape(v):
-              if isinstance(v,dict): return 'dict(%d) keys=%s'%(len(v),list(v)[:20])
-              if isinstance(v,list): return 'list(%d)'%len(v)
-              return type(v).__name__
-          print('ROOT',shape(root))
-          # Print the structure down to depth 5, without dumping huge values.
-          def inspect(v,path='root',depth=0):
-              if depth>5:return
-              if isinstance(v,dict):
-                  for k,x in list(v.items())[:30]:
-                      print('STRUCT',path+'.'+str(k),shape(x))
-                      if isinstance(x,(dict,list)):inspect(x,path+'.'+str(k),depth+1)
-              elif isinstance(v,list) and v:
-                  for i,x in enumerate(v[:3]):
-                      print('STRUCT',path+'['+str(i)+']',shape(x))
-                      if isinstance(x,(dict,list)):inspect(x,path+'['+str(i)+']',depth+1)
-          inspect(root)
           def norm(k):return ''.join(c for c in str(k).lower() if c.isalnum())
           def get(d,*names):
               if not isinstance(d,dict):return None
               low={norm(k):v for k,v in d.items()}
               for n in names:
                   if norm(n) in low:return low[norm(n)]
+          def array(v):
+              if isinstance(v,list):return v
+              if isinstance(v,dict):
+                  a=get(v,'Array')
+                  if isinstance(a,list):return a
+              return []
           def num(v):
               if isinstance(v,(int,float)) and not isinstance(v,bool):return int(v)
               if isinstance(v,str) and v.lstrip('-').isdigit():return int(v)
-          # Recursively collect dictionaries that actually look like monster records.
-          candidates=[]; visited=0
-          def walk(v,path='root',depth=0):
-              global visited
-              if depth>14:return
-              if isinstance(v,dict):
-                  visited+=1
-                  keys={norm(k) for k in v}
-                  has_grades=bool(keys & {'grades','monstergrades'})
-                  has_name=bool(keys & {'name','nameid','namefr'})
-                  has_id=bool(keys & {'id','monsterid','ankamaid'})
-                  if has_grades and (has_name or has_id):candidates.append((path,v))
-                  for k,x in v.items():
-                      if isinstance(x,(dict,list)):walk(x,path+'.'+str(k),depth+1)
-              elif isinstance(v,list):
-                  for i,x in enumerate(v):
-                      if isinstance(x,(dict,list)):walk(x,path+'['+str(i)+']',depth+1)
-          walk(root)
-          print('VISITED',visited,'MONSTER_CANDIDATES',len(candidates))
-          for p,m in candidates[:3]:print('CANDIDATE',p,'keys',list(m)[:60])
-          def grades(v):
-              if isinstance(v,list):return [x for x in v if isinstance(x,dict)]
-              if isinstance(v,dict):return [x for x in v.values() if isinstance(x,dict)]
-              return []
-          # Translation lookup: build an integer/string id -> text index recursively once.
+          refs=array(get(get(root,'references'),'RefIds'))
+          monsters=[r.get('data') for r in refs if isinstance(r,dict) and isinstance(r.get('data'),dict) and get(r['data'],'grades') is not None and get(r['data'],'id') is not None]
+          print('REFS',len(refs),'MONSTERS',len(monsters))
+          # fr.json commonly exposes text through a Unity dictionary; index numeric keys wherever they occur.
           translations={}
-          def index_text(v,depth=0):
-              if depth>8:return
+          def texts(v,depth=0):
+              if depth>10:return
               if isinstance(v,dict):
+                  keys=array(get(v,'m_keys')); vals=array(get(v,'m_values'))
+                  if keys and len(keys)==len(vals):
+                      for k,x in zip(keys,vals):
+                          if isinstance(x,str):translations[str(k)]=x
                   for k,x in v.items():
-                      if isinstance(x,str) and (str(k).isdigit() or isinstance(k,int)):translations[str(k)]=x
-                      elif isinstance(x,dict):
-                          text=get(x,'text','value','name')
-                          if isinstance(text,str) and (str(k).isdigit() or isinstance(k,int)):translations[str(k)]=text
-                          index_text(x,depth+1)
-                      elif isinstance(x,list):index_text(x,depth+1)
+                      if isinstance(x,str) and str(k).isdigit():translations[str(k)]=x
+                      elif isinstance(x,(dict,list)):texts(x,depth+1)
               elif isinstance(v,list):
-                  for x in v:index_text(x,depth+1)
-          index_text(fr)
+                  for x in v:texts(x,depth+1)
+          texts(fr)
+          print('TRANSLATIONS',len(translations))
+          if monsters:
+              print('FIRST_MONSTER', {k:monsters[0].get(k) for k in ('id','nameId','race')})
+              gs=array(get(monsters[0],'grades')); print('FIRST_GRADES',len(gs),'GRADE_KEYS',list(gs[0])[:40] if gs and isinstance(gs[0],dict) else None,'GRADE0',gs[0] if gs else None)
           out=[]
-          for path,m in candidates:
-              gs=grades(get(m,'grades','monsterGrades'))
+          for m in monsters:
+              gs=[g for g in array(get(m,'grades')) if isinstance(g,dict)]
               levels=[];hp=[];pa=[];pm=[]
               for g in gs:
-                  lv=num(get(g,'level','gradeLevel')); life=num(get(g,'lifePoints','life','health','hp'))
-                  ap=num(get(g,'actionPoints','pa','ap')); mp=num(get(g,'movementPoints','pm','mp'))
-                  stats=get(g,'stats','characteristics')
-                  if isinstance(stats,dict):
-                      life=life if life is not None else num(get(stats,'lifePoints','life','health','hp'))
-                      ap=ap if ap is not None else num(get(stats,'actionPoints','pa','ap'))
-                      mp=mp if mp is not None else num(get(stats,'movementPoints','pm','mp'))
+                  lv=num(get(g,'level','gradeLevel'));life=num(get(g,'lifePoints','life','health','hp'))
+                  ap=num(get(g,'actionPoints','pa','ap'));mp=num(get(g,'movementPoints','pm','mp'))
                   if lv is not None:levels.append(lv)
                   if life is not None:hp.append(life)
                   if ap is not None:pa.append(ap)
                   if mp is not None:pm.append(mp)
-              for key in ('level','minLevel','maxLevel'):
-                  n=num(get(m,key))
-                  if n is not None:levels.append(n)
               if not levels or min(levels)>40 or max(levels)<1:continue
-              name=get(m,'name','nameFr')
-              if isinstance(name,dict):name=get(name,'fr','value','text')
-              if not isinstance(name,str) or not name.strip():
-                  nid=get(m,'nameId');name=translations.get(str(nid))
-              if not isinstance(name,str) or not name.strip():continue
-              mid=get(m,'id','monsterId','ankamaId')
-              out.append({'id':mid,'name':name.strip(),'minLevel':max(1,min(levels)),'maxLevel':min(40,max(levels)),'hpMin':min(hp) if hp else None,'hpMax':max(hp) if hp else None,'pa':max(pa) if pa else None,'pm':max(pm) if pm else None,'raceId':get(m,'raceId','monsterRaceId'),'boss':bool(get(m,'isBoss','boss'))})
+              nid=get(m,'nameId');name=translations.get(str(nid))
+              if not name:continue
+              out.append({'id':get(m,'id'),'name':name,'minLevel':max(1,min(levels)),'maxLevel':min(40,max(levels)),'hpMin':min(hp) if hp else None,'hpMax':max(hp) if hp else None,'pa':max(pa) if pa else None,'pm':max(pm) if pm else None,'raceId':get(m,'race'),'boss':bool(get(m,'isBoss','boss'))})
           seen=set();clean=[]
           for x in sorted(out,key=lambda x:(x['minLevel'],x['name'],str(x['id']))):
-              key=x['id'] if x['id'] is not None else (x['name'],x['minLevel'])
-              if key not in seen:seen.add(key);clean.append(x)
+              if x['id'] not in seen:seen.add(x['id']);clean.append(x)
           print('BUILT',len(clean),'version',version,'SAMPLE',clean[:10])
-          if len(clean)<20:raise SystemExit('Extraction suspiciously small; diagnostic structure printed above')
+          if len(clean)<20:raise SystemExit('Extraction suspiciously small')
           Path('dofus-bestiary-1-40.json').write_text(json.dumps({'source':'dofusdude/dofus3-main','version':version,'range':[1,40],'count':len(clean),'monsters':clean},ensure_ascii=False,separators=(',',':')),encoding='utf-8')
           PY
       - name: Commit generated bestiary
