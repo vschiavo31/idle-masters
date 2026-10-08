@@ -1,0 +1,34 @@
+name: Integrate DoduAPI
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'doduapi-source.js'
+permissions:
+  contents: write
+jobs:
+  integrate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Link DoduAPI encyclopedia
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('index.html')
+          s=p.read_text()
+          tag='<script src="doduapi-source.js?v=3.2.1"></script>'
+          if 'src="doduapi-source.js' not in s:
+              s=s.replace('</body>',tag+'</body>')
+          s=s.replace('Idle Masters V3.2</title>','Idle Masters V3.2.1</title>')
+          s=s.replace('<span class="version">V3.2+</span>','<span class="version">V3.2.1 · DoduAPI</span>')
+          p.write_text(s)
+          PY
+      - name: Commit integration
+        run: |
+          if git diff --quiet; then exit 0; fi
+          git config user.name github-actions
+          git config user.email github-actions@github.com
+          git add index.html
+          git commit -m "V3.2.1 connect DoduAPI encyclopedia"
+          git push
