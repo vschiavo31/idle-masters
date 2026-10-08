@@ -6,7 +6,7 @@
       name="viewport"
       content="width=device-width,initial-scale=1,viewport-fit=cover"
     />
-    <title>Idle Masters V3.5.1</title>
+    <title>Idle Masters V3.6.0</title>
     <style>
       :root {
         --bg: #100e0b;
@@ -475,13 +475,25 @@
         overflow-y: auto;
         overscroll-behavior: contain;
       }
+      .locked {
+        opacity: 0.65;
+      }
+      select {
+        width: 100%;
+        padding: 12px;
+        color: #f0eadb;
+        background: #211b15;
+        border: 1px solid #6b5b3d;
+        border-radius: 8px;
+        font: inherit;
+      }
     </style>
   </head>
   <body>
     <div class="wrap">
       <div class="top">
         <div class="brand">Idle Masters</div>
-        <span class="version">V3.5.1 · Progression en combat</span>
+        <span class="version">V3.6.0 · Classes et sorts</span>
       </div>
       <div class="row" style="margin-bottom: 12px">
         <small id="saveStatus" class="mut" role="status"
@@ -489,6 +501,12 @@
         ><button id="saveNow" onclick="GameSave.flush()">Sauvegarder</button>
       </div>
       <section id="dashboard" class="page on">
+        <div class="panel">
+          <b id="classDashboard"></b
+          ><button id="classDashboardBtn" class="wide">
+            Choisir / changer de classe
+          </button>
+        </div>
         <div class="panel">
           <div class="eyebrow">Mon personnage</div>
           <div class="heroCard">
@@ -567,6 +585,17 @@
         </div>
       </section>
       <section id="spellsPage" class="page">
+        <div class="panel">
+          <h2 id="classCurrent">Choisis ta classe</h2>
+          <label for="classSelect">Classe</label>
+          <select id="classSelect" class="wide"></select>
+          <p id="classPreview"></p>
+          <button id="chooseClassBtn" class="wide">Choisir cette classe</button>
+          <p class="mut">
+            Changement possible hors combat. Les améliorations restent liées à
+            chaque classe. Sorts et effets adaptés à Idle Masters.
+          </p>
+        </div>
         <div class="panel">
           <div class="row">
             <h1>Sorts</h1>
@@ -654,6 +683,7 @@
               <div id="fightHp"></div>
               <div class="bar"><div id="playerBar" class="fill"></div></div>
               <div id="fightPa" class="paBox"></div>
+              <div id="fightEffects" class="gold"></div>
             </div>
             <div id="combatSpells" class="spellgrid"></div>
             <button id="endBtn" class="wide">Fin du tour</button
@@ -674,6 +704,7 @@
               aria-live="polite"
               hidden
             ></div>
+            <div id="resultNewSpells" class="gold"></div>
             <div class="grid2">
               <div class="card">
                 XP
@@ -704,9 +735,11 @@
       ><button data-page="collection">COLLECTION</button
       ><button data-page="combat">COMBAT</button>
     </nav>
-    <script src="local-data.js?v=3.5.1"></script>
-    <script src="bestiary-ui.js?v=3.5.1"></script>
-    <script src="saving.js?v=3.5.1"></script>
-    <script src="game.js?v=3.5.1"></script>
+    <script src="local-data.js?v=3.6.0"></script>
+    <script src="bestiary-ui.js?v=3.6.0"></script>
+    <script src="saving.js?v=3.6.0"></script>
+    <script src="classes.js?v=3.6.0"></script>
+    <script src="combat-effects.js?v=3.6.0"></script>
+    <script src="game.js?v=3.6.0"></script>
   </body>
 </html>

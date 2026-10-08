@@ -170,6 +170,8 @@ let D = {
     pts: 0,
     spellPts: 0,
     spellLv: [1, 1, 1, 1, 1, 1],
+    classId: null,
+    spellRanks: {},
     inv: { Terre: 0, Feu: 0, Eau: 0, Air: 0, Neutre: 0, Sagesse: 0 },
     bh: 100,
     hp: 100,
@@ -332,10 +334,10 @@ function roll(id) {
   return q;
 }
 function spell(i) {
-  let b = BASE[i],
-    l = D.spellLv[i] || 1,
-    add = (l - 1) * 2;
-  return [b[0], b[1], b[2], b[3] + add, b[4] + add * 2, b[5]];
+  const b = spellBook()[i];
+  if (!b) return null;
+  const add = (spellRank(i) - 1) * 2;
+  return [b.n, b.e, b.pa, b.lo + add, b.hi + add * 2, b.kind];
 }
 function rarity(j) {
   return j === 100
@@ -429,6 +431,9 @@ function victory() {
     levelBefore,
     levelAfter: D.lv,
     levelsGained: D.lv - levelBefore,
+    unlocked: spellBook()
+      .filter((s) => s.level > levelBefore && s.level <= D.lv)
+      .map((s) => s.n),
     k: kg,
     drops,
   };
@@ -474,35 +479,7 @@ function selectTarget(index, internal = false) {
   if (!internal) render();
 }
 function cast(i) {
-  if (!D.tr || D.end) return;
-  let p = spell(i);
-  if (PA < p[2]) return;
-  PA -= p[2];
-  if (p[5] === "heal") {
-    let h = Math.max(
-      0,
-      Math.floor(R(p[3], p[4]) * (1 + st("Intelligence") / 100)) + st("Soins"),
-    );
-    D.hp = Math.min(mh(), D.hp + h);
-    lg("Soin : +" + h + " PV");
-  } else {
-    let d = Math.max(
-      0,
-      Math.floor(R(p[3], p[4]) * (1 + bonus(p[1]) / 100)) +
-        st("Dommages") +
-        st(p[1]),
-    );
-    D.eh = Math.max(0, D.eh - d);
-    lg(p[0] + " : " + d + " dégâts");
-    if (encounter) encounter.members[targetIndex].hp = D.eh;
-    if (D.eh <= 0) {
-      lg(mob().n + " est vaincu.");
-      let next = encounter?.members.findIndex((e) => e.hp > 0) ?? -1;
-      if (next < 0) return victory();
-      selectTarget(next, true);
-    }
-  }
-  render();
+  castClassSpell(i);
 }
 function enemy() {
   if (!D.tr || D.end) return;
@@ -511,18 +488,18 @@ function enemy() {
   render();
   setTimeout(() => {
     if (token !== fightToken || mode !== "fight") return;
-    const attackers = encounter
-      ? encounter.members
-          .filter((e) => e.hp > 0)
-          .map((e) => M.find((m) => m.id === e.id))
-      : [mob()];
-    for (const m of attackers) {
-      let d = R(m.a[0], m.a[1]);
-      if (m.boss && D.rd % 3 === 0) d = Math.floor(d * 1.5);
+    if (tickFriendlyEffects()) return;
+    const attackers = livingTargets();
+    for (const index of attackers) {
+      const m = encounter
+        ? M.find((m) => m.id === encounter.members[index].id)
+        : mob();
+      const d = incomingDamage(m, index);
       D.hp = Math.max(0, D.hp - d);
       lg(m.n + " : -" + d + " PV");
       if (D.hp <= 0) break;
     }
+    endEffectRound();
     if (D.hp <= 0) {
       auto = false;
       D.hp = mh();
@@ -541,14 +518,24 @@ function enemy() {
 function bestAutoSpell() {
   let best = -1,
     score = -1;
-  BASE.forEach((_, i) => {
-    let p = spell(i);
-    if (p[5] === "dmg" && p[2] <= PA) {
-      let s = (((p[3] + p[4]) / 2) * (1 + bonus(p[1]) / 100)) / p[2];
-      if (s > score) {
-        score = s;
-        best = i;
-      }
+  spellBook().forEach((s, i) => {
+    if (!canCast(i)) return;
+    const p = spell(i);
+    let value = 0;
+    if (["dmg", "drain", "aoe"].includes(s.kind))
+      value =
+        (((p[3] + p[4]) / 2) *
+          (1 + bonus(p[1]) / 100) *
+          (s.kind === "aoe" ? livingTargets().length : 1)) /
+        p[2];
+    if (s.kind === "heal" && D.hp < mh() * 0.4) value = 100;
+    if (s.kind === "summon" && effects.summons.length === 0) value = 20;
+    if (s.kind === "poison" && !effects.poisons[targetIndex]) value = 10;
+    if (s.kind === "bomb") value = 12;
+    if (s.kind === "detonate" && effects.bombs.length >= 2) value = 30;
+    if (value > score && value > 0) {
+      score = value;
+      best = i;
     }
   });
   return best;
@@ -585,6 +572,7 @@ function beginFight(
 ) {
   const chosen = ids.map((id) => M.find((m) => m.id === id));
   if (
+    !playerClass() ||
     chosen.some((m) => !m) ||
     !chosen.length ||
     chosen.some((m) => m.z !== chosen[0].z) ||
@@ -593,6 +581,7 @@ function beginFight(
     return;
   clearTimeout(autoTimer);
   fightToken++;
+  resetEffects();
   encounter = {
     key,
     tier,
@@ -644,11 +633,47 @@ function spend(n) {
   }
 }
 function upSpell(i) {
-  if (D.spellPts > 0 && (D.spellLv[i] || 1) < 5) {
-    D.spellPts--;
-    D.spellLv[i] = (D.spellLv[i] || 1) + 1;
-    render();
+  if (!spellUnlocked(i) || D.spellPts <= 0 || spellRank(i) >= 5) return;
+  D.spellPts--;
+  D.spellRanks[spellBook()[i].id] = spellRank(i) + 1;
+  render();
+}
+let pendingClass = "iop";
+function chooseClass(id) {
+  if (mode === "fight" || !CLASSES.some((c) => c.id === id)) return;
+  D.classId = id;
+  pendingClass = id;
+  resetEffects();
+  lastResult = null;
+  mode = "picker";
+  render();
+}
+function renderClassChoice() {
+  const select = $("classSelect");
+  if (select.options.length !== CLASSES.length) {
+    select.innerHTML = "";
+    CLASSES.forEach((c) => {
+      const o = document.createElement("option");
+      o.value = c.id;
+      o.textContent = c.name;
+      select.append(o);
+    });
   }
+  select.value = pendingClass;
+  const candidate = CLASSES.find((c) => c.id === pendingClass) || CLASSES[0];
+  $("classPreview").textContent = candidate.style + " · " + candidate.passive;
+  $("classCurrent").textContent = playerClass()
+    ? "Classe : " + playerClass().name
+    : "Choisis ta classe";
+  $("classDashboard").textContent = playerClass()
+    ? playerClass().name + " · " + playerClass().style
+    : "Choisis une classe pour combattre";
+  $("chooseClassBtn").disabled = mode === "fight" || D.classId === candidate.id;
+  select.disabled = mode === "fight";
+  $("chooseClassBtn").textContent =
+    D.classId === candidate.id
+      ? "Classe sélectionnée"
+      : "Choisir " + candidate.name;
 }
 function slot(q) {
   let x = meta(q.id);
@@ -887,33 +912,39 @@ function inventory() {
 }
 function spells() {
   $("spPtsTop").textContent = D.spellPts + " point(s)";
-  let e = $("spellList");
-  e.innerHTML = "";
-  BASE.forEach((_, i) => {
-    let p = spell(i),
-      l = D.spellLv[i] || 1,
+  const root = $("spellList");
+  root.innerHTML = "";
+  if (!playerClass()) return;
+  spellBook().forEach((s, i) => {
+    const p = spell(i),
+      unlocked = spellUnlocked(i),
       d = document.createElement("div");
-    d.className = "card";
+    d.className = "card" + (unlocked ? "" : " locked");
+    d.dataset.spell = String(i);
     d.innerHTML =
       "<b>" +
-      p[0] +
-      '</b><div class="mut">Niv. ' +
-      l +
-      "/5 · " +
+      s.n +
+      '</b><div class="mut">' +
+      (unlocked
+        ? "Rang " + spellRank(i) + "/5"
+        : "Déblocage niveau " + s.level) +
+      " · " +
       p[2] +
       " PA · " +
-      p[1] +
+      s.e +
       "</div><div>" +
-      p[3] +
-      "–" +
-      p[4] +
+      spellEffectText(s, p) +
+      '</div><div class="mut">' +
+      (s.cd ? "Relance " + s.cd + " tours" : "3 lancers maximum par tour") +
       "</div>";
-    let b = document.createElement("button");
-    b.textContent = "Améliorer";
-    b.disabled = !D.spellPts || l >= 5;
-    b.onclick = () => upSpell(i);
-    d.append(b);
-    e.append(d);
+    const button = document.createElement("button");
+    button.textContent = unlocked
+      ? "Améliorer"
+      : "Niveau " + s.level + " requis";
+    button.disabled = !unlocked || D.spellPts <= 0 || spellRank(i) >= 5;
+    button.onclick = () => upSpell(i);
+    d.append(button);
+    root.append(d);
   });
 }
 function collection() {
@@ -1012,6 +1043,7 @@ function picker() {
       " victoire(s)" +
       (n >= 10 ? " · Auto disponible" : "") +
       "</span>";
+    b.disabled = !playerClass();
     b.onclick = () => startEncounter(D.z, tier);
     e.append(b);
   });
@@ -1019,6 +1051,7 @@ function picker() {
     let b = document.createElement("button");
     b.className = "choice boss";
     b.innerHTML = "<b>Donjon des Bouftous</b> · 4 salles";
+    b.disabled = !playerClass();
     b.onclick = startDungeon;
     e.append(b);
   }
@@ -1068,15 +1101,38 @@ function fight() {
   $("roundTxt").textContent = "Tour " + D.rd;
   let e = $("combatSpells");
   e.innerHTML = "";
-  BASE.forEach((_, i) => {
-    let p = spell(i),
+  spellBook().forEach((s, i) => {
+    const p = spell(i),
       b = document.createElement("button");
-    b.disabled = auto || !D.tr || PA < p[2];
+    b.disabled = auto || !canCast(i);
+    b.dataset.spell = String(i);
+    const waiting = Math.max(0, (effects.cooldowns[i] || 0) - D.rd);
+    const status = !spellUnlocked(i)
+      ? "Niveau " + s.level + " requis"
+      : waiting
+        ? "Disponible dans " + waiting + " tour(s)"
+        : p[2] + " PA · " + s.e;
     b.innerHTML =
-      "<b>" + p[0] + "</b><br>" + p[2] + " PA · " + p[3] + "–" + p[4];
+      "<b>" +
+      s.n +
+      "</b><br>" +
+      status +
+      '<br><span class="mut">' +
+      spellEffectText(s, p) +
+      "</span>";
     b.onclick = () => cast(i);
     e.append(b);
   });
+  $("fightEffects").textContent = [
+    effects.shield ? effects.shield + " bouclier" : "",
+    effects.buff ? "Puissance +" + effects.buff + " %" : "",
+    effects.focus ? "Prochaine attaque +" + effects.focus + " %" : "",
+    effects.summons.length ? effects.summons.length + " invocation(s)" : "",
+    effects.bombs.length ? effects.bombs.length + " bombe(s)" : "",
+    effects.rage ? "Rage " + effects.rage + "/3" : "",
+  ]
+    .filter(Boolean)
+    .join(" · ");
   $("endBtn").disabled = auto || !D.tr;
   $("autoBtn").disabled = !unlocked || !!dungeon;
   $("autoBtn").textContent = unlocked
@@ -1124,6 +1180,9 @@ function result() {
         " niveau" +
         (levels > 1 ? "x" : "")
       : "";
+  $("resultNewSpells").textContent = (lastResult.unlocked || []).length
+    ? "Nouveaux sorts : " + lastResult.unlocked.join(", ")
+    : "";
   $("resultXp").textContent = "+" + lastResult.xp;
   $("resultK").textContent = "+" + lastResult.k;
   $("resultDrops").innerHTML = lastResult.drops.length
@@ -1135,6 +1194,7 @@ function result() {
     : '<span class="mut">Aucun équipement cette fois</span>';
 }
 function render() {
+  renderClassChoice();
   combatProgress();
   dashboard();
   inventory();
@@ -1185,6 +1245,12 @@ $("changeZone").onclick = () => {
   mode = "picker";
   render();
 };
+$("classSelect").onchange = () => {
+  pendingClass = $("classSelect").value;
+  renderClassChoice();
+};
+$("chooseClassBtn").onclick = () => chooseClass(pendingClass);
+$("classDashboardBtn").onclick = () => show("spellsPage");
 async function boot() {
   let originalSave = await GameSave.initialize();
   try {
@@ -1197,6 +1263,8 @@ async function boot() {
   D.seen = D.seen || {};
   D.claimed = D.claimed || {};
   D.spellLv = D.spellLv || [1, 1, 1, 1, 1, 1];
+  migrateClassSave(D);
+  pendingClass = D.classId || "iop";
   D.w = {
     Coiffe: null,
     Cape: null,
@@ -1215,7 +1283,7 @@ async function boot() {
     ];
     let [eq, sets, bestiary] = await Promise.all(
       files.map(async (f) => {
-        let r = await fetch(f + "?v=3.5.1");
+        let r = await fetch(f + "?v=3.6.0");
         if (!r.ok) throw Error(f + " : HTTP " + r.status);
         return r.json();
       }),
@@ -1240,6 +1308,7 @@ async function boot() {
     PA = maxpa();
     checkAch();
     render();
+    if (!playerClass()) show("spellsPage");
   } catch (e) {
     console.error(e);
     let status = document.createElement("div");

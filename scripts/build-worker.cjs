@@ -8,6 +8,8 @@ fs.mkdirSync(path.join(out, ".openai"), { recursive: true });
 const files = [
   "index.html",
   "game.js",
+  "classes.js",
+  "combat-effects.js",
   "saving.js",
   "local-data.js",
   "bestiary-ui.js",

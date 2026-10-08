@@ -105,6 +105,8 @@ async function main() {
         await page.waitForFunction(
           () => document.getElementById("lv").textContent === "1",
         );
+        await page.locator("#classSelect").selectOption("iop");
+        await page.locator("#chooseClassBtn").click();
         assert.equal(
           await page.locator('script[src*="bestiary-ui.js"]').count(),
           1,
@@ -310,6 +312,81 @@ async function main() {
           "Previous level-up message must disappear",
         );
         await page.locator("#changeZone").click();
+        // All 19 classes: level gates, actual casts of all 152 spells, and class lock during fights.
+        await page.evaluate(() => {
+          M.forEach((m) => (m.h += 10000));
+        });
+        const classIds = await page.evaluate(() => CLASSES.map((c) => c.id));
+        for (const id of classIds) {
+          await page
+            .getByRole("button", { name: "SORTS", exact: true })
+            .click();
+          await page.locator("#classSelect").selectOption(id);
+          if (await page.locator("#chooseClassBtn").isEnabled())
+            await page.locator("#chooseClassBtn").click();
+          await page.evaluate(() => {
+            D.lv = 1;
+            render();
+          });
+          assert.equal(await page.locator("#spellList .card").count(), 8);
+          assert.equal(await page.locator("#spellList .locked").count(), 6);
+          await page.evaluate(() => {
+            D.lv = 39;
+            render();
+          });
+          assert.equal(await page.locator("#spellList .locked").count(), 1);
+          await page.evaluate(() => {
+            D.lv = 40;
+            D.z = 0;
+            render();
+          });
+          assert.equal(await page.locator("#spellList .locked").count(), 0);
+          await page
+            .getByRole("button", { name: "COMBAT", exact: true })
+            .click();
+          await page.locator("#mobs button").nth(2).click();
+          for (let i = 0; i < 8; i++) {
+            await page.evaluate((i) => {
+              PA = maxpa();
+              effects.casts = {};
+              effects.cooldowns = {};
+              effects.summons = [];
+              if (spellBook()[i].kind === "heal") D.hp = Math.floor(mh() / 2);
+              if (spellBook()[i].kind === "detonate") {
+                cast(1);
+                PA = maxpa();
+              }
+              render();
+            }, i);
+            const rows = await page.locator("#log div").count();
+            await page
+              .locator(`#combatSpells button[data-spell="${i}"]`)
+              .click();
+            assert.ok(
+              (await page.locator("#log div").count()) > rows,
+              id + " spell " + i + " did not resolve",
+            );
+          }
+          await page
+            .getByRole("button", { name: "SORTS", exact: true })
+            .click();
+          assert.equal(await page.locator("#classSelect").isDisabled(), true);
+          await page
+            .getByRole("button", { name: "COMBAT", exact: true })
+            .click();
+          await page.locator("#backMob").click();
+          assert.equal(
+            await page.evaluate(
+              () => document.documentElement.scrollWidth > innerWidth,
+            ),
+            false,
+          );
+        }
+        await page.evaluate(() => {
+          M.forEach((m) => (m.h -= 10000));
+          D.spellPts += 1;
+          upSpell(0);
+        });
         // Open every added zone and all three difficulties through the mobile controls.
         await page.evaluate(() => {
           D.lv = 40;
@@ -360,6 +437,8 @@ async function main() {
           wins: D.encounterWins["0:0"],
           level: D.lv,
           zone: D.z,
+          classId: D.classId,
+          spellRanks: D.spellRanks,
         }));
         await page
           .getByRole("button", { name: "Sauvegarder", exact: true })
@@ -397,6 +476,8 @@ async function main() {
             wins: D.encounterWins["0:0"],
             level: D.lv,
             zone: D.z,
+            classId: D.classId,
+            spellRanks: D.spellRanks,
           })),
           kept,
         );

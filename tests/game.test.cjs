@@ -21,13 +21,15 @@ function game() {
     },
   });
   vm.runInContext(read("local-data.js"), c);
+  vm.runInContext(read("classes.js"), c);
+  vm.runInContext(read("combat-effects.js"), c);
   const src = read("game.js");
   vm.runInContext(src.slice(0, src.indexOf("function show(")), c);
   c.eq = data("dofus-equipment-1-40.json");
   c.sets = data("dofus-item-sets.json");
   c.monsters = data("dofus-bestiary-1-40.json").monsters;
   vm.runInContext(
-    "buildLocalData(eq,sets);M=buildCombatData(monsters);render=()=>{};",
+    "buildLocalData(eq,sets);M=buildCombatData(monsters);D.classId='iop';render=()=>{};",
     c,
   );
   return { c, run: (s) => vm.runInContext(s, c) };
@@ -336,4 +338,135 @@ test("victory level announcement follows actual XP, including multiple levels an
     run("lastResult.levelsGained"),
   );
   assert.ok(run("D.xp>=0&&D.xp<need(D.lv)"));
+});
+
+test("nineteen complete class trees unlock with XP and reject locked or invalid casts", () => {
+  const { run } = game();
+  assert.equal(run("CLASSES.length"), 19);
+  assert.equal(
+    run(
+      "CLASSES.every(c=>c.spells.length===8&&c.spells.filter(s=>s.level===1).length===2)",
+    ),
+    true,
+  );
+  assert.equal(
+    run("new Set(CLASSES.flatMap(c=>c.spells.map(s=>s.id))).size"),
+    152,
+  );
+  for (const id of run("CLASSES.map(c=>c.id)")) {
+    run(`chooseClass('${id}');D.lv=1;startEncounter(0,0)`);
+    const hp = run("D.eh"),
+      pa = run("PA");
+    run("cast(7);cast(-1);cast(999);D.spellPts=2;upSpell(7)");
+    assert.equal(run("D.eh"), hp);
+    assert.equal(run("PA"), pa);
+    assert.equal(run("D.spellPts"), 2);
+    for (const [level, count] of [
+      [1, 2],
+      [4, 2],
+      [5, 3],
+      [10, 4],
+      [15, 5],
+      [20, 6],
+      [30, 7],
+      [40, 8],
+    ]) {
+      run(`D.lv=${level}`);
+      assert.equal(
+        run("spellBook().filter((s,i)=>spellUnlocked(i)).length"),
+        count,
+      );
+    }
+    run('mode="picker"');
+  }
+});
+
+test("class migration refunds old training once and preserves each class training and inventory", () => {
+  const { run } = game();
+  run(
+    "D.spellLv=[3,2,1,1,1,1];D.spellPts=4;D.classMigration=0;migrateClassSave(D)",
+  );
+  assert.equal(run("D.spellPts"), 7);
+  run("migrateClassSave(D)");
+  assert.equal(run("D.spellPts"), 7);
+  run('chooseClass("iop");upSpell(0)');
+  assert.equal(run("spellRank(0)"), 2);
+  run('chooseClass("sadida")');
+  assert.equal(run("spellRank(0)"), 1);
+  run('chooseClass("iop")');
+  assert.equal(run("spellRank(0)"), 2);
+  assert.equal(run("D.spellPts"), 6);
+  run('startEncounter(0,0);chooseClass("cra")');
+  assert.equal(run("D.classId"), "iop");
+});
+
+test("area attacks hurt every living enemy independently and shields absorb real incoming damage", () => {
+  const { run } = game();
+  run("D.lv=40;Math.random=()=>0;startEncounter(0,2)");
+  const before = run("encounter.members.map(e=>e.hp)");
+  run("cast(3)");
+  const after = run("encounter.members.map(e=>e.hp)");
+  for (let i = 0; i < 3; i++) assert.ok(after[i] < before[i]);
+  assert.equal(run("wins()"), 0);
+  run('mode="picker";chooseClass("feca");startEncounter(0,0);cast(1)');
+  const shield = run("effects.shield");
+  assert.ok(shield > 0);
+  assert.equal(run("incomingDamage(mob(),0)"), 0);
+  assert.ok(run("effects.shield") < shield);
+  assert.equal(run("canCast(1)"), false);
+  run("D.rd=4;PA=6");
+  assert.equal(run("canCast(1)"), true);
+});
+
+test("poison victory cancels enemy attacks and cannot pay twice; next encounter clears effects", async () => {
+  const { run } = game();
+  run(
+    'chooseClass("sadida");Math.random=()=>0;startEncounter(0,0);encounter.members[0].hp=2;D.eh=2;cast(1);enemy()',
+  );
+  await new Promise((r) => setTimeout(r, 350));
+  assert.equal(run("mode"), "result");
+  assert.equal(run("D.hp"), 100);
+  assert.equal(run("wins()"), 1);
+  run("victory()");
+  assert.equal(run("wins()"), 1);
+  run("startEncounter(0,0)");
+  assert.equal(run("Object.keys(effects.poisons).length"), 0);
+  assert.equal(
+    run("effects.shield+effects.summons.length+effects.bombs.length"),
+    0,
+  );
+});
+
+test("summons, bomb countdowns, healing, PA recovery and elemental combos have actual effects", () => {
+  const { run } = game();
+  run(
+    'D.lv=40;Math.random=()=>0;chooseClass("osamodas");startEncounter(0,2);cast(1);cast(3)',
+  );
+  assert.equal(run("effects.summons.length"), 2);
+  const hp = run("encounter.members[0].hp");
+  run("tickFriendlyEffects()");
+  assert.ok(run("encounter.members[0].hp") < hp);
+  run('mode="picker";chooseClass("steamer");startEncounter(0,2);cast(1);PA=6');
+  assert.equal(run("canCast(2)"), false);
+  run('mode="picker";chooseClass("roublard");startEncounter(0,2)');
+  const before = run("encounter.members.map(e=>e.hp)");
+  run("cast(1);tickFriendlyEffects()");
+  assert.equal(run("effects.bombs.length"), 1);
+  assert.deepEqual(run("encounter.members.map(e=>e.hp)"), before);
+  run("tickFriendlyEffects()");
+  assert.equal(run("effects.bombs.length"), 0);
+  const after = run("encounter.members.map(e=>e.hp)");
+  for (let i = 0; i < 3; i++) assert.ok(after[i] < before[i]);
+  run(
+    'mode="picker";chooseClass("eniripsa");startEncounter(0,0);D.hp=40;cast(1)',
+  );
+  assert.equal(run("D.hp"), 52);
+  run('mode="picker";chooseClass("xelor");startEncounter(0,0);PA=4;cast(2)');
+  assert.equal(run("PA"), 4);
+  assert.equal(run("canCast(2)"), false);
+  run('mode="picker";chooseClass("huppermage");startEncounter(0,2);cast(0)');
+  run("Math.random=()=>.999");
+  const baseline = run('attackValue(spell(1),"dmg")');
+  run("effects.lastElement=null");
+  assert.ok(baseline > run('attackValue(spell(1),"dmg")'));
 });

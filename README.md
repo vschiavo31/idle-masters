@@ -1,4 +1,4 @@
-# Idle Masters V3.5.1
+# Idle Masters V3.6.0
 
 Jeu solo HTML/JavaScript, avec données Dofus embarquées. Aucun appel DoduAPI au démarrage.
 
@@ -59,3 +59,13 @@ Les pools des nouveaux combats sont partitionnés par PV croissants. Chaque mons
 ## Progression en combat (3.5.1)
 
 L’interface de combat affiche le niveau, une barre d’XP accessible, le pourcentage et les XP restantes avant le prochain niveau. Elle reste visible au choix de zone, pendant le combat et au résultat. Chaque victoire retient les niveaux avant et après l’attribution réelle d’XP (sagesse et plusieurs niveaux compris) et affiche les niveaux gagnés au résultat. Le message est masqué si aucun niveau n’a été gagné. Les règles d’XP et le format de la sauvegarde restent identiques.
+
+## Classes et sorts (3.6.0)
+
+19 classes et 152 sorts sont définis dans `classes.js`. Il s’agit de livres de sorts et d’effets Idle Masters, pas des tables officielles de Dofus. Deux sorts sont disponibles au niveau 1, puis un sort aux niveaux 5, 10, 15, 20, 30 et 40. Les sorts verrouillés ne peuvent être ni lancés ni améliorés. Les livres indiquent PA, élément, effet et relance ; les sorts restent améliorables jusqu’au rang 5 avec les points de sorts existants.
+
+Le choix est demandé au premier démarrage de cette version ; niveau, XP, inventaire, caractéristiques et victoires sont conservés. Les points investis dans les six anciens sorts sont remboursés une seule fois (`classMigration`) et leurs anciens rangs sont conservés dans `legacySpellLv`. Les nouveaux rangs sont enregistrés par ID de sort dans `spellRanks`. Changer de classe est gratuit hors combat, pour permettre les essais ; les améliorations de chaque classe restent conservées et aucun nouveau remboursement n’est accordé lors d’un changement.
+
+`combat-effects.js` gère les dégâts de groupe, soins, vol de vie, boucliers, buffs, concentration, marques, affaiblissements, poisons, invocations, bombes et récupération de PA. Les effets sont temporaires et remis à zéro à chaque combat. Les poisons et invocations agissent avant les attaques ennemies, les bombes explosent après deux fins de tour ou avec Détonateur. Une victoire due à un effet accorde les récompenses une seule fois et annule les attaques ennemies restantes. Les effets attachés à un ennemi utilisent sa position dans le groupe pour séparer deux exemplaires de la même espèce. Une invocation est autorisée par défaut, deux pour l’Osamodas ; trois bombes au maximum. Les relances et limites de lancers empêchent les répétitions de sorts de soutien. Les passifs décrits dans l’interface sont appliqués par le moteur ; ni déplacements sur une grille ni portails spatiaux ne sont simulés.
+
+Les nouveaux sorts débloqués sont annoncés au résultat du combat. Les tests couvrent les seuils de niveau des 19 classes, les migrations, le verrouillage pendant le combat, les effets et leurs récompenses, puis les 152 lancers dans l’interface mobile Chromium et WebKit. La récupération en session neuve vérifie aussi la classe et les rangs de sorts.
