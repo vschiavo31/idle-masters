@@ -1,0 +1,32 @@
+name: Hotfix bestiary UI V3.2.7
+on:
+  push:
+    paths:
+      - 'bestiary-ui.js'
+      - '.github/workflows/hotfix-bestiary-ui.yml'
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Wire standalone bestiary
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('index.html')
+          s=p.read_text()
+          s=s.replace('Idle Masters V3.2.6','Idle Masters V3.2.7').replace('V3.2.6 · Bestiaire Dofus','V3.2.7 · Bestiaire Dofus')
+          if 'bestiary-ui.js?v=3.2.7' not in s:
+              s=s.replace('</body>','<script src="bestiary-ui.js?v=3.2.7"></script></body>')
+          p.write_text(s)
+          PY
+      - name: Commit patch
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add index.html
+          git diff --cached --quiet && exit 0
+          git commit -m 'V3.2.7 wire standalone Dofus bestiary'
+          git push
