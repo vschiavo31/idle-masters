@@ -13,11 +13,13 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
+      - run: npm ci
       - name: Verify game rules and data
-        run: node --test tests/game.test.cjs
+        run: npm test
       - name: Install browser test tools
         run: |
-          npm install --no-save playwright@1.62.1
           npx playwright install --with-deps chromium webkit
       - name: Verify mobile Chromium and Safari engine
         run: node tests/browser.test.cjs
+      - name: Build durable save service
+        run: npm run build

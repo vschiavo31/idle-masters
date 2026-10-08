@@ -1,0 +1,1 @@
+{"name":"idle-masters","private":true,"scripts":{"build":"node scripts/build-worker.cjs","test":"node --test tests/game.test.cjs tests/save.test.cjs"},"devDependencies":{"drizzle-kit":"^0.31.11","drizzle-orm":"^0.45.4","playwright":"^1.62.1"}}

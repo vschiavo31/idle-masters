@@ -10,6 +10,7 @@ function game() {
     setTimeout,
     clearTimeout,
     localStorage: { setItem() {} },
+    GameSave: {queue(){}},
     document: {
       getElementById() {
         return { innerHTML: "", prepend() {} };

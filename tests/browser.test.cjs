@@ -7,7 +7,27 @@ const { chromium, webkit } = require(
 );
 const root = path.resolve(__dirname, "..");
 async function main() {
-  const server = http.createServer((req, res) => {
+  const { createDB } = require("./db-helper.cjs");
+  const DB = createDB();
+  const worker = (await import("../worker/index.mjs")).default;
+  const server = http.createServer(async (req, res) => {
+    if (new URL(req.url, "http://test").pathname === "/api/save") {
+      const chunks = [];
+      for await (const chunk of req) chunks.push(chunk);
+      const user =
+        (req.headers.cookie || "").match(/test-user=([^;]+)/)?.[1] || "test";
+      const response = await worker.fetch(
+        new Request("http://" + req.headers.host + req.url, {
+          method: req.method,
+          headers: { ...req.headers, "oai-authenticated-user-id": user },
+          body: req.method === "PUT" ? Buffer.concat(chunks) : undefined,
+        }),
+        { DB },
+      );
+      res.writeHead(response.status, Object.fromEntries(response.headers));
+      res.end(await response.text());
+      return;
+    }
     const pathname = decodeURIComponent(
       new URL(req.url, "http://test").pathname,
     );
@@ -52,6 +72,11 @@ async function main() {
           isMobile: true,
           hasTouch: true,
         });
+        await page
+          .context()
+          .addCookies([
+            { name: "test-user", value: engine.name(), url: origin },
+          ]);
         const errors = [],
           external = [];
         page.on("pageerror", (error) => errors.push(error.message));
@@ -163,6 +188,14 @@ async function main() {
           hp,
           "Stale turn damaged the next fight",
         );
+        await page
+          .getByRole("button", { name: "Sauvegarder", exact: true })
+          .click();
+        await page.waitForFunction(() =>
+          document
+            .getElementById("saveStatus")
+            .textContent.startsWith("Sauvegardé"),
+        );
         await page.reload();
         await page.waitForFunction(
           () => document.getElementById("lv").textContent !== "",
@@ -209,6 +242,68 @@ async function main() {
             "Navigation exceeds screen at " + width,
           );
         }
+        // Close the original session entirely, then recover from the server in a
+        // fresh session where Safari-like browser storage is unavailable.
+        const kept = await page.evaluate(() => ({
+          k: D.k,
+          bag: D.bag.length,
+          wins: D.encounterWins["0:0"],
+        }));
+        await page
+          .getByRole("button", { name: "Sauvegarder", exact: true })
+          .click();
+        await page.waitForFunction(() =>
+          document
+            .getElementById("saveStatus")
+            .textContent.startsWith("Sauvegardé"),
+        );
+        await page.context().close();
+        const recovered = await browser.newContext({
+          viewport: { width: 390, height: 844 },
+        });
+        await recovered.addCookies([
+          { name: "test-user", value: engine.name(), url: origin },
+        ]);
+        await recovered.addInitScript(() => {
+          Storage.prototype.getItem = () => {
+            throw new DOMException("Blocked", "SecurityError");
+          };
+          Storage.prototype.setItem = () => {
+            throw new DOMException("Blocked", "SecurityError");
+          };
+        });
+        const reopened = await recovered.newPage();
+        reopened.on("pageerror", (e) => errors.push(e.message));
+        await reopened.goto(origin);
+        await reopened.waitForFunction(
+          () => document.getElementById("lv").textContent !== "",
+        );
+        assert.deepEqual(
+          await reopened.evaluate(() => ({
+            k: D.k,
+            bag: D.bag.length,
+            wins: D.encounterWins["0:0"],
+          })),
+          kept,
+        );
+        await reopened.evaluate(() => {
+          D.k += 7;
+          save();
+        });
+        await reopened
+          .getByRole("button", { name: "Sauvegarder", exact: true })
+          .click();
+        await reopened.waitForFunction(() =>
+          document
+            .getElementById("saveStatus")
+            .textContent.startsWith("Sauvegardé"),
+        );
+        await reopened.reload();
+        await reopened.waitForFunction(
+          () => document.getElementById("lv").textContent !== "",
+        );
+        assert.equal(await reopened.evaluate(() => D.k), kept.k + 7);
+        await recovered.close();
         assert.deepEqual(errors, []);
         assert.deepEqual(external, []);
         console.log(
@@ -221,6 +316,7 @@ async function main() {
     }
   } finally {
     await new Promise((resolve) => server.close(resolve));
+    DB.close();
   }
 }
 main().catch((error) => {

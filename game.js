@@ -293,7 +293,7 @@ function txt(a) {
     .join(" · ");
 }
 function save() {
-  localStorage.setItem("idleMastersV2", JSON.stringify(D));
+  GameSave.queue(D);
 }
 function jet(q) {
   let x = meta(q.id),
@@ -1119,7 +1119,7 @@ $("changeZone").onclick = () => {
   render();
 };
 async function boot() {
-  let originalSave = localStorage.getItem("idleMastersV2");
+  let originalSave = await GameSave.initialize();
   try {
     let x = JSON.parse(originalSave);
     if (x) D = { ...D, ...x };
@@ -1148,7 +1148,7 @@ async function boot() {
     ];
     let [eq, sets, bestiary] = await Promise.all(
       files.map(async (f) => {
-        let r = await fetch(f + "?v=3.4.0");
+        let r = await fetch(f + "?v=3.4.1");
         if (!r.ok) throw Error(f + " : HTTP " + r.status);
         return r.json();
       }),
@@ -1161,7 +1161,9 @@ async function boot() {
     if (!M.length || !Object.keys(I).length)
       throw Error("Données locales incomplètes");
     if (originalSave && !D.localCombatMigration) {
-      localStorage.setItem("idleMastersBackupBefore332", originalSave);
+      try {
+        localStorage.setItem("idleMastersBackupBefore332", originalSave);
+      } catch (e) {}
       migrateCombatSave(D, M);
     }
     D.localCombatMigration = 1;

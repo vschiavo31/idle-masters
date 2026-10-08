@@ -1,4 +1,4 @@
-# Idle Masters V3.4.0
+# Idle Masters V3.4.1
 
 Jeu solo HTML/JavaScript, avec données Dofus embarquées. Aucun appel DoduAPI au démarrage.
 
@@ -28,7 +28,7 @@ La clé `idleMastersV2` est conservée. Avant la migration 3.3.2, une copie est 
 
 ## Version d’essai en ligne
 
-Le projet Sites associé est déclaré dans `.openai/hosting.json`. Les mises à jour conservent ce projet et son adresse, afin de garder la sauvegarde navigateur sur la même origine. La publication nécessite `node scripts/build-static.cjs` pour créer `dist`, puis le workflow Sites. Les futures modifications doivent être vérifiées et publiées sur ce même site avant de remettre le lien d’essai.
+Le projet Sites associé est déclaré dans `.openai/hosting.json`. Les mises à jour conservent ce projet et son adresse, afin de garder la sauvegarde navigateur sur la même origine. La publication nécessite `npm run build` pour créer le Worker dans `dist`, puis le workflow Sites. Les futures modifications doivent être vérifiées et publiées sur ce même site avant de remettre le lien d’essai.
 
 À chaque push GitHub, `.github/workflows/check-game.yml` vérifie les règles et lance le parcours mobile dans Chromium et WebKit (moteur Safari). Les anciens workflows qui réinjectaient des scripts sont archivés dans `retired-workflows` et ne s’exécutent plus. Ces tests couvrent les parcours connus, sans garantir l’absence de tous les bugs.
 
@@ -41,3 +41,9 @@ Les Bouftous ordinaires et chefs donnent la panoplie du Bouftou, le Bouftou Roya
 Chaque zone propose trois difficultés : un, deux et trois monstres tirés au hasard dans les pools de `ENCOUNTER_TIERS`. Tainéla utilise les Bouftons Blanc/Noir, Bouftous et Chef de Guerre. Les groupes ne contiennent que des monstres de leur zone et grossissent avec la difficulté. Cliquer sur un ennemi vivant change la cible ; ses PV sont conservés indépendamment. Chaque ennemi encore vivant attaque à la fin du tour. Un ennemi vaincu cesse d’attaquer. Les XP, kamas, compteurs de monstres et drops sont cumulés et accordés une seule fois à la victoire complète. Quitter ou perdre ne donne pas de récompense partielle. Chaque monstre a son tirage de drop de famille à 30 % sans prospection, donc un groupe de trois peut donner jusqu’à trois pièces. Refaire et le mode automatique génèrent un nouveau groupe de la même difficulté. L’automatique se débloque après dix victoires sur ce combat (zone + difficulté). Les compteurs de monstres déjà sauvegardés restent conservés. Le donjon reste accessible séparément à Tainéla.
 
 Les attaques initiales sont réduites (Pression 6–8, Flamiche 3–5, Vague 6–8, Lame de vent 5–8, Coup brutal 8–11). Les attaques des monstres sont réduites pour le combat de groupe. Au niveau 1, sans équipements ni investissement, aucun sort offensif ne peut tuer d’un seul coup un Tofu à 17 PV ; Pression demande trois attaques. Les caractéristiques et les améliorations de sorts continuent d’augmenter les dégâts.
+
+## Sauvegarde durable (3.4.1)
+
+La progression est stockée côté serveur dans D1 et isolée par l’identité transmise par Sites. Le même compte sur le même Site retrouve sa progression entre les appareils et les versions. La copie `idleMastersV2` sert à migrer une ancienne partie et à récupérer en cas de coupure ; un stockage navigateur inaccessible ne bloque plus le jeu. Le statut visible confirme la sauvegarde ; un bouton force l’envoi. Une révision protège les parties contre l’écrasement par un onglet plus ancien. Les erreurs restent visibles et n’effacent pas la partie. La fermeture du jeu tente un dernier envoi. Les données déjà perdues et absentes du navigateur ne peuvent pas être reconstruites.
+
+`npm test` vérifie aussi l’API de sauvegarde contre SQLite. Le test mobile ferme la session, ouvre une session vide avec le stockage navigateur bloqué, retrouve la progression, la modifie et vérifie une nouvelle récupération. La publication utilise `npm run build` (Worker ESM), avec les migrations Drizzle dans `drizzle/`.
