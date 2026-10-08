@@ -628,6 +628,8 @@ async function main() {
         );
         // Close the original session entirely, then recover from the server in a
         // fresh session where Safari-like browser storage is unavailable.
+        // Fixture gear also earns collection rewards, just as a real victory would.
+        await page.evaluate(() => { checkAch(); render(); });
         const kept = await page.evaluate(() => ({
           k: D.k,
           bag: D.bag.length,
