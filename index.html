@@ -6,7 +6,7 @@
       name="viewport"
       content="width=device-width,initial-scale=1,viewport-fit=cover"
     />
-    <title>Idle Masters V3.8.1</title>
+    <title>Idle Masters V3.9.0</title>
     <style>
       :root {
         --bg: #100e0b;
@@ -514,13 +514,34 @@
       #bagFilters {
         min-width: 0;
       }
+      .itemActions {
+        flex-wrap: wrap;
+      }
+      .saleChoice {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+      .saleChoice input {
+        width: 18px;
+        height: 18px;
+      }
+      .compare,
+      #saleList {
+        overflow-wrap: anywhere;
+      }
+      .gearSlot button {
+        max-width: 100%;
+        padding: 6px;
+        font-size: 12px;
+      }
     </style>
   </head>
   <body>
     <div class="wrap">
       <div class="top">
         <div class="brand">Idle Masters</div>
-        <span class="version">V3.8.1 · Sorts rang 6</span>
+        <span class="version">V3.9 · Gestion des équipements</span>
       </div>
       <div class="row" style="margin-bottom: 12px">
         <small id="saveStatus" class="mut" role="status"
@@ -690,6 +711,26 @@
             ><button id="bagNone">Tout décocher</button>
           </fieldset>
           <p id="bagFilteredCount" class="mut" role="status"></p>
+          <div class="card">
+            <p id="saleSelected" aria-live="polite"></p>
+            <button id="selectSaleVisible">
+              Sélectionner les objets affichés
+            </button>
+            <button id="clearSaleSelection">Annuler la sélection</button>
+            <button id="sellSelected" disabled>Vendre la sélection</button>
+            <p class="mut">
+              Les objets verrouillés sont exclus. Changer les filtres retire les
+              objets masqués de la sélection.
+            </p>
+            <p id="saleStatus" role="status"></p>
+          </div>
+          <div id="saleConfirm" class="card" hidden>
+            <h3>Confirmer la vente</h3>
+            <p id="saleMessage"></p>
+            <p id="saleList" class="mut"></p>
+            <button id="confirmSale">Confirmer la vente</button
+            ><button id="cancelSale">Annuler</button>
+          </div>
           <div id="bag"></div>
         </div>
       </section>
@@ -900,11 +941,11 @@
       ><button data-page="collection">COLLECTION</button
       ><button data-page="combat">COMBAT</button>
     </nav>
-    <script src="local-data.js?v=3.8.1"></script>
-    <script src="bestiary-ui.js?v=3.8.1"></script>
-    <script src="saving.js?v=3.8.1"></script>
-    <script src="classes.js?v=3.8.1"></script>
-    <script src="combat-effects.js?v=3.8.1"></script>
-    <script src="game.js?v=3.8.1"></script>
+    <script src="local-data.js?v=3.9.0"></script>
+    <script src="bestiary-ui.js?v=3.9.0"></script>
+    <script src="saving.js?v=3.9.0"></script>
+    <script src="classes.js?v=3.9.0"></script>
+    <script src="combat-effects.js?v=3.9.0"></script>
+    <script src="game.js?v=3.9.0"></script>
   </body>
 </html>

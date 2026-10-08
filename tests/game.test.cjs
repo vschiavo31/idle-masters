@@ -595,3 +595,48 @@ test("all class spells reach rank six with costs 1 to 5 and reject insufficient 
   assert.equal(run("upSpell(-1)"), false);
   assert.equal(run("upSpell(999)"), false);
 });
+test("locks follow items through equipment and refuse individual or repeated bulk sales", () => {
+  const { run } = game();
+  run(
+    "D.lv=40;D.k=0;D.bag=[{uid:1,id:'d70',st:{Intelligence:10}},{uid:2,id:'d77',st:{Force:10}}]",
+  );
+  assert.equal(run("toggleItemLock(1)"), true);
+  assert.equal(run("sell(1)"), 0);
+  assert.equal(run("sellItems([1,2,2,999])"), 1);
+  assert.equal(run("D.k"), 5);
+  assert.equal(run("sellItems([2])"), 0);
+  run("equip(1)");
+  assert.equal(run("D.w.Amulette.locked"), true);
+  run("uneq('Amulette')");
+  assert.equal(run("D.bag[0].locked"), true);
+  run("toggleItemLock(1)");
+  assert.equal(run("sell(1)"), 1);
+  assert.equal(run("D.k"), 10);
+});
+test("comparison includes lost set bonuses and calculates each ring independently without mutating gear", () => {
+  const { run } = game();
+  run(
+    "I.a=['a','Anneau','setTest',1,{Force:[1,5]},1,1];I.b=['b','Cape','setTest',1,{Force:[1,5]},1,2];I.c=['c','Anneau',null,1,{Force:[1,8]},1,3];SET.setTest={2:{Force:10,PA:1}};D.w={Anneau1:{id:'a',st:{Force:5}},Anneau2:{id:'c',st:{Force:2}},Cape:{id:'b',st:{Force:5}}};candidate={id:'c',st:{Force:8}};before=JSON.stringify(D.w)",
+  );
+  assert.equal(run("equipmentDelta(candidate,'Anneau1').Force"), -7);
+  assert.equal(run("equipmentDelta(candidate,'Anneau1').PA"), -1);
+  assert.equal(run("equipmentDelta(candidate,'Anneau2').Force"), 6);
+  assert.equal(run("equipmentDelta(candidate,'Anneau2').PA"), undefined);
+  assert.equal(run("JSON.stringify(D.w)===before"), true);
+  assert.equal(run("equipmentDelta(candidate,'Cape')"), null);
+});
+
+test("bulk confirmation refuses a changed snapshot and cannot pay twice", () => {
+  const { run } = game();
+  run(
+    "D.k=0;D.bag=[{uid:1,id:'d70',st:{}},{uid:2,id:'d77',st:{}}];requestSale([1,2]);toggleItemLock(2)",
+  );
+  assert.equal(run("confirmSale()"), 0);
+  assert.equal(run("D.bag.length"), 2);
+  assert.equal(run("D.k"), 0);
+  run("toggleItemLock(2);requestSale([1,2])");
+  assert.equal(run("confirmSale()"), 2);
+  assert.equal(run("D.k"), 10);
+  assert.equal(run("confirmSale()"), 0);
+  assert.equal(run("D.k"), 10);
+});

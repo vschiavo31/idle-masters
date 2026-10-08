@@ -249,11 +249,11 @@ function ranges(id) {
         .join(" · ")
     : "";
 }
-function sb() {
+function sb(worn = D.w) {
   let c = {},
     o = {},
     seen = new Set();
-  Object.values(D.w).forEach((q) => {
+  Object.values(worn).forEach((q) => {
     let x = q && meta(q.id);
     if (x && x.set && !seen.has(q.id)) {
       seen.add(q.id);
@@ -270,13 +270,13 @@ function sb() {
   }
   return o;
 }
-function gt() {
+function gt(worn = D.w) {
   let t = {};
-  Object.values(D.w).forEach((q) => {
+  Object.values(worn).forEach((q) => {
     if (q && meta(q.id))
       for (let [k, v] of Object.entries(q.st || {})) t[k] = (t[k] || 0) + v;
   });
-  for (let [k, v] of Object.entries(sb())) t[k] = (t[k] || 0) + v;
+  for (let [k, v] of Object.entries(sb(worn))) t[k] = (t[k] || 0) + v;
   return t;
 }
 function st(k) {
@@ -816,49 +816,129 @@ function uneq(s) {
     render();
   }
 }
-function sell(u) {
-  let j = D.bag.findIndex((x) => x.uid === u);
-  if (j >= 0) {
-    D.k += 5;
-    D.bag.splice(j, 1);
-    render();
-  }
+let saleSelection = new Set(),
+  pendingSale = [];
+function itemByUid(uid) {
+  return (
+    D.bag.find((q) => q.uid === uid) ||
+    Object.values(D.w).find((q) => q?.uid === uid)
+  );
+}
+function toggleItemLock(uid) {
+  const q = itemByUid(uid);
+  if (!q) return false;
+  q.locked = !q.locked;
+  saleSelection.delete(uid);
+  render();
+  return true;
+}
+function sellItems(ids) {
+  const wanted = new Set(ids);
+  const items = D.bag.filter((q) => wanted.has(q.uid) && !q.locked);
+  if (!items.length) return 0;
+  const sold = new Set(items.map((q) => q.uid));
+  D.bag = D.bag.filter((q) => !sold.has(q.uid));
+  D.k += items.length * 5;
+  sold.forEach((uid) => saleSelection.delete(uid));
+  render();
+  return items.length;
+}
+function sell(uid) {
+  return sellItems([uid]);
+}
+function equipmentDelta(q, target) {
+  const x = meta(q.id);
+  if (
+    !x ||
+    !(target in D.w) ||
+    (x.s === "Anneau"
+      ? !["Anneau1", "Anneau2"].includes(target)
+      : target !== x.s)
+  )
+    return null;
+  const before = gt(),
+    after = gt({ ...D.w, [target]: q });
+  return Object.fromEntries(
+    [...new Set([...Object.keys(before), ...Object.keys(after)])]
+      .map((key) => [key, (after[key] || 0) - (before[key] || 0)])
+      .filter(([, delta]) => delta),
+  );
 }
 function comparison(q) {
-  let x = meta(q.id);
+  const x = meta(q.id);
   if (!x) return "";
-  let slots = x.s === "Anneau" ? ["Anneau1", "Anneau2"] : [x.s],
-    h = "";
-  slots.forEach((s) => {
-    let eq = D.w[s];
-    if (!eq || !meta(eq.id)) {
-      h += '<div class="compare good">' + s + " libre</div>";
-      return;
-    }
-    let keys = [
-      ...new Set([...Object.keys(q.st || {}), ...Object.keys(eq.st || {})]),
-    ];
-    h +=
-      '<div class="compare"><small>' + s + " · " + meta(eq.id).n + "</small>";
-    keys.forEach((k) => {
-      let a = q.st[k] || 0,
-        b = eq.st[k] || 0,
-        d = a - b;
-      h +=
-        '<div class="compareLine"><span>' +
-        k +
-        " : " +
-        a +
-        '</span><b class="' +
-        (d > 0 ? "good" : d < 0 ? "bad" : "mut") +
-        '">' +
-        (d > 0 ? "+" : "") +
-        d +
-        "</b></div>";
-    });
-    h += "</div>";
-  });
-  return h;
+  return (x.s === "Anneau" ? ["Anneau1", "Anneau2"] : [x.s])
+    .map((target) => {
+      const current = D.w[target],
+        delta = equipmentDelta(q, target);
+      return (
+        '<div class="compare"><b>Si équipé : ' +
+        target +
+        '</b><div class="mut">' +
+        (current
+          ? "Remplace " + (meta(current.id)?.n || "Ancien objet")
+          : "Emplacement libre") +
+        "</div><small>Écart total, bonus de panoplie inclus</small>" +
+        (Object.entries(delta)
+          .map(
+            ([key, value]) =>
+              '<div class="compareLine"><span>' +
+              key +
+              '</span><b class="' +
+              (value > 0 ? "good" : "bad") +
+              '">' +
+              (value > 0 ? "+" : "") +
+              value +
+              "</b></div>",
+          )
+          .join("") ||
+          '<div class="mut">Aucun changement de caractéristiques</div>') +
+        "</div>"
+      );
+    })
+    .join("");
+}
+function cancelSaleReview() {
+  pendingSale = [];
+  $("saleConfirm").hidden = true;
+}
+function requestSale(ids) {
+  const wanted = new Set(ids);
+  pendingSale = D.bag
+    .filter((q) => wanted.has(q.uid) && !q.locked)
+    .map((q) => ({
+      uid: q.uid,
+      id: q.id,
+      name: meta(q.id)?.n || "Ancien objet",
+    }));
+  $("saleConfirm").hidden = !pendingSale.length;
+  $("saleMessage").textContent =
+    pendingSale.length +
+    " objet(s) · " +
+    pendingSale.length * 5 +
+    " kamas. Cette vente retire les objets du sac.";
+  $("saleList").textContent = pendingSale.map((q) => q.name).join(" · ");
+}
+function confirmSale() {
+  const items = pendingSale;
+  pendingSale = [];
+  $("saleConfirm").hidden = true;
+  if (!items.length) return 0;
+  if (
+    !items.every((q) =>
+      D.bag.some(
+        (item) => item.uid === q.uid && item.id === q.id && !item.locked,
+      ),
+    )
+  ) {
+    $("saleStatus").textContent =
+      "La sélection a changé. Vérifie les objets et recommence.";
+    return 0;
+  }
+  const count = sellItems(items.map((q) => q.uid));
+  $("saleStatus").textContent =
+    count + " objet(s) vendu(s) · +" + count * 5 + " kamas";
+  return count;
 }
 function dashboard() {
   let n = need(D.lv),
@@ -963,6 +1043,20 @@ function inventory() {
       "</div></div><small>" +
       s +
       "</small>";
+    if (q?.locked) {
+      const tag = document.createElement("small");
+      tag.textContent = "Verrouillé";
+      d.append(tag);
+    }
+    if (q) {
+      const lock = document.createElement("button");
+      lock.textContent = q.locked ? "Déverrouiller" : "Verrouiller";
+      lock.onclick = (event) => {
+        event.stopPropagation();
+        toggleItemLock(q.uid);
+      };
+      d.append(lock);
+    }
     if (x) d.onclick = () => uneq(s);
     w.append(d);
   });
@@ -980,78 +1074,121 @@ function inventory() {
       (input) =>
         (input.checked = visibleInventorySlots().includes(input.value)),
     );
-  $("bagFilteredCount").textContent =
-    ready.filter(
-      (q) =>
-        visibleInventorySlots().includes(meta(q.id).s) &&
-        meta(q.id).n.toLowerCase().includes(search),
-    ).length + " objet(s) affiché(s)";
-  sortedInventory(ready, $("bagSort").value)
-    .filter((q) => visibleInventorySlots().includes(meta(q.id).s))
-    .filter((q) => meta(q.id).n.toLowerCase().includes(search))
-    .forEach((q) => {
-      let x = meta(q.id),
-        j = jet(q),
-        d = document.createElement("div");
-      d.className = "item";
-      d.innerHTML =
-        '<div class="itemHead"><div><div class="eyebrow">' +
-        x.s +
-        " · Niv. " +
-        x.l +
-        '</div><div class="itemName">' +
-        x.n +
-        '</div></div><b class="' +
-        rarity(j) +
-        '">Jet ' +
-        j +
-        '%</b></div><div class="itemStats">' +
-        Object.entries(q.st)
-          .map(
-            ([k, v]) =>
-              "<span>" +
-              k +
-              " <b>" +
-              (v >= 0 ? "+" : "") +
-              v +
-              '</b><div class="itemRange">Jet possible : ' +
-              x.x[k][0] +
-              "–" +
-              x.x[k][1] +
-              "</div></span>",
-          )
-          .join("") +
-        '</div><div class="itemInfo"><b>Provenance</b><div class="mut">' +
-        sourceOf(q.id) +
-        '</div><b>Conditions</b><div class="mut">Niveau requis : ' +
-        x.l +
-        '. Autres conditions Dofus absentes de la source locale.</div><b>Jet maximum</b><div class="mut">' +
-        ranges(q.id) +
-        "</div></div>" +
-        comparison(q) +
-        '<div class="itemActions"></div>';
-      let a = d.querySelector(".itemActions");
-      if (x.s === "Anneau" && D.w.Anneau1 && D.w.Anneau2) {
-        ["Anneau1", "Anneau2"].forEach((s, i) => {
-          let b = document.createElement("button");
-          b.textContent = "Remplacer anneau " + (i + 1);
-          b.disabled = D.lv < x.l;
-          b.onclick = () => equip(q.uid, s);
-          a.append(b);
-        });
-      } else {
+  const visible = sortedInventory(ready, $("bagSort").value).filter(
+    (q) =>
+      visibleInventorySlots().includes(meta(q.id).s) &&
+      meta(q.id).n.toLowerCase().includes(search),
+  );
+  saleSelection = new Set(
+    [...saleSelection].filter((uid) =>
+      visible.some((q) => q.uid === uid && !q.locked),
+    ),
+  );
+  if (
+    pendingSale.length &&
+    pendingSale.some(
+      (item) =>
+        !visible.some(
+          (q) => q.uid === item.uid && q.id === item.id && !q.locked,
+        ),
+    )
+  ) {
+    pendingSale = [];
+    $("saleConfirm").hidden = true;
+    $("saleStatus").textContent =
+      "Vente annulée : les objets affichés ou leur protection ont changé.";
+  }
+  $("bagFilteredCount").textContent = visible.length + " objet(s) affiché(s)";
+  $("saleSelected").textContent =
+    saleSelection.size +
+    " sélectionné(s) · " +
+    saleSelection.size * 5 +
+    " kamas";
+  $("sellSelected").disabled = !saleSelection.size;
+  visible.forEach((q) => {
+    let x = meta(q.id),
+      j = jet(q),
+      d = document.createElement("div");
+    d.className = "item";
+    d.dataset.uid = q.uid;
+    d.innerHTML =
+      '<div class="itemHead"><div><div class="eyebrow">' +
+      x.s +
+      " · Niv. " +
+      x.l +
+      '</div><div class="itemName">' +
+      x.n +
+      '</div></div><b class="' +
+      rarity(j) +
+      '">Jet ' +
+      j +
+      '%</b></div><div class="itemStats">' +
+      Object.entries(q.st)
+        .map(
+          ([k, v]) =>
+            "<span>" +
+            k +
+            " <b>" +
+            (v >= 0 ? "+" : "") +
+            v +
+            '</b><div class="itemRange">Jet possible : ' +
+            x.x[k][0] +
+            "–" +
+            x.x[k][1] +
+            "</div></span>",
+        )
+        .join("") +
+      '</div><div class="itemInfo"><b>Provenance</b><div class="mut">' +
+      sourceOf(q.id) +
+      '</div><b>Conditions</b><div class="mut">Niveau requis : ' +
+      x.l +
+      '. Autres conditions Dofus absentes de la source locale.</div><b>Jet maximum</b><div class="mut">' +
+      ranges(q.id) +
+      "</div></div>" +
+      comparison(q) +
+      '<div class="itemActions"></div>';
+    let a = d.querySelector(".itemActions");
+    if (x.s === "Anneau" && D.w.Anneau1 && D.w.Anneau2) {
+      ["Anneau1", "Anneau2"].forEach((s, i) => {
         let b = document.createElement("button");
-        b.textContent = x.s === "Anneau" ? "Équiper" : "Équiper";
+        b.textContent = "Remplacer anneau " + (i + 1);
         b.disabled = D.lv < x.l;
-        b.onclick = () => equip(q.uid);
+        b.onclick = () => equip(q.uid, s);
         a.append(b);
-      }
-      let s = document.createElement("button");
-      s.textContent = "Vendre · 5 K";
-      s.onclick = () => sell(q.uid);
-      a.append(s);
-      e.append(d);
-    });
+      });
+    } else {
+      let b = document.createElement("button");
+      b.textContent = x.s === "Anneau" ? "Équiper" : "Équiper";
+      b.disabled = D.lv < x.l;
+      b.onclick = () => equip(q.uid);
+      a.append(b);
+    }
+    let s = document.createElement("button");
+    s.textContent = "Vendre · 5 K";
+    s.disabled = !!q.locked;
+    s.onclick = () => requestSale([q.uid]);
+    const lock = document.createElement("button");
+    lock.textContent = q.locked ? "Déverrouiller" : "Verrouiller";
+    lock.onclick = () => toggleItemLock(q.uid);
+    const label = document.createElement("label");
+    label.className = "saleChoice";
+    const check = document.createElement("input");
+    check.type = "checkbox";
+    check.checked = saleSelection.has(q.uid);
+    check.disabled = !!q.locked;
+    check.onchange = () => {
+      cancelSaleReview();
+      if (check.checked) saleSelection.add(q.uid);
+      else saleSelection.delete(q.uid);
+      inventory();
+    };
+    label.append(
+      check,
+      document.createTextNode(q.locked ? "Verrouillé" : "Sélectionner"),
+    );
+    a.append(lock, label, s);
+    e.append(d);
+  });
   if (pending) {
     let d = document.createElement("div");
     d.className = "card mut";
@@ -1383,6 +1520,31 @@ document
   .querySelectorAll(".nav button")
   .forEach((b) => (b.onclick = () => show(b.dataset.page)));
 $("bagSearch").oninput = inventory;
+$("selectSaleVisible").onclick = () => {
+  cancelSaleReview();
+  saleSelection = new Set(
+    D.bag
+      .filter(
+        (q) =>
+          meta(q.id) &&
+          !q.locked &&
+          visibleInventorySlots().includes(meta(q.id).s) &&
+          meta(q.id)
+            .n.toLowerCase()
+            .includes($("bagSearch").value.toLowerCase()),
+      )
+      .map((q) => q.uid),
+  );
+  inventory();
+};
+$("clearSaleSelection").onclick = () => {
+  cancelSaleReview();
+  saleSelection.clear();
+  inventory();
+};
+$("sellSelected").onclick = () => requestSale([...saleSelection]);
+$("cancelSale").onclick = cancelSaleReview;
+$("confirmSale").onclick = confirmSale;
 $("resetStatsBtn").onclick = () => {
   $("resetStatsConfirm").hidden = false;
 };
@@ -1562,7 +1724,7 @@ async function boot() {
     ];
     let [eq, sets, bestiary] = await Promise.all(
       files.map(async (f) => {
-        let r = await fetch(f + "?v=3.8.1");
+        let r = await fetch(f + "?v=3.9.0");
         if (!r.ok) throw Error(f + " : HTTP " + r.status);
         return r.json();
       }),

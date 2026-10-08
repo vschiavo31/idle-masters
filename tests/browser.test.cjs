@@ -587,6 +587,79 @@ async function main() {
             ),
           true,
         );
+        // Locking an item excludes it from selection and every sale path.
+        const saleFixture = await page.evaluate(() => {
+          const id = Object.keys(I).find((id) => meta(id).s === "Cape");
+          const locked = roll(id),
+            sold = roll(id),
+            sold2 = roll(id);
+          D.bag.push(locked, sold, sold2);
+          show("inventory");
+          return {
+            locked: locked.uid,
+            sold: sold.uid,
+            sold2: sold2.uid,
+            k: D.k,
+          };
+        });
+        const lockedCard = page.locator(
+          `#bag .item[data-uid="${saleFixture.locked}"]`,
+        );
+        await lockedCard
+          .getByRole("button", { name: "Verrouiller", exact: true })
+          .click();
+        assert.equal(
+          await lockedCard
+            .getByRole("button", { name: "Vendre · 5 K", exact: true })
+            .isDisabled(),
+          true,
+        );
+        assert.equal(
+          await lockedCard.locator(".saleChoice input").isDisabled(),
+          true,
+        );
+        const soldCard = page.locator(
+          `#bag .item[data-uid="${saleFixture.sold}"]`,
+        );
+        await soldCard.locator(".saleChoice input").check();
+        await page
+          .locator(
+            `#bag .item[data-uid="${saleFixture.sold2}"] .saleChoice input`,
+          )
+          .check();
+        await page.locator("#sellSelected").click();
+        assert.equal(await page.evaluate(() => D.k), saleFixture.k);
+        assert.equal(
+          (await page.locator("#saleMessage").textContent()).includes(
+            "2 objet(s) · 10 kamas",
+          ),
+          true,
+        );
+        await page.locator("#cancelSale").click();
+        assert.equal(await soldCard.count(), 1);
+        await page.locator("#sellSelected").click();
+        await page.locator("#confirmSale").click();
+        assert.equal(await soldCard.count(), 0);
+        assert.equal(await page.evaluate(() => D.k), saleFixture.k + 10);
+        assert.equal(await lockedCard.count(), 1);
+        await page.locator("#selectSaleVisible").click();
+        assert.equal(
+          await lockedCard.locator(".saleChoice input").isChecked(),
+          false,
+        );
+        await page.locator("#clearSaleSelection").click();
+        assert.equal(await page.locator("#sellSelected").isDisabled(), true);
+        // Lock stays attached to the same item through equip, removal and reload.
+        await lockedCard
+          .getByRole("button", { name: "Équiper", exact: true })
+          .click();
+        assert.equal(await page.evaluate(() => D.w.Cape.locked), true);
+        await page.evaluate(() => {
+          uneq("Cape");
+          checkAch();
+          render();
+        });
+        await page.locator("#sellSelected").isDisabled();
         const statsBackup = await page.evaluate(() => ({
           inv: D.inv,
           pts: D.pts,
@@ -672,6 +745,7 @@ async function main() {
           spellRanks: D.spellRanks,
           inventorySort: D.inventorySort,
           inventorySlots: D.inventorySlots,
+          locks: D.bag.filter((q) => q.locked).map((q) => q.uid),
         }));
         await page
           .getByRole("button", { name: "Sauvegarder", exact: true })
@@ -713,6 +787,7 @@ async function main() {
             spellRanks: D.spellRanks,
             inventorySort: D.inventorySort,
             inventorySlots: D.inventorySlots,
+            locks: D.bag.filter((q) => q.locked).map((q) => q.uid),
           })),
           kept,
         );

@@ -121,3 +121,13 @@ Tous les sorts de classe montent jusqu’au rang 6. Les améliorations coûtent
 respectivement 1, 2, 3, 4 et 5 points, soit 15 points du rang 1 au rang 6.
 Le bouton affiche le prix et bloque une amélioration sans assez de points.
 Les anciens rangs restent acquis sans prélèvement rétroactif.
+
+### V3.9 — équipement et vente
+
+La comparaison montre les gains et pertes totaux, bonus de panoplie inclus,
+avec un calcul séparé pour chaque emplacement d’anneau.
+Un objet du sac ou porté peut être verrouillé ; cet état reste enregistré
+après équipement, retrait et reconnexion. Le verrouillage empêche la vente.
+La sélection multiple respecte les filtres ; les objets masqués et verrouillés
+en sont exclus. Toute vente passe par une confirmation avec liste et montant
+(5 kamas par objet). Une sélection modifiée depuis la confirmation bloque la vente.
