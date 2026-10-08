@@ -95,7 +95,7 @@ jobs:
               effects=[]
               for e in array(get(x,'possibleEffects','effects')):
                   if not isinstance(e,dict):continue
-                  effects.append({k:get(e,'effectId','id'),v:get(e,'value','diceNum','min'),m:get(e,'diceSide','max')})
+                  effects.append({'k':get(e,'effectId','id'),'v':get(e,'value','diceNum','min'),'m':get(e,'diceSide','max')})
               out.append({'id':iid,'name':name,'level':level,'typeId':typ,'setId':setid,'effects':effects})
           sout=[]
           for s in sets:
