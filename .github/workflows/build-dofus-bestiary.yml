@@ -22,7 +22,7 @@ jobs:
           echo "$TAG" > /tmp/dofus_version
           for NAME in monsters.json fr.json items.json item_sets.json effects.json characteristics.json; do
             URL=$(printf '%s' "$RELEASE" | python3 -c "import sys,json; r=json.load(sys.stdin); n='$NAME'; print(next((a['browser_download_url'] for a in r['assets'] if a['name']==n),''))")
-            if [ -n "$URL" ]; then curl -fL --retry 3 "$URL" -o "/tmp/$NAME"; else printf '{}' > "/tmp/$NAME"; fi
+            [ -n "$URL" ] && curl -fL --retry 3 "$URL" -o "/tmp/$NAME" || printf '{}' > "/tmp/$NAME"
           done
       - name: Build local game data
         run: |
@@ -48,8 +48,9 @@ jobs:
           def num(v):
               if isinstance(v,(int,float)) and not isinstance(v,bool):return int(v)
               if isinstance(v,str) and v.lstrip('-').isdigit():return int(v)
-          def refdata(root):
-              return [r.get('data') for r in array(get(get(root,'references'),'RefIds')) if isinstance(r,dict) and isinstance(r.get('data'),dict)]
+          def refs(root):return array(get(get(root,'references'),'RefIds'))
+          def refdata(root):return [r.get('data') for r in refs(root) if isinstance(r,dict) and isinstance(r.get('data'),dict)]
+          def ridmap(root):return {r.get('rid'):r.get('data') for r in refs(root) if isinstance(r,dict) and r.get('rid') is not None and isinstance(r.get('data'),dict)}
           translations={}
           def texts(v,depth=0):
               if depth>10:return
@@ -64,17 +65,12 @@ jobs:
               elif isinstance(v,list):
                   for x in v:texts(x,depth+1)
           texts(load('fr.json'))
-          monsters=refdata(load('monsters.json'))
-          raw=[]
+          monsters=refdata(load('monsters.json'));raw=[]
           for m in monsters:
-              if get(m,'grades') is None or get(m,'id') is None:continue
               gs=[g for g in array(get(m,'grades')) if isinstance(g,dict)]; levels=[];hp=[];pa=[];pm=[]
               for g in gs:
-                  lv=num(get(g,'level','gradeLevel'));life=num(get(g,'lifePoints','life','health','hp'));ap=num(get(g,'actionPoints','pa','ap'));mp=num(get(g,'movementPoints','pm','mp'))
-                  if lv is not None:levels.append(lv)
-                  if life is not None:hp.append(life)
-                  if ap is not None:pa.append(ap)
-                  if mp is not None:pm.append(mp)
+                  for target,names in ((levels,('level','gradeLevel')),(hp,('lifePoints','life','health','hp')),(pa,('actionPoints','pa','ap')),(pm,('movementPoints','pm','mp'))):
+                      v=num(get(g,*names)); target.append(v) if v is not None else None
               if not levels or min(levels)>40 or max(levels)<1:continue
               name=translations.get(str(get(m,'nameId')))
               if name:raw.append({'id':get(m,'id'),'name':name,'minLevel':max(1,min(levels)),'maxLevel':min(40,max(levels)),'hpMin':min(hp) if hp else None,'hpMax':max(hp) if hp else None,'pa':max(pa) if pa else None,'pm':max(pm) if pm else None,'raceId':get(m,'race'),'boss':bool(get(m,'isBoss','boss'))})
@@ -86,35 +82,40 @@ jobs:
               if not x['boss'] and ((x['hpMax'] or 0)<=1 or (x['pa'] or 0)<=0 or (x['pm'] is not None and x['pm']<0)):continue
               clean.append(x)
           Path('dofus-bestiary-1-40.json').write_text(json.dumps({'source':'dofusdude/dofus3-main','version':version,'range':[1,40],'rawCount':len(raw),'count':len(clean),'filter':'playable-pvm-candidates-v2','monsters':clean},ensure_ascii=False,separators=(',',':')),encoding='utf-8')
-          items=refdata(load('items.json')); sets=refdata(load('item_sets.json'))
+          # Idle Masters currently supports these wearable slots only. Weapons/resources/consumables are intentionally excluded.
+          SLOT_TYPES={1:'Amulette',9:'Anneau',10:'Ceinture',16:'Chapeau',17:'Cape',11:'Bottes'}
+          item_root=load('items.json'); item_refs=ridmap(item_root); items=refdata(item_root)
+          def deref(v):
+              if isinstance(v,dict) and set(v.keys())=={'rid'}:return item_refs.get(v['rid'],v)
+              return v
           out=[]
           for x in items:
-              iid=get(x,'id'); level=num(get(x,'level')); name=translations.get(str(get(x,'nameId')))
-              if iid is None or level is None or not 1<=level<=40 or not name:continue
-              typ=get(x,'typeId','type'); setid=get(x,'itemSetId','setId')
-              effects=[]
-              for e in array(get(x,'possibleEffects','effects')):
+              iid=get(x,'id'); level=num(get(x,'level')); typ=num(get(x,'typeId','type')); name=translations.get(str(get(x,'nameId')))
+              if iid is None or level is None or not 1<=level<=40 or typ not in SLOT_TYPES or not name:continue
+              setid=num(get(x,'itemSetId','setId')); effects=[]
+              for raw_e in array(get(x,'possibleEffects','effects')):
+                  e=deref(raw_e)
                   if not isinstance(e,dict):continue
-                  effects.append({'k':get(e,'effectId','id'),'v':get(e,'value','diceNum','min'),'m':get(e,'diceSide','max')})
-              out.append({'id':iid,'name':name,'level':level,'typeId':typ,'setId':setid,'effects':effects})
-          sout=[]
+                  effects.append({'effectId':num(get(e,'effectId','id')),'min':num(get(e,'value','diceNum','min')),'max':num(get(e,'diceSide','max'))})
+              out.append({'id':iid,'name':name,'level':level,'slot':SLOT_TYPES[typ],'typeId':typ,'setId':setid if setid and setid>0 else None,'effects':effects})
+          kept_ids={x['id'] for x in out}; sets=refdata(load('item_sets.json')); sout=[]
           for s in sets:
-              sid=get(s,'id'); name=translations.get(str(get(s,'nameId'))); ids=array(get(s,'items','itemIds'))
-              if sid is None or not name:continue
-              sout.append({'id':sid,'name':name,'itemIds':ids,'effects':get(s,'effects','setEffects')})
-          print('BESTIARY',len(clean),'ITEMS_1_40',len(out),'SETS',len(sout),'version',version)
+              sid=num(get(s,'id')); name=translations.get(str(get(s,'nameId'))); ids=[num(x) for x in array(get(s,'items','itemIds'))]; ids=[x for x in ids if x in kept_ids]
+              if sid is None or not name or not ids:continue
+              sout.append({'id':sid,'name':name,'itemIds':ids,'pieceCount':len(ids)})
+          print('BESTIARY',len(clean),'WEARABLES_1_40',len(out),'SETS_WITH_WEARABLES',len(sout),'version',version)
           if len(clean)<50:raise SystemExit('Bestiary suspiciously small')
-          if len(out)<50:raise SystemExit('Equipment extraction suspiciously small')
-          Path('dofus-equipment-1-40.json').write_text(json.dumps({'source':'dofusdude/dofus3-main','version':version,'range':[1,40],'count':len(out),'items':out},ensure_ascii=False,separators=(',',':')),encoding='utf-8')
-          Path('dofus-item-sets.json').write_text(json.dumps({'source':'dofusdude/dofus3-main','version':version,'count':len(sout),'sets':sout},ensure_ascii=False,separators=(',',':')),encoding='utf-8')
+          if len(out)<50:raise SystemExit('Wearable equipment extraction suspiciously small')
+          Path('dofus-equipment-1-40.json').write_text(json.dumps({'source':'dofusdude/dofus3-main','version':version,'range':[1,40],'scope':'wearable-only-no-resources-no-consumables-no-weapons','count':len(out),'items':out},ensure_ascii=False,separators=(',',':')),encoding='utf-8')
+          Path('dofus-item-sets.json').write_text(json.dumps({'source':'dofusdude/dofus3-main','version':version,'scope':'sets-containing-kept-wearables','count':len(sout),'sets':sout},ensure_ascii=False,separators=(',',':')),encoding='utf-8')
           PY
       - name: Commit generated local data
         shell: bash
         run: |
           set -e
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
           git add dofus-bestiary-1-40.json dofus-equipment-1-40.json dofus-item-sets.json
           git diff --cached --quiet && exit 0
-          git commit -m 'Update local Dofus level 1-40 game data'
+          git commit -m 'Update wearable-only Dofus local data'
           git push
