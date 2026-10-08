@@ -1,0 +1,37 @@
+name: Hotfix encyclopedia V3.2.6
+on:
+  push:
+    paths:
+      - '.github/workflows/hotfix-encyclopedia.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Patch index
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('index.html')
+          s=p.read_text()
+          s=s.replace('Idle Masters V3.2.5','Idle Masters V3.2.6')
+          s=s.replace('V3.2.5 · Data stable','V3.2.6 · Bestiaire Dofus')
+          # Remove any stale encyclopedia include then inject current one before body closes.
+          import re
+          s=re.sub(r'<script[^>]+src=["\']doduapi-source\.js[^"\']*["\'][^>]*></script>','',s)
+          tag='<script src="doduapi-source.js?v=3.2.6"></script>'
+          if '</body>' not in s: raise SystemExit('No </body> found')
+          s=s.replace('</body>',tag+'</body>',1)
+          p.write_text(s)
+          PY
+      - name: Commit patch
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add index.html
+          git diff --cached --quiet && exit 0
+          git commit -m "V3.2.6 load Dofus encyclopedia"
+          git push
