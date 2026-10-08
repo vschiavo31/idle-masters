@@ -654,11 +654,21 @@ test("level 200 caps XP, rewards the last level once and preserves progression",
   assert.equal(run("D.pts"), 5);
   assert.equal(run("D.k"), 1234);
 });
-test("full catalogue has every source ID exactly once and all zones are sorted by level", () => {
+test("filtered catalogue keeps eligible monsters and all zones are sorted by level", () => {
   const c = data("monster-catalogue.json"),
     byId = new Map(c.monsters.map((m) => [m.id, m]));
-  assert.equal(c.monsters.length, 5129);
-  assert.equal(byId.size, 5129);
+  assert.equal(c.sourceMonsterCount, 5129);
+  assert.equal(c.monsters.length, 1692);
+  assert.equal(c.excludedMonsterIds.length, 3437);
+  assert.deepEqual(c.excludedCategoryCounts, {
+    archimonstre: 306,
+    invocation: 291,
+    quete: 2902,
+  });
+  assert.ok(c.excludedMonsterIds.every((id) => !byId.has(id)));
+  for (const id of [36, 4785, 168, 2270]) assert.ok(!byId.has(id));
+  for (const id of [101, 98, 147]) assert.ok(byId.has(id));
+  assert.equal(byId.size, 1692);
   assert.equal(c.sourceVersion, "3.7.4.4");
   assert.equal(Math.max(...c.monsters.map((m) => m.maxLevel || 0)), 2400);
   const placed = new Set();
@@ -677,6 +687,6 @@ test("full catalogue has every source ID exactly once and all zones are sorted b
       placed.add(id);
     }
   }
-  assert.equal(placed.size, 5129);
+  assert.equal(placed.size, 1692);
   assert.ok(c.monsters.every((m) => m.name && m.minLevel > 0));
 });

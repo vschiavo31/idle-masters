@@ -114,7 +114,7 @@ const RosterSelection = (() => {
     try {
       if (!catalogue) {
         el("rosterStatus").textContent = "Chargement de la liste complète…";
-        loading ||= fetch("monster-catalogue.json?v=3.10.0")
+        loading ||= fetch("monster-catalogue.json?v=3.10.1")
           .then((r) => {
             if (!r.ok) throw Error("HTTP " + r.status);
             return r.json();
@@ -141,9 +141,17 @@ const RosterSelection = (() => {
         save();
       }
       draft = state.rosterDraft;
+      const beforeFiltering = JSON.stringify(draft.selectedIds);
       draft.selectedIds = Array.from(
         new Set(draft.selectedIds.filter((id) => byId.has(id))),
       );
+      const policyChanged = draft.exclusionPolicy !== catalogue.exclusionPolicy;
+      draft.exclusionPolicy = catalogue.exclusionPolicy;
+      if (JSON.stringify(draft.selectedIds) !== beforeFiltering) {
+        draft.validated = false;
+        draft.updatedAt = new Date().toISOString();
+        save();
+      } else if (policyChanged) save();
       currentZone ??= catalogue.zones[0].id;
       el("rosterZone").innerHTML = catalogue.zones
         .map(

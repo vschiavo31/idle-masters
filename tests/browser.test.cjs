@@ -690,12 +690,46 @@ async function main() {
         await page.evaluate(() => show("collection"));
         await page.locator("#openRosterSelection").click();
         await page.waitForFunction(() =>
-          document.getElementById("rosterCount").textContent.includes("5129"),
+          document.getElementById("rosterCount").textContent.includes("1692"),
         );
-        assert.equal(await page.locator("#rosterZone option").count(), 446);
+        assert.equal(await page.locator("#rosterZone option").count(), 433);
         assert.equal(
           await page.evaluate(() => D.rosterDraft.selectedIds.length),
-          195,
+          169,
+        );
+        // Simulate an already-validated draft created before the exclusion policy.
+        await page.evaluate(() => {
+          D.rosterDraft = {
+            sourceVersion: "3.7.4.4",
+            selectedIds: [36, 4785, 168, 2270, 101, 98],
+            validated: true,
+          };
+          save();
+        });
+        await page.evaluate(() => GameSave.flush());
+        await page.reload();
+        await page.waitForFunction(() => !!M.length);
+        await page.evaluate(() => show("rosterSelection"));
+        await page.waitForFunction(
+          () =>
+            D.rosterDraft.exclusionPolicy ===
+            "no-archmonsters-summons-quests-v1",
+        );
+        assert.deepEqual(
+          await page.evaluate(() => D.rosterDraft.selectedIds),
+          [101, 98],
+        );
+        assert.equal(await page.evaluate(() => D.rosterDraft.validated), false);
+        await page.evaluate(() => GameSave.flush());
+        await page.reload();
+        await page.waitForFunction(() => !!M.length);
+        await page.evaluate(() => show("rosterSelection"));
+        await page.waitForFunction(() =>
+          document.querySelector("#rosterList input"),
+        );
+        assert.deepEqual(
+          await page.evaluate(() => D.rosterDraft.selectedIds),
+          [101, 98],
         );
         const firstCheckbox = page.locator("#rosterList input").first();
         const mid = Number(await firstCheckbox.getAttribute("data-monster"));
