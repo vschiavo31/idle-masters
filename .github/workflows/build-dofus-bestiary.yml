@@ -110,10 +110,15 @@ jobs:
               label=translated(cdef,'nameId','descriptionId') or translated(edef,'descriptionId','nameId')
               if label:
                   label=re.sub(r'[#{}~%+\-0-9.,]+',' ',label);label=re.sub(r'\s+',' ',label).strip(' :')
-              mn=num(get(e,'diceNum','min','value')); mx=num(get(e,'diceSide','max'))
-              if mx is None:mx=mn
-              if mn==0 and mx not in (None,0):mn=1
-              return {'effectId':eid,'characteristicId':cid,'stat':label,'min':mn,'max':mx}
+              dn=num(get(e,'diceNum','min','value')); ds=num(get(e,'diceSide','max')); dv=num(get(e,'value'))
+              # Ankama possibleEffects: diceNum/diceSide encode a range. A zero diceSide is a fixed value.
+              if ds in (None,0):
+                  fixed=dn if dn is not None else dv
+                  mn=mx=fixed
+              else:
+                  mn=dn if dn not in (None,0) else 1
+                  mx=ds
+              return {'effectId':eid,'characteristicId':cid,'stat':label,'min':mn,'max':mx,'fixed':mn==mx if mn is not None and mx is not None else False}
           out=[]
           for x in refdata(roots['items']):
               iid=num(get(x,'id')); level=num(get(x,'level')); typ=num(get(x,'typeId','type')); name=translations.get(str(get(x,'nameId')))
@@ -135,10 +140,14 @@ jobs:
               sout.append({'id':sid,'name':name,'itemIds':ids,'pieceCount':len(ids),'bonuses':bonuses})
           resolved=sum(1 for i in out for e in i['effects'] if e.get('stat'))
           total=sum(len(i['effects']) for i in out)
-          print('BESTIARY',len(clean),'WEARABLES_1_40',len(out),'SETS',len(sout),'RESOLVED_EFFECT_LABELS',resolved,'OF',total,'version',version)
+          invalid=sum(1 for i in out for e in i['effects'] if e.get('stat') is None or e.get('min') is None or e.get('max') is None)
+          inverted=sum(1 for i in out for e in i['effects'] if e.get('min') is not None and e.get('max') is not None and e['min']>e['max'])
+          print('BESTIARY',len(clean),'WEARABLES_1_40',len(out),'SETS',len(sout),'RESOLVED',resolved,'OF',total,'INVALID',invalid,'INVERTED',inverted,'version',version)
           if len(clean)<50:raise SystemExit('Bestiary suspiciously small')
           if len(out)<50:raise SystemExit('Wearable equipment extraction suspiciously small')
-          if total and resolved==0:raise SystemExit('Effect labels unresolved: inspect Unity references before publishing')
+          if total and resolved!=total:raise SystemExit('Some equipment effect labels remain unresolved')
+          if invalid:raise SystemExit('Some equipment effects have incomplete values')
+          if inverted:raise SystemExit('Some equipment effect ranges are inverted')
           Path('dofus-equipment-1-40.json').write_text(json.dumps({'source':'dofusdude/dofus3-main','version':version,'range':[1,40],'scope':'wearable-only-no-resources-no-consumables-no-weapons','count':len(out),'resolvedEffects':resolved,'totalEffects':total,'items':out},ensure_ascii=False,separators=(',',':')),encoding='utf-8')
           Path('dofus-item-sets.json').write_text(json.dumps({'source':'dofusdude/dofus3-main','version':version,'scope':'sets-containing-kept-wearables','count':len(sout),'sets':sout},ensure_ascii=False,separators=(',',':')),encoding='utf-8')
           PY
@@ -150,5 +159,5 @@ jobs:
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
           git add dofus-bestiary-1-40.json dofus-equipment-1-40.json dofus-item-sets.json
           git diff --cached --quiet && exit 0
-          git commit -m 'Resolve wearable equipment stats and set bonuses'
+          git commit -m 'Normalize fixed Dofus equipment effects'
           git push
