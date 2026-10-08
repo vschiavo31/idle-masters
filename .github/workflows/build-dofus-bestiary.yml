@@ -13,16 +13,26 @@ jobs:
       - uses: actions/checkout@v4
       - name: Download latest Dofus 3 data
         shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          TAG=$(curl -fsSL https://api.github.com/repos/dofusdude/dofus3-main/releases/latest | python3 -c "import sys,json; print(json.load(sys.stdin)['tag_name'])")
+          RELEASE=$(curl -fsSL \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            https://api.github.com/repos/dofusdude/dofus3-main/releases/latest)
+          TAG=$(printf '%s' "$RELEASE" | python3 -c "import sys,json; print(json.load(sys.stdin)['tag_name'])")
           echo "$TAG" > /tmp/dofus_version
-          curl -fL "https://github.com/dofusdude/dofus3-main/releases/download/$TAG/monsters.json" -o /tmp/monsters.json
-          curl -fL "https://github.com/dofusdude/dofus3-main/releases/download/$TAG/fr.json" -o /tmp/fr.json
+          MONSTERS_URL=$(printf '%s' "$RELEASE" | python3 -c "import sys,json; r=json.load(sys.stdin); print(next(a['browser_download_url'] for a in r['assets'] if a['name']=='monsters.json'))")
+          curl -fL --retry 3 --retry-all-errors "$MONSTERS_URL" -o /tmp/monsters.json
+          # Monster names are already present in current Dofus 3 exports. Translation is retained as an optional fallback only.
+          FR_URL=$(printf '%s' "$RELEASE" | python3 -c "import sys,json; r=json.load(sys.stdin); print(next((a['browser_download_url'] for a in r['assets'] if a['name']=='fr.json'),''))")
+          if [ -n "$FR_URL" ]; then curl -fL --retry 3 --retry-all-errors "$FR_URL" -o /tmp/fr.json; else printf '{}' > /tmp/fr.json; fi
       - name: Build lightweight level 1-40 bestiary
         run: |
           python3 - <<'PY'
-          import json, re
+          import json
           from pathlib import Path
           monsters=json.load(open('/tmp/monsters.json',encoding='utf-8'))
           fr=json.load(open('/tmp/fr.json',encoding='utf-8'))
@@ -43,13 +53,6 @@ jobs:
                               for z in ('text','value','name'):
                                   if isinstance(x.get(z),str): return x[z]
               return None
-          def walk(obj,keynames):
-              if isinstance(obj,dict):
-                  for k,v in obj.items():
-                      if k.lower() in keynames: yield v
-                      yield from walk(v,keynames)
-              elif isinstance(obj,list):
-                  for v in obj: yield from walk(v,keynames)
           def get(d,*names):
               if not isinstance(d,dict): return None
               low={str(k).lower():v for k,v in d.items()}
@@ -84,7 +87,6 @@ jobs:
               race=get(m,'raceId','race_id')
               boss=bool(get(m,'isBoss','is_boss','boss'))
               out.append({'id':mid,'name':name,'minLevel':max(1,min(levels)),'maxLevel':min(40,max(levels)),'hpMin':min(hp) if hp else None,'hpMax':max(hp) if hp else None,'pa':max(pa) if pa else None,'pm':max(pm) if pm else None,'raceId':race,'boss':boss})
-          # de-duplicate, stable sort
           seen=set(); clean=[]
           for x in sorted(out,key=lambda x:(x['minLevel'],x['name'],str(x['id']))):
               key=x['id'] if x['id'] is not None else (x['name'],x['minLevel'])
