@@ -50,7 +50,8 @@ jobs:
               if isinstance(v,str) and v.lstrip('-').isdigit():return int(v)
           def refs(root):return array(get(get(root,'references'),'RefIds'))
           def refdata(root):return [r.get('data') for r in refs(root) if isinstance(r,dict) and isinstance(r.get('data'),dict)]
-          def ridmap(root):return {r.get('rid'):r.get('data') for r in refs(root) if isinstance(r,dict) and r.get('rid') is not None and isinstance(r.get('data'),dict)}
+          roots={n:load(n+'.json') for n in ('items','item_sets','effects','characteristics','monsters')}
+          ridmaps={n:{r.get('rid'):r.get('data') for r in refs(root) if isinstance(r,dict) and r.get('rid') is not None and isinstance(r.get('data'),dict)} for n,root in roots.items()}
           translations={}
           def texts(v,depth=0):
               if depth>10:return
@@ -65,7 +66,14 @@ jobs:
               elif isinstance(v,list):
                   for x in v:texts(x,depth+1)
           texts(load('fr.json'))
-          monsters=refdata(load('monsters.json'));raw=[]
+          def resolve(v,preferred=None,depth=0):
+              if depth>6:return v
+              if isinstance(v,dict) and 'rid' in v and len(v)<=2:
+                  rid=v.get('rid'); order=([preferred] if preferred else [])+['items','effects','characteristics','item_sets','monsters']
+                  for src in order:
+                      if src and rid in ridmaps.get(src,{}):return resolve(ridmaps[src][rid],src,depth+1)
+              return v
+          monsters=refdata(roots['monsters']);raw=[]
           for m in monsters:
               gs=[g for g in array(get(m,'grades')) if isinstance(g,dict)]; levels=[];hp=[];pa=[];pm=[]
               for g in gs:
@@ -82,31 +90,56 @@ jobs:
               if not x['boss'] and ((x['hpMax'] or 0)<=1 or (x['pa'] or 0)<=0 or (x['pm'] is not None and x['pm']<0)):continue
               clean.append(x)
           Path('dofus-bestiary-1-40.json').write_text(json.dumps({'source':'dofusdude/dofus3-main','version':version,'range':[1,40],'rawCount':len(raw),'count':len(clean),'filter':'playable-pvm-candidates-v2','monsters':clean},ensure_ascii=False,separators=(',',':')),encoding='utf-8')
-          # Idle Masters currently supports these wearable slots only. Weapons/resources/consumables are intentionally excluded.
           SLOT_TYPES={1:'Amulette',9:'Anneau',10:'Ceinture',16:'Chapeau',17:'Cape',11:'Bottes'}
-          item_root=load('items.json'); item_refs=ridmap(item_root); items=refdata(item_root)
-          def deref(v):
-              if isinstance(v,dict) and set(v.keys())=={'rid'}:return item_refs.get(v['rid'],v)
-              return v
+          chars={num(get(c,'id')):c for c in refdata(roots['characteristics']) if num(get(c,'id')) is not None}
+          effects_by_id={num(get(e,'id')):e for e in refdata(roots['effects']) if num(get(e,'id')) is not None}
+          def translated(d,*keys):
+              for k in keys:
+                  n=num(get(d,k))
+                  if n is not None and str(n) in translations:return translations[str(n)]
+          def effect_info(raw_e):
+              e=resolve(raw_e,'items')
+              if not isinstance(e,dict):return None
+              eraw=get(e,'effectId','effect','actionId'); edef=resolve(eraw,'effects')
+              eid=num(eraw)
+              if isinstance(eraw,dict):eid=num(get(edef,'id')) if isinstance(edef,dict) else None
+              if eid is not None and eid in effects_by_id:edef=effects_by_id[eid]
+              if not isinstance(edef,dict):edef={}
+              cid=num(get(edef,'characteristic','characteristicId','characId'))
+              cdef=chars.get(cid,{})
+              label=translated(cdef,'nameId','descriptionId') or translated(edef,'descriptionId','nameId')
+              if label:
+                  label=re.sub(r'[#{}~%+\-0-9.,]+',' ',label);label=re.sub(r'\s+',' ',label).strip(' :')
+              mn=num(get(e,'diceNum','min','value')); mx=num(get(e,'diceSide','max'))
+              if mx is None:mx=mn
+              if mn==0 and mx not in (None,0):mn=1
+              return {'effectId':eid,'characteristicId':cid,'stat':label,'min':mn,'max':mx}
           out=[]
-          for x in items:
-              iid=get(x,'id'); level=num(get(x,'level')); typ=num(get(x,'typeId','type')); name=translations.get(str(get(x,'nameId')))
+          for x in refdata(roots['items']):
+              iid=num(get(x,'id')); level=num(get(x,'level')); typ=num(get(x,'typeId','type')); name=translations.get(str(get(x,'nameId')))
               if iid is None or level is None or not 1<=level<=40 or typ not in SLOT_TYPES or not name:continue
-              setid=num(get(x,'itemSetId','setId')); effects=[]
+              setid=num(get(x,'itemSetId','setId')); eff=[]
               for raw_e in array(get(x,'possibleEffects','effects')):
-                  e=deref(raw_e)
-                  if not isinstance(e,dict):continue
-                  effects.append({'effectId':num(get(e,'effectId','id')),'min':num(get(e,'value','diceNum','min')),'max':num(get(e,'diceSide','max'))})
-              out.append({'id':iid,'name':name,'level':level,'slot':SLOT_TYPES[typ],'typeId':typ,'setId':setid if setid and setid>0 else None,'effects':effects})
-          kept_ids={x['id'] for x in out}; sets=refdata(load('item_sets.json')); sout=[]
-          for s in sets:
+                  z=effect_info(raw_e)
+                  if z:eff.append(z)
+              out.append({'id':iid,'name':name,'level':level,'slot':SLOT_TYPES[typ],'typeId':typ,'setId':setid if setid and setid>0 else None,'effects':eff})
+          kept_ids={x['id'] for x in out}; sout=[]
+          for s in refdata(roots['item_sets']):
               sid=num(get(s,'id')); name=translations.get(str(get(s,'nameId'))); ids=[num(x) for x in array(get(s,'items','itemIds'))]; ids=[x for x in ids if x in kept_ids]
               if sid is None or not name or not ids:continue
-              sout.append({'id':sid,'name':name,'itemIds':ids,'pieceCount':len(ids)})
-          print('BESTIARY',len(clean),'WEARABLES_1_40',len(out),'SETS_WITH_WEARABLES',len(sout),'version',version)
+              bonuses=[]
+              for n,row in enumerate(array(get(s,'effects','setEffects')),start=1):
+                  vals=array(get(row,'values')) if isinstance(row,dict) else array(row)
+                  parsed=[effect_info(v) for v in vals];parsed=[v for v in parsed if v]
+                  if parsed:bonuses.append({'pieces':n,'effects':parsed})
+              sout.append({'id':sid,'name':name,'itemIds':ids,'pieceCount':len(ids),'bonuses':bonuses})
+          resolved=sum(1 for i in out for e in i['effects'] if e.get('stat'))
+          total=sum(len(i['effects']) for i in out)
+          print('BESTIARY',len(clean),'WEARABLES_1_40',len(out),'SETS',len(sout),'RESOLVED_EFFECT_LABELS',resolved,'OF',total,'version',version)
           if len(clean)<50:raise SystemExit('Bestiary suspiciously small')
           if len(out)<50:raise SystemExit('Wearable equipment extraction suspiciously small')
-          Path('dofus-equipment-1-40.json').write_text(json.dumps({'source':'dofusdude/dofus3-main','version':version,'range':[1,40],'scope':'wearable-only-no-resources-no-consumables-no-weapons','count':len(out),'items':out},ensure_ascii=False,separators=(',',':')),encoding='utf-8')
+          if total and resolved==0:raise SystemExit('Effect labels unresolved: inspect Unity references before publishing')
+          Path('dofus-equipment-1-40.json').write_text(json.dumps({'source':'dofusdude/dofus3-main','version':version,'range':[1,40],'scope':'wearable-only-no-resources-no-consumables-no-weapons','count':len(out),'resolvedEffects':resolved,'totalEffects':total,'items':out},ensure_ascii=False,separators=(',',':')),encoding='utf-8')
           Path('dofus-item-sets.json').write_text(json.dumps({'source':'dofusdude/dofus3-main','version':version,'scope':'sets-containing-kept-wearables','count':len(sout),'sets':sout},ensure_ascii=False,separators=(',',':')),encoding='utf-8')
           PY
       - name: Commit generated local data
@@ -117,5 +150,5 @@ jobs:
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
           git add dofus-bestiary-1-40.json dofus-equipment-1-40.json dofus-item-sets.json
           git diff --cached --quiet && exit 0
-          git commit -m 'Update wearable-only Dofus local data'
+          git commit -m 'Resolve wearable equipment stats and set bonuses'
           git push
