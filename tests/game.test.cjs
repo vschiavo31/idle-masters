@@ -29,7 +29,7 @@ function game() {
   c.sets = data("dofus-item-sets.json");
   c.monsters = data("dofus-bestiary-1-40.json").monsters;
   vm.runInContext(
-    "buildLocalData(eq,sets);M=buildCombatData(monsters);D.classId='iop';render=()=>{};",
+    "buildLocalData(eq,sets);M=buildCombatData(monsters);D.classId='iop';D.k=1000000;render=()=>{};",
     c,
   );
   return { c, run: (s) => vm.runInContext(s, c) };
@@ -469,4 +469,24 @@ test("summons, bomb countdowns, healing, PA recovery and elemental combos have a
   const baseline = run('attackValue(spell(1),"dmg")');
   run("effects.lastElement=null");
   assert.ok(baseline > run('attackValue(spell(1),"dmg")'));
+});
+
+test("class confirmation is free initially, costs 20000 thereafter, and cannot double-charge", () => {
+  const { run } = game();
+  run("D.classId=null;D.k=0");
+  assert.equal(run('chooseClass("iop")'), true);
+  assert.equal(run("D.k"), 0);
+  run("D.k=19999");
+  assert.equal(run('chooseClass("cra")'), false);
+  assert.equal(run("D.classId"), "iop");
+  assert.equal(run("D.k"), 19999);
+  run("D.k=20000");
+  assert.equal(run('chooseClass("cra")'), true);
+  assert.equal(run("D.k"), 0);
+  assert.equal(run("D.classId"), "cra");
+  assert.equal(run('chooseClass("cra")'), false);
+  assert.equal(run("D.k"), 0);
+  run("D.k=20000;startEncounter(0,0)");
+  assert.equal(run('chooseClass("iop")'), false);
+  assert.equal(run("D.k"), 20000);
 });

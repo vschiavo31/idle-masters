@@ -336,7 +336,10 @@ function roll(id) {
 function spell(i) {
   const b = spellBook()[i];
   if (!b) return null;
-  const add = (spellRank(i) - 1) * 2;
+  return spellValues(b, spellRank(i));
+}
+function spellValues(b, rank = 1) {
+  const add = (rank - 1) * 2;
   return [b.n, b.e, b.pa, b.lo + add, b.hi + add * 2, b.kind];
 }
 function rarity(j) {
@@ -638,15 +641,32 @@ function upSpell(i) {
   D.spellRanks[spellBook()[i].id] = spellRank(i) + 1;
   render();
 }
-let pendingClass = "iop";
+const CLASS_CHANGE_PRICE = 20000;
+let pendingClass = "iop",
+  classPreviewOpen = false;
+function classChangeCost(id) {
+  return playerClass() && D.classId !== id ? CLASS_CHANGE_PRICE : 0;
+}
 function chooseClass(id) {
-  if (mode === "fight" || !CLASSES.some((c) => c.id === id)) return;
+  if (mode === "fight" || !CLASSES.some((c) => c.id === id) || D.classId === id)
+    return false;
+  const cost = classChangeCost(id);
+  if (D.k < cost) return false;
+  D.k -= cost;
   D.classId = id;
   pendingClass = id;
+  classPreviewOpen = false;
   resetEffects();
   lastResult = null;
   mode = "picker";
   render();
+  return true;
+}
+function previewClass(id) {
+  if (mode === "fight" || !CLASSES.some((c) => c.id === id)) return;
+  pendingClass = id;
+  classPreviewOpen = true;
+  renderClassChoice();
 }
 function renderClassChoice() {
   const select = $("classSelect");
@@ -661,19 +681,62 @@ function renderClassChoice() {
   }
   select.value = pendingClass;
   const candidate = CLASSES.find((c) => c.id === pendingClass) || CLASSES[0];
-  $("classPreview").textContent = candidate.style + " · " + candidate.passive;
   $("classCurrent").textContent = playerClass()
     ? "Classe : " + playerClass().name
     : "Choisis ta classe";
   $("classDashboard").textContent = playerClass()
     ? playerClass().name + " · " + playerClass().style
     : "Choisis une classe pour combattre";
-  $("chooseClassBtn").disabled = mode === "fight" || D.classId === candidate.id;
+  $("classList").hidden = classPreviewOpen;
+  $("classDetail").hidden = !classPreviewOpen;
+  $("classPreviewName").textContent = candidate.name;
+  $("classPreview").textContent = candidate.style + " · " + candidate.passive;
+  $("chooseClassBtn").textContent = "Voir les sorts du " + candidate.name;
+  $("chooseClassBtn").disabled = mode === "fight";
   select.disabled = mode === "fight";
-  $("chooseClassBtn").textContent =
-    D.classId === candidate.id
-      ? "Classe sélectionnée"
-      : "Choisir " + candidate.name;
+  const root = $("classPreviewSpells");
+  root.innerHTML = "";
+  candidate.spells.forEach((s) => {
+    const rank = D.spellRanks[s.id] || 1,
+      p = spellValues(s, rank),
+      card = document.createElement("div");
+    card.className = "card";
+    card.innerHTML =
+      "<b>" +
+      s.n +
+      "</b><div class='mut'>Niveau " +
+      s.level +
+      " · " +
+      s.pa +
+      " PA · " +
+      s.e +
+      " · Rang " +
+      rank +
+      "/5</div><div>" +
+      spellEffectText(s, p, candidate.trait) +
+      "</div><div class='mut'>" +
+      (s.cd ? "Relance " + s.cd + " tours" : "3 lancers maximum par tour") +
+      "</div>";
+    root.append(card);
+  });
+  const cost = classChangeCost(candidate.id),
+    current = D.classId === candidate.id;
+  $("classCost").textContent = current
+    ? "Ta classe actuelle"
+    : cost
+      ? "Changement : 20 000 kamas · Solde : " +
+        D.k.toLocaleString("fr-FR") +
+        " kamas" +
+        (D.k < cost
+          ? " · Il manque " + (cost - D.k).toLocaleString("fr-FR") + " kamas"
+          : "")
+      : "Premier choix gratuit";
+  $("confirmClassBtn").disabled = mode === "fight" || current || D.k < cost;
+  $("confirmClassBtn").textContent = current
+    ? "Classe actuelle"
+    : cost
+      ? "Confirmer · 20 000 kamas"
+      : "Confirmer la classe · gratuit";
 }
 function slot(q) {
   let x = meta(q.id);
@@ -1245,11 +1308,13 @@ $("changeZone").onclick = () => {
   mode = "picker";
   render();
 };
-$("classSelect").onchange = () => {
-  pendingClass = $("classSelect").value;
+$("classSelect").onchange = () => previewClass($("classSelect").value);
+$("chooseClassBtn").onclick = () => previewClass(pendingClass);
+$("confirmClassBtn").onclick = () => chooseClass(pendingClass);
+$("backClassBtn").onclick = () => {
+  classPreviewOpen = false;
   renderClassChoice();
 };
-$("chooseClassBtn").onclick = () => chooseClass(pendingClass);
 $("classDashboardBtn").onclick = () => show("spellsPage");
 async function boot() {
   let originalSave = await GameSave.initialize();
@@ -1283,7 +1348,7 @@ async function boot() {
     ];
     let [eq, sets, bestiary] = await Promise.all(
       files.map(async (f) => {
-        let r = await fetch(f + "?v=3.6.0");
+        let r = await fetch(f + "?v=3.6.1");
         if (!r.ok) throw Error(f + " : HTTP " + r.status);
         return r.json();
       }),

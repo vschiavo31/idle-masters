@@ -1,4 +1,4 @@
-# Idle Masters V3.6.0
+# Idle Masters V3.6.1
 
 Jeu solo HTML/JavaScript, avec données Dofus embarquées. Aucun appel DoduAPI au démarrage.
 
@@ -69,3 +69,7 @@ Le choix est demandé au premier démarrage de cette version ; niveau, XP, inven
 `combat-effects.js` gère les dégâts de groupe, soins, vol de vie, boucliers, buffs, concentration, marques, affaiblissements, poisons, invocations, bombes et récupération de PA. Les effets sont temporaires et remis à zéro à chaque combat. Les poisons et invocations agissent avant les attaques ennemies, les bombes explosent après deux fins de tour ou avec Détonateur. Une victoire due à un effet accorde les récompenses une seule fois et annule les attaques ennemies restantes. Les effets attachés à un ennemi utilisent sa position dans le groupe pour séparer deux exemplaires de la même espèce. Une invocation est autorisée par défaut, deux pour l’Osamodas ; trois bombes au maximum. Les relances et limites de lancers empêchent les répétitions de sorts de soutien. Les passifs décrits dans l’interface sont appliqués par le moteur ; ni déplacements sur une grille ni portails spatiaux ne sont simulés.
 
 Les nouveaux sorts débloqués sont annoncés au résultat du combat. Les tests couvrent les seuils de niveau des 19 classes, les migrations, le verrouillage pendant le combat, les effets et leurs récompenses, puis les 152 lancers dans l’interface mobile Chromium et WebKit. La récupération en session neuve vérifie aussi la classe et les rangs de sorts.
+
+## Aperçu et changement de classe (3.6.1)
+
+Sélectionner une classe ouvre une fiche de ses huit sorts : niveaux de déblocage, élément, PA, effets et relances. Les rangs déjà acquis dans cette classe sont affichés. L’aperçu utilise le passif de la classe consultée, sans modifier la classe active ni dépenser de kamas. Retour permet de consulter une autre classe. Confirmer est gratuit pour le premier choix, puis coûte 20 000 kamas par changement (`CLASS_CHANGE_PRICE`). Un solde insuffisant ou un combat en cours interdit la confirmation. Confirmer la classe actuelle ne dépense rien ; les confirmations répétées ne débitent pas deux fois. Les rangs et la progression restent conservés. Les tests de sauvegarde vérifient aussi le solde après changement.

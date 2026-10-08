@@ -6,7 +6,7 @@
       name="viewport"
       content="width=device-width,initial-scale=1,viewport-fit=cover"
     />
-    <title>Idle Masters V3.6.0</title>
+    <title>Idle Masters V3.6.1</title>
     <style>
       :root {
         --bg: #100e0b;
@@ -493,7 +493,7 @@
     <div class="wrap">
       <div class="top">
         <div class="brand">Idle Masters</div>
-        <span class="version">V3.6.0 · Classes et sorts</span>
+        <span class="version">V3.6.1 · Classes et sorts</span>
       </div>
       <div class="row" style="margin-bottom: 12px">
         <small id="saveStatus" class="mut" role="status"
@@ -587,13 +587,27 @@
       <section id="spellsPage" class="page">
         <div class="panel">
           <h2 id="classCurrent">Choisis ta classe</h2>
-          <label for="classSelect">Classe</label>
-          <select id="classSelect" class="wide"></select>
-          <p id="classPreview"></p>
-          <button id="chooseClassBtn" class="wide">Choisir cette classe</button>
+          <div id="classList">
+            <label for="classSelect">Classe à découvrir</label>
+            <select id="classSelect" class="wide"></select>
+            <button id="chooseClassBtn" class="wide">Voir les sorts</button>
+          </div>
+          <div id="classDetail" hidden>
+            <h3 id="classPreviewName"></h3>
+            <p id="classPreview"></p>
+            <div id="classPreviewSpells" class="spellgrid"></div>
+            <p id="classCost" class="gold" aria-live="polite"></p>
+            <button id="confirmClassBtn" class="wide">
+              Confirmer la classe
+            </button>
+            <button id="backClassBtn" class="wide">
+              Retour à la sélection des classes
+            </button>
+          </div>
           <p class="mut">
-            Changement possible hors combat. Les améliorations restent liées à
-            chaque classe. Sorts et effets adaptés à Idle Masters.
+            Premier choix gratuit, puis 20 000 kamas par changement hors combat.
+            Les améliorations restent liées à chaque classe. Sorts et effets
+            adaptés à Idle Masters.
           </p>
         </div>
         <div class="panel">
@@ -735,11 +749,11 @@
       ><button data-page="collection">COLLECTION</button
       ><button data-page="combat">COMBAT</button>
     </nav>
-    <script src="local-data.js?v=3.6.0"></script>
-    <script src="bestiary-ui.js?v=3.6.0"></script>
-    <script src="saving.js?v=3.6.0"></script>
-    <script src="classes.js?v=3.6.0"></script>
-    <script src="combat-effects.js?v=3.6.0"></script>
-    <script src="game.js?v=3.6.0"></script>
+    <script src="local-data.js?v=3.6.1"></script>
+    <script src="bestiary-ui.js?v=3.6.1"></script>
+    <script src="saving.js?v=3.6.1"></script>
+    <script src="classes.js?v=3.6.1"></script>
+    <script src="combat-effects.js?v=3.6.1"></script>
+    <script src="game.js?v=3.6.1"></script>
   </body>
 </html>

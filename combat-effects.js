@@ -48,7 +48,7 @@ function canCast(i) {
   if (s.kind === "detonate" && !effects.bombs.length) return false;
   return true;
 }
-function spellEffectText(s, p) {
+function spellEffectText(s, p, trait = playerClass()?.trait) {
   const amount = p[3] + "–" + p[4];
   switch (s.kind) {
     case "poison":
@@ -78,7 +78,7 @@ function spellEffectText(s, p) {
     case "weaken":
       return "−" + amount + " % dégâts de la cible · " + s.turns + " tours";
     case "ap":
-      return "+" + (p[3] + (playerClass()?.trait === "time" ? 1 : 0)) + " PA";
+      return "+" + (p[3] + (trait === "time" ? 1 : 0)) + " PA";
     case "bomb":
       return amount + " dégâts de groupe · explosion dans 2 tours";
     case "detonate":

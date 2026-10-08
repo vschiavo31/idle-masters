@@ -105,8 +105,26 @@ async function main() {
         await page.waitForFunction(
           () => document.getElementById("lv").textContent === "1",
         );
+        await page.locator("#classSelect").selectOption("cra");
+        assert.equal(
+          await page.locator("#classPreviewSpells .card").count(),
+          8,
+        );
+        assert.equal(await page.evaluate(() => D.classId), null);
+        assert.equal(await page.evaluate(() => D.k), 123);
+        await page.locator("#backClassBtn").click();
         await page.locator("#classSelect").selectOption("iop");
-        await page.locator("#chooseClassBtn").click();
+        await page.locator("#confirmClassBtn").click();
+        // Previewing and backing out is free, even when a change is unaffordable.
+        await page.locator("#classSelect").selectOption("xelor");
+        assert.equal(
+          await page.locator("#classPreviewSpells .card").count(),
+          8,
+        );
+        assert.equal(await page.locator("#confirmClassBtn").isDisabled(), true);
+        assert.equal(await page.evaluate(() => D.classId), "iop");
+        assert.equal(await page.evaluate(() => D.k), 123);
+        await page.locator("#backClassBtn").click();
         assert.equal(
           await page.locator('script[src*="bestiary-ui.js"]').count(),
           1,
@@ -315,6 +333,7 @@ async function main() {
         // All 19 classes: level gates, actual casts of all 152 spells, and class lock during fights.
         await page.evaluate(() => {
           M.forEach((m) => (m.h += 10000));
+          D.k = 500000;
         });
         const classIds = await page.evaluate(() => CLASSES.map((c) => c.id));
         for (const id of classIds) {
@@ -322,8 +341,18 @@ async function main() {
             .getByRole("button", { name: "SORTS", exact: true })
             .click();
           await page.locator("#classSelect").selectOption(id);
-          if (await page.locator("#chooseClassBtn").isEnabled())
-            await page.locator("#chooseClassBtn").click();
+          const same = await page.evaluate((id) => D.classId === id, id);
+          const bank = await page.evaluate(() => D.k);
+          assert.equal(
+            await page.locator("#classPreviewSpells .card").count(),
+            8,
+          );
+          if (!same) await page.locator("#confirmClassBtn").click();
+          else await page.locator("#backClassBtn").click();
+          assert.equal(
+            await page.evaluate(() => D.k),
+            bank - (same ? 0 : 20000),
+          );
           await page.evaluate(() => {
             D.lv = 1;
             render();
