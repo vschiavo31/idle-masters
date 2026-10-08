@@ -1,18 +1,679 @@
-<!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>Idle Masters V3.2.9</title><style>:root{--bg:#100e0b;--panel:#211b13;--panel2:#2b2217;--line:#66563c;--line2:#8b7448;--text:#f6eedc;--mut:#b8aa91;--gold:#e7bd58;--green:#92c84d;--red:#e56c57;--blue:#78aee0}*{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at 50% 0,#2a2116 0,#100e0b 48%,#090806 100%);color:var(--text);font:15px system-ui,-apple-system,sans-serif}.wrap{max-width:980px;margin:auto;padding:14px 12px 100px}.top,.row{display:flex;justify-content:space-between;align-items:center;gap:10px}.top{padding:8px 4px 16px}.brand{font-size:22px;font-weight:900}.version,.pill{border:1px solid var(--line2);border-radius:999px;padding:5px 10px;color:var(--gold);background:#17120d}.page{display:none}.page.on{display:block}.panel{background:linear-gradient(145deg,#302619,#1c1711);border:1px solid var(--line);border-radius:24px;padding:18px;margin-bottom:14px}.eyebrow{font-size:12px;letter-spacing:2px;text-transform:uppercase;color:#c9ad67;font-weight:900}.grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px}h1,h2,h3{margin:5px 0 10px}.mut{color:var(--mut)}.gold{color:var(--gold)}.good{color:#86dc7c}.bad{color:#ff8172}.bar{height:14px;background:#15110d;border:1px solid #4c412f;border-radius:999px;overflow:hidden}.fill{height:100%;background:#82b547}.xp{background:#d9ad4b}.enemy{background:#d75d4a}button{border:1px solid var(--line2);background:linear-gradient(#443621,#302519);color:var(--text);border-radius:13px;padding:11px 13px;font-weight:800;font-size:14px;touch-action:manipulation}button:disabled{opacity:.38}.nav{position:fixed;z-index:20;left:0;right:0;bottom:0;background:#17120eef;border-top:1px solid var(--line);display:flex;justify-content:center;padding:8px 6px calc(8px + env(safe-area-inset-bottom));gap:5px}.nav button{flex:1;max-width:175px;border-color:transparent;background:transparent;color:#a99d89;padding:9px 4px;font-size:11px}.nav button.on{color:var(--gold);background:#332819;border-color:#695538}.heroCard{display:grid;grid-template-columns:118px 1fr;gap:18px;align-items:center}.portrait{height:118px;border-radius:24px;border:3px solid #c9a44c;background:#302519;display:flex;align-items:center;justify-content:center;position:relative}.portrait:before{content:'IM';font-size:38px;font-weight:900;color:#e8c66f}.levelBadge{position:absolute;right:-9px;bottom:-9px;background:#d4aa4d;color:#1b140b;border-radius:12px;padding:7px 11px;font-weight:900}.heroMeta{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}.metric{border:1px solid #66543a;border-radius:14px;padding:8px 12px;background:#1b160f}.quick{display:grid;grid-template-columns:1fr 1fr;gap:12px}.quickCard{min-height:125px;border:1px solid var(--line);border-radius:22px;padding:18px;background:#2b2218}.quickCard.wide{grid-column:1/-1}.quickIcon{width:48px;height:48px;border:1px solid #6b604e;border-radius:16px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:900}.stat{display:grid;grid-template-columns:1fr auto auto;gap:10px;align-items:center;border-top:1px solid #463a2a;padding:11px 0}.invSummary{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:14px}.summaryBox{border:1px solid #5d4c34;border-radius:17px;padding:12px;background:#1b160f}.summaryBox b{display:block;font-size:22px}.gearGrid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}.gearSlot{text-align:center}.gearBox{aspect-ratio:1;border:1px dashed #66543a;border-radius:18px;background:#17130e;display:flex;align-items:center;justify-content:center}.gearBox.filled{border-style:solid;border-color:#8a744b}.gearGlyph{font-size:13px;font-weight:900;padding:5px}.bagTools,.itemActions{display:flex;gap:8px}.bagTools input{flex:1;min-width:0;background:#17130e;color:var(--text);border:1px solid #5e4e37;border-radius:13px;padding:11px}.item,.card{border:1px solid #5f4e36;border-radius:16px;background:#211a12;padding:13px;margin:8px 0}.itemHead{display:flex;justify-content:space-between;gap:8px}.itemName{font-weight:900;font-size:17px}.itemStats{display:grid;grid-template-columns:1fr 1fr;gap:5px 14px;margin:10px 0}.itemRange{font-size:12px;color:var(--mut)}.itemInfo{background:#17130e;border:1px solid #4d402e;border-radius:12px;padding:10px;margin:10px 0}.compare{background:#15110d;border:1px solid #4e412e;border-radius:14px;padding:10px;margin-top:10px}.compareLine{display:flex;justify-content:space-between;padding:3px 0}.ringChoice{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}.choice{width:100%;text-align:left;margin:5px 0}.sel{outline:2px solid var(--gold)}.boss{border-color:#c69c3e}.spellgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.log{height:130px;overflow:auto;background:#120f0b;border-radius:12px;padding:9px}.paBox{text-align:center;color:#8fc6f1;font-size:22px;font-weight:900;margin:10px}.wide{width:100%}.actions{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.locked{opacity:.55}.bestiaryCard{cursor:pointer}.bestiaryCard.open{border-color:var(--gold)}.mobDetails{display:none;margin-top:12px;border-top:1px solid #51432f;padding-top:12px}.bestiaryCard.open .mobDetails{display:block}.mobStats{display:grid;grid-template-columns:repeat(2,1fr);gap:7px;margin:10px 0}.mobStat,.dropRow{background:#17130e;border:1px solid #4d402e;border-radius:12px;padding:9px}.dropRow{display:flex;justify-content:space-between;align-items:center;gap:10px;margin:6px 0}.dropRate{color:var(--gold);font-weight:900;white-space:nowrap}.rarity80{color:#86dc7c}.rarity90{color:#7db9ef}.rarity95{color:#ca93ee}.rarity100{color:#ffd568}@media(max-width:720px){.grid2{grid-template-columns:1fr}.heroCard{grid-template-columns:92px 1fr}.portrait{height:92px}.gearGrid{grid-template-columns:repeat(4,1fr);gap:8px}.invSummary{grid-template-columns:1fr 1fr}.itemStats{grid-template-columns:1fr}.actions{grid-template-columns:1fr}}</style></head><body><div class="wrap"><div class="top"><div class="brand">Idle Masters</div><span class="version">V3.2.9 · Équipements locaux</span></div><section id="dashboard" class="page on"><div class="panel"><div class="eyebrow">Mon personnage</div><div class="heroCard"><div class="portrait"><span class="levelBadge" id="levelBadge">1</span></div><div><h1>Aventurier</h1><div class="mut">Niveau <b id="lv"></b></div><div class="bar"><div id="xpBar" class="fill xp"></div></div><div id="xpTxt" class="mut"></div><div class="heroMeta"><span class="metric"><b id="dashK"></b> K</span><span class="metric"><b id="pts"></b> points</span></div></div></div></div><div class="quick"><div class="quickCard"><div class="quickIcon">STAT</div><h2>Personnage</h2><div class="gold"><span id="quickPts"></span> points à répartir</div></div><div class="quickCard"><div class="quickIcon">SORTS</div><h2>Sorts</h2><div class="mut"><span id="spellPts"></span> point(s)</div></div><div class="quickCard wide"><div class="quickIcon">SAC</div><h2>Inventaire</h2><div class="mut"><span id="quickSeen"></span> découverts · <span id="quickBag"></span> dans le sac</div></div></div><div class="panel"><div class="row"><h2>Caractéristiques</h2><span class="pill"><span id="dashHp"></span> PV · <span id="dashPa"></span> PA</span></div><div id="stats"></div><div class="mut" id="achMini"></div></div></section><section id="inventory" class="page"><div class="panel"><div class="eyebrow">Sac d'aventurier</div><h1>Inventaire</h1><div class="invSummary"><div class="summaryBox">Collection<b id="seenCount"></b></div><div class="summaryBox">Dans le sac<b id="bagCount"></b></div><div class="summaryBox">Équipés<b id="wornCount"></b></div></div></div><div class="panel"><h2>Équipement porté</h2><div id="worn" class="gearGrid"></div><div id="sets" class="gold"></div></div><div class="panel"><div class="bagTools"><input id="bagSearch" placeholder="Rechercher un objet..."><button id="sortBtn">Meilleur jet</button></div><div id="bag"></div></div></section><section id="spellsPage" class="page"><div class="panel"><div class="row"><h1>Sorts</h1><b id="spPtsTop" class="gold"></b></div><div id="spellList" class="spellgrid"></div></div></section><section id="collection" class="page"><div class="grid2"><div class="panel"><div class="eyebrow">Encyclopédie</div><h2>Bestiaire</h2><div class="mut">Chargement des données locales…</div><div id="bestiary"></div></div><div class="panel"><h2>Succès</h2><div id="achievements"></div></div></div></section><section id="combat" class="page"><div id="picker"><div class="panel"><h2>Choisir une zone</h2><div id="zones"></div></div><div class="panel"><h2>Monstres & Donjon</h2><div id="mobs"></div></div></div><div id="fight" style="display:none"><div class="panel"><div class="row"><button id="backMob">Quitter</button><span id="fightZone" class="gold"></span></div><div class="card" style="text-align:center"><div id="turn"></div><h1 id="mobName"></h1><div id="mobInfo" class="mut"></div><div id="enemyHp"></div><div class="bar"><div id="enemyBar" class="fill enemy"></div></div></div><div class="card"><div class="row"><b>Aventurier</b><span id="roundTxt"></span></div><div id="fightHp"></div><div class="bar"><div id="playerBar" class="fill"></div></div><div id="fightPa" class="paBox"></div></div><div id="combatSpells" class="spellgrid"></div><button id="endBtn" class="wide">Fin du tour</button><button id="autoBtn" class="wide" style="margin-top:8px">Mode automatique</button><h3>Journal</h3><div id="log" class="log"></div></div></div><div id="result" style="display:none"><div class="panel" style="text-align:center"><h1>Victoire</h1><h2 id="resultMob"></h2><div class="grid2"><div class="card">XP<div id="resultXp"></div></div><div class="card">Kamas<div id="resultK"></div></div></div><div class="card" style="text-align:left"><h3>Drops</h3><div id="resultDrops"></div></div><div class="actions"><button id="again">Refaire</button><button id="changeMob">Changer mob</button><button id="changeZone">Changer zone</button></div></div></div></section></div><nav class="nav"><button data-page="dashboard" class="on">PERSONNAGE</button><button data-page="inventory">INVENTAIRE</button><button data-page="spellsPage">SORTS</button><button data-page="collection">COLLECTION</button><button data-page="combat">COMBAT</button></nav><script>
-const Z=[['Incarnam'],['Astrub'],['Tainéla'],['Forêt d’Astrub']];
-const M=[{id:'tofu',z:0,n:'Tofu',l:1,h:65,a:[5,9],e:'Air',xp:30,k:[2,5]},{id:'bouf',z:0,n:'Bouftou',l:3,h:110,a:[8,13],e:'Terre',xp:48,k:[5,10]},{id:'chef',z:0,n:'Chef de guerre',l:6,h:230,a:[14,21],e:'Neutre',xp:105,k:[12,22]},{id:'br',z:0,n:'Bouftou Royal',l:10,h:440,a:[21,30],e:'Terre',xp:245,k:[30,55],boss:'incarnam'},{id:'piou',z:1,n:'Piou',l:8,h:190,a:[12,18],e:'Air',xp:90,k:[8,15]},{id:'arak',z:1,n:'Arakne',l:10,h:250,a:[15,22],e:'Terre',xp:125,k:[10,18]},{id:'milirat',z:1,n:'Milirat d’Astrub',l:16,h:540,a:[28,38],e:'Terre',xp:310,k:[35,60],boss:'astrub'},{id:'war',z:2,n:'Chef sauvage',l:20,h:600,a:[32,44],e:'Neutre',xp:360,k:[38,62]},{id:'pastor',z:2,n:'Gardien de Tainéla',l:24,h:850,a:[42,55],e:'Terre',xp:540,k:[65,95],boss:'tainela'},{id:'boar',z:3,n:'Sanglier',l:25,h:700,a:[38,50],e:'Terre',xp:430,k:[42,65]},{id:'prespic',z:3,n:'Prespic',l:28,h:620,a:[35,49],e:'Feu',xp:480,k:[45,70]},{id:'oak',z:3,n:'Chêne Ancien',l:32,h:1200,a:[52,68],e:'Terre',xp:780,k:[90,135],boss:'forest'}];
-let EQ=[],SETS=[],I={},SET={};const STATMAP={'Agilité':'Agilite','Vitalité':'Vitalite','Critique':'Critique','Critiques':'Critique','Dommages':'Dommages','Soins':'Soins','Portée':'Portee','Puissance':'Puissance','Initiative':'Initiative','Sagesse':'Sagesse','Chance':'Chance','Force':'Force','Intelligence':'Intelligence','PA':'PA','PM':'PM','Invocation':'Invocation','Prospection':'Prospection','Tacle':'Tacle','Fuite':'Fuite','Terre':'Terre','Feu':'Feu','Eau':'Eau','Air':'Air','Neutre':'Neutre'};
-function statKey(s){return STATMAP[s]||String(s||'Effet').normalize('NFD').replace(/[\u0300-\u036f]/g,'')}
-function slotName(s){return s==='Chapeau'?'Coiffe':s}
-function buildLocalData(eq,sets){EQ=eq.items||[];SETS=sets.sets||[];I={};EQ.forEach(x=>{let st={};(x.effects||[]).forEach(e=>{if(!e.stat)return;let a=Number(e.min),b=Number(e.max);if(!Number.isFinite(a))return;if(!Number.isFinite(b))b=a;if(b<a)[a,b]=[b,a];st[statKey(e.stat)]=[a,b]});if(!Object.keys(st).length)return;I['d'+x.id]=[x.name,slotName(x.slot),x.setId||null,localBaseRate(x.level),st,x.level,x.id]});SET={};SETS.forEach(s=>{let name=s.name||('Panoplie '+s.id),key='set'+s.id;SET[key]={};(s.bonuses||[]).forEach(row=>{let o={};(row.effects||[]).forEach(e=>{if(!e.stat)return;let v=Number(e.max);if(!Number.isFinite(v)||v===0)v=Number(e.min)||0;o[statKey(e.stat)]=(o[statKey(e.stat)]||0)+v});if(Object.keys(o).length)SET[key][row.pieces]=o});EQ.filter(x=>x.setId===s.id).forEach(x=>{let q=I['d'+x.id];if(q)q[2]=key})})}
-function localBaseRate(l){return l<=5?16:l<=10?13:l<=20?9:l<=30?6:4}
-function lootPool(m){let lo=Math.max(1,m.l-5),hi=Math.min(40,m.l+5),pool=EQ.filter(x=>x.level>=lo&&x.level<=hi&&I['d'+x.id]);if(pool.length<8)pool=EQ.filter(x=>x.level<=Math.min(40,m.l+6)&&I['d'+x.id]);return pool}
-function mobDrops(m){return lootPool(m).slice().sort((a,b)=>Math.abs(a.level-m.l)-Math.abs(b.level-m.l)||a.level-b.level).slice(0,12).map(x=>'d'+x.id)}
-const BASE=[['Pression','Terre',3,16,22,'dmg'],['Flamiche','Feu',2,9,13,'dmg'],['Vague','Eau',3,15,21,'dmg'],['Lame de vent','Air',3,14,23,'dmg'],['Coup brutal','Neutre',4,25,32,'dmg'],['Soin mineur','Soin',3,13,20,'heal']];const ACH=[['first','Premier sang','Gagner 1 combat',s=>wins(s)>=1,50],['bouf25','Berger','Vaincre 25 Bouftous',s=>(s.master.bouf||0)>=25,150],['royal','Roi contre Roi','Vaincre le Bouftou Royal',s=>(s.master.br||0)>=1,250],['perfect','Perfection','Obtenir un jet 100 %',s=>s.perfect,300],['collector','Collectionneur','Découvrir 10 équipements',s=>Object.keys(s.seen||{}).length>=10,400],['dungeon','Donjon des Bouftous','Terminer le donjon',s=>(s.dungeons||0)>=1,500]];
-let D={lv:1,xp:0,pts:0,spellPts:0,spellLv:[1,1,1,1,1,1],inv:{Terre:0,Feu:0,Eau:0,Air:0,Neutre:0,Sagesse:0},bh:100,hp:100,k:0,z:0,mid:'tofu',eh:65,rd:1,tr:true,end:false,bag:[],w:{Coiffe:null,Cape:null,Amulette:null,Anneau1:null,Anneau2:null,Ceinture:null,Bottes:null},uid:1,master:{},boss:{},seen:{},claimed:{},perfect:false,dungeons:0},PA=6,mode='picker',lastResult=null,dungeon=null,auto=false,autoTimer=null,$=x=>document.getElementById(x),R=(a,b)=>Math.floor(a+Math.random()*(b-a+1)),need=l=>Math.round(100*Math.pow(1.45,l-1));
-function wins(s=D){return Object.values(s.master||{}).reduce((a,b)=>a+b,0)}function mob(){return M.find(x=>x.id===D.mid)||M[0]}function meta(id){let x=I[id];return x?{n:x[0],s:x[1],set:x[2],r:x[3],x:x[4],l:x[5],ankamaId:x[6]}:null}function sourceOf(id){let x=meta(id);return x?'Équipement Dofus niv. '+x.l:'Inconnue'}function ranges(id){let x=meta(id);return x?Object.entries(x.x).map(([k,v])=>k+' '+v[0]+'–'+v[1]).join(' · '):''}function sb(){let c={},o={};Object.values(D.w).forEach(q=>{let x=q&&meta(q.id);if(x&&x.set){c[x.set]=(c[x.set]||0)+1}});for(let[s,n]of Object.entries(c))for(let[z,b]of Object.entries(SET[s]||{}))if(n>=+z)for(let[k,v]of Object.entries(b))o[k]=(o[k]||0)+v;return o}function gt(){let t={};Object.values(D.w).forEach(q=>{if(q&&meta(q.id))for(let[k,v]of Object.entries(q.st||{}))t[k]=(t[k]||0)+v});for(let[k,v]of Object.entries(sb()))t[k]=(t[k]||0)+v;return t}function st(k){return gt()[k]||0}function bonus(e){let m={Terre:'Force',Feu:'Intelligence',Eau:'Chance',Air:'Agilite',Neutre:'Neutre'};return(D.inv[e]||0)+st(m[e])+st('Puissance')}function mh(){return D.bh+st('Vitalite')}function maxpa(){return 6+st('PA')}function wis(){return D.inv.Sagesse+st('Sagesse')}function txt(a){return Object.entries(a).map(([k,v])=>(v>=0?'+':'')+v+' '+k).join(' · ')}function save(){localStorage.setItem('idleMastersV2',JSON.stringify(D))}function jet(q){let x=meta(q.id),s=0,m=0;if(!x)return 0;for(let[k,v]of Object.entries(x.x)){let lo=Math.min(v[0],v[1]),hi=Math.max(v[0],v[1]);s+=(q.st[k]??lo)-lo;m+=hi-lo}return m?Math.round(100*s/m):100}function roll(id){let x=meta(id),a={};if(!x)return null;for(let[k,v]of Object.entries(x.x))a[k]=R(Math.min(v[0],v[1]),Math.max(v[0],v[1]));let q={uid:D.uid++,id,st:a};D.seen[id]=1;if(jet(q)===100)D.perfect=true;return q}function spell(i){let b=BASE[i],l=D.spellLv[i]||1,add=(l-1)*2;return[b[0],b[1],b[2],b[3]+add,b[4]+add*2,b[5]]}function rarity(j){return j===100?'rarity100':j>=95?'rarity95':j>=90?'rarity90':j>=80?'rarity80':''}function dropRate(id){let x=meta(id);return x?Math.min(85,x.r*(1+st('Prospection')/100)):0}function gainxp(x){let g=Math.floor(x*(1+wis()/100));D.xp+=g;while(D.xp>=need(D.lv)){D.xp-=need(D.lv);D.lv++;D.pts+=5;D.bh+=8;if(D.lv%2===0)D.spellPts++}return g}function loot(){let out=[],pool=mobDrops(mob());if(pool.length&&Math.random()*100<Math.min(72,30*(1+st('Prospection')/100))){let id=pool[R(0,pool.length-1)],q=roll(id);if(q){D.bag.push(q);out.push(q)}}return out}function checkAch(){ACH.forEach(a=>{if(a[3](D)&&!D.claimed[a[0]]){D.claimed[a[0]]=1;D.k+=a[4]}})}function lg(t){let d=document.createElement('div');d.textContent=t;$('log').prepend(d)}
-function victory(){let m=mob(),kg=R(m.k[0],m.k[1]),xg=gainxp(m.xp),drops=loot();D.k+=kg;D.master[m.id]=(D.master[m.id]||0)+1;if(m.boss)D.boss[m.boss]=(D.boss[m.boss]||0)+1;D.hp=mh();D.end=true;D.tr=false;checkAch();if(auto&&!dungeon){lastResult={mid:m.id,xp:xg,k:kg,drops};save();render();return autoTimer=setTimeout(()=>startFight(m.id,false,true),650)}if(dungeon&&dungeon.step<3){dungeon.step++;save();return setTimeout(()=>startFight(['bouf','bouf','chef','br'][dungeon.step],true),500)}if(dungeon){D.dungeons++;dungeon=null;checkAch()}lastResult={mid:m.id,xp:xg,k:kg,drops};mode='result';save();render()}function cast(i){if(!D.tr||D.end)return;let p=spell(i);if(PA<p[2])return;PA-=p[2];if(p[5]==='heal'){let h=R(p[3],p[4]);D.hp=Math.min(mh(),D.hp+h);lg('Soin : +'+h+' PV')}else{let d=Math.floor(R(p[3],p[4])*(1+bonus(p[1])/100));D.eh=Math.max(0,D.eh-d);lg(p[0]+' : '+d+' dégâts');if(D.eh<=0)return victory()}render()}function enemy(){if(!D.tr||D.end)return;D.tr=false;render();setTimeout(()=>{let m=mob(),d=R(m.a[0],m.a[1]);if(m.boss&&D.rd%3===0)d=Math.floor(d*1.5);D.hp=Math.max(0,D.hp-d);lg(m.n+' : -'+d+' PV');if(D.hp<=0){auto=false;D.hp=mh();D.end=true;dungeon=null;mode='picker';return render()}D.rd++;PA=maxpa();D.tr=true;render();if(auto)scheduleAuto()},300)}function bestAutoSpell(){let best=-1,score=-1;BASE.forEach((_,i)=>{let p=spell(i);if(p[5]==='dmg'&&p[2]<=PA){let s=((p[3]+p[4])/2)*(1+bonus(p[1])/100)/p[2];if(s>score){score=s;best=i}}});return best}function scheduleAuto(){clearTimeout(autoTimer);if(!auto||mode!=='fight'||D.end)return;autoTimer=setTimeout(()=>{let i=bestAutoSpell();if(i>=0){cast(i);if(auto&&!D.end)scheduleAuto()}else enemy()},300)}function toggleAuto(){if((D.master[D.mid]||0)<10){alert('Mode automatique débloqué après 10 victoires sur ce monstre.');return}auto=!auto;if(auto)scheduleAuto();else clearTimeout(autoTimer);render()}function startFight(id,keepDungeon=false,fromAuto=false){D.mid=id;let m=mob();D.z=m.z;D.eh=m.h;D.hp=mh();D.rd=1;PA=maxpa();D.tr=true;D.end=false;mode='fight';if(!keepDungeon)dungeon=null;if(!fromAuto)auto=false;$('log').innerHTML='';render();if(auto)scheduleAuto()}function startDungeon(){auto=false;dungeon={step:0};startFight('bouf',true)}function statCost(n){if(n==='Sagesse')return 3;return Math.floor((D.inv[n]||0)/50)+1}function spend(n){let c=statCost(n);if(D.pts>=c){D.pts-=c;D.inv[n]++;render()}}function upSpell(i){if(D.spellPts>0&&(D.spellLv[i]||1)<5){D.spellPts--;D.spellLv[i]=(D.spellLv[i]||1)+1;render()}}function slot(q){let x=meta(q.id);if(!x)return null;let s=x.s;if(s!=='Anneau')return s;if(!D.w.Anneau1)return'Anneau1';if(!D.w.Anneau2)return'Anneau2';return null}function equip(u,target){let j=D.bag.findIndex(x=>x.uid===u);if(j<0)return;let q=D.bag[j],s=target||slot(q);if(!s)return;let o=D.w[s];if(o)D.bag.push(o);D.w[s]=q;D.bag.splice(j,1);render()}function uneq(s){if(D.w[s]){D.bag.push(D.w[s]);D.w[s]=null;render()}}function sell(u){let j=D.bag.findIndex(x=>x.uid===u);if(j>=0){D.k+=5;D.bag.splice(j,1);render()}}function comparison(q){let x=meta(q.id);if(!x)return'';let slots=x.s==='Anneau'?['Anneau1','Anneau2']:[x.s],h='';slots.forEach(s=>{let eq=D.w[s];if(!eq||!meta(eq.id)){h+='<div class="compare good">'+s+' libre</div>';return}let keys=[...new Set([...Object.keys(q.st||{}),...Object.keys(eq.st||{})])];h+='<div class="compare"><small>'+s+' · '+meta(eq.id).n+'</small>';keys.forEach(k=>{let a=q.st[k]||0,b=eq.st[k]||0,d=a-b;h+='<div class="compareLine"><span>'+k+' : '+a+'</span><b class="'+(d>0?'good':d<0?'bad':'mut')+'">'+(d>0?'+':'')+d+'</b></div>'});h+='</div>'});return h}
-function dashboard(){let n=need(D.lv),map={Terre:'Force',Feu:'Intelligence',Eau:'Chance',Air:'Agilite',Neutre:'Neutre',Sagesse:'Sagesse'};$('lv').textContent=D.lv;$('levelBadge').textContent=D.lv;$('xpTxt').textContent=D.xp+' / '+n+' XP';$('xpBar').style.width=D.xp/n*100+'%';$('dashHp').textContent=mh();$('dashPa').textContent=maxpa();$('dashK').textContent=D.k;$('pts').textContent=D.pts;$('quickPts').textContent=D.pts;$('spellPts').textContent=D.spellPts;$('quickSeen').textContent=Object.keys(D.seen||{}).length;$('quickBag').textContent=D.bag.length;$('stats').innerHTML='';Object.keys(map).forEach(x=>{let g=st(map[x]),t=(D.inv[x]||0)+g,c=statCost(x),d=document.createElement('div');d.className='stat';d.innerHTML='<span>'+x+'</span><b>'+t+' <small class="good">(+'+g+')</small></b>';let b=document.createElement('button');b.textContent='+1 · '+c+' pt'+(c>1?'s':'');b.disabled=D.pts<c;b.onclick=()=>spend(x);d.append(b);$('stats').append(d)});$('achMini').textContent=ACH.filter(a=>D.claimed[a[0]]).length+' / '+ACH.length+' succès débloqués'}function inventory(){let search=($('bagSearch').value||'').toLowerCase();$('bagCount').textContent=D.bag.length;$('seenCount').textContent=Object.keys(D.seen||{}).length;$('wornCount').textContent=Object.values(D.w).filter(Boolean).length+' / '+Object.keys(D.w).length;let w=$('worn');w.innerHTML='';Object.entries(D.w).forEach(([s,q])=>{let x=q&&meta(q.id),d=document.createElement('div');d.className='gearSlot';d.innerHTML='<div class="gearBox '+(x?'filled':'')+'"><div class="gearGlyph">'+(x?x.n:q?'Ancien objet':'+')+'</div></div><small>'+s+'</small>';if(x)d.onclick=()=>uneq(s);w.append(d)});$('sets').textContent=txt(sb())||'Aucun bonus de panoplie actif';let e=$('bag');e.innerHTML='';let ready=D.bag.slice().filter(q=>meta(q.id));let pending=D.bag.length-ready.length;ready.sort((a,b)=>jet(b)-jet(a)).filter(q=>meta(q.id).n.toLowerCase().includes(search)).forEach(q=>{let x=meta(q.id),j=jet(q),d=document.createElement('div');d.className='item';d.innerHTML='<div class="itemHead"><div><div class="eyebrow">'+x.s+' · Niv. '+x.l+'</div><div class="itemName">'+x.n+'</div></div><b class="'+rarity(j)+'">Jet '+j+'%</b></div><div class="itemStats">'+Object.entries(q.st).map(([k,v])=>'<span>'+k+' <b>'+(v>=0?'+':'')+v+'</b><div class="itemRange">Jet possible : '+x.x[k][0]+'–'+x.x[k][1]+'</div></span>').join('')+'</div><div class="itemInfo"><b>Provenance</b><div class="mut">'+sourceOf(q.id)+'</div><b>Jet maximum</b><div class="mut">'+ranges(q.id)+'</div></div>'+comparison(q)+'<div class="itemActions"></div>';let a=d.querySelector('.itemActions');if(x.s==='Anneau'&&D.w.Anneau1&&D.w.Anneau2){['Anneau1','Anneau2'].forEach((s,i)=>{let b=document.createElement('button');b.textContent='Remplacer anneau '+(i+1);b.onclick=()=>equip(q.uid,s);a.append(b)})}else{let b=document.createElement('button');b.textContent=x.s==='Anneau'?'Équiper':'Équiper';b.onclick=()=>equip(q.uid);a.append(b)}let s=document.createElement('button');s.textContent='Vendre · 5 K';s.onclick=()=>sell(q.uid);a.append(s);e.append(d)});if(pending){let d=document.createElement('div');d.className='card mut';d.textContent=pending+' ancien(s) équipement(s) sauvegardé(s) sont conservés mais ne sont plus dans la table locale actuelle.';e.append(d)}if(!e.children.length)e.innerHTML='<div class="mut">Aucun objet dans le sac.</div>'}function spells(){$('spPtsTop').textContent=D.spellPts+' point(s)';let e=$('spellList');e.innerHTML='';BASE.forEach((_,i)=>{let p=spell(i),l=D.spellLv[i]||1,d=document.createElement('div');d.className='card';d.innerHTML='<b>'+p[0]+'</b><div class="mut">Niv. '+l+'/5 · '+p[2]+' PA · '+p[1]+'</div><div>'+p[3]+'–'+p[4]+'</div>';let b=document.createElement('button');b.textContent='Améliorer';b.disabled=!D.spellPts||l>=5;b.onclick=()=>upSpell(i);d.append(b);e.append(d)})}
-function collection(){let e=$('bestiary');if(!e)return;e.innerHTML='';M.forEach(m=>{let n=D.master[m.id]||0,d=document.createElement('div');d.className='card bestiaryCard '+(!n?'locked':'');if(!n){d.innerHTML='<b>???</b><div class="mut">Monstre non découvert · '+Z[m.z][0]+'</div>';e.append(d);return}let drops=mobDrops(m).map(id=>'<div class="dropRow"><span><b>'+meta(id).n+'</b><br><small class="mut">'+meta(id).s+' · niv. '+meta(id).l+'</small></span></div>').join('');d.innerHTML='<div class="row"><div><b>'+m.n+'</b><div class="mut">'+Z[m.z][0]+' · '+n+' victoire(s)</div></div><span class="gold">Voir la fiche</span></div><div class="mobDetails"><div class="mobStats"><div class="mobStat"><small class="mut">Niveau</small><br><b>'+m.l+'</b></div><div class="mobStat"><small class="mut">Vitalité</small><br><b>'+m.h+' PV</b></div><div class="mobStat"><small class="mut">Attaque</small><br><b>'+m.a[0]+'–'+m.a[1]+'</b></div><div class="mobStat"><small class="mut">Élément</small><br><b>'+m.e+'</b></div></div><h3>Équipements du palier</h3><div class="mut">Un seul jet d’équipement maximum par victoire. Pool adapté au niveau du monstre.</div>'+drops+'</div>';d.onclick=()=>d.classList.toggle('open');e.append(d)});let a=$('achievements');if(!a)return;a.innerHTML='';ACH.forEach(x=>{let d=document.createElement('div');d.className='card';d.innerHTML='<b>'+(D.claimed[x[0]]?'Terminé · ':'')+x[1]+'</b><div class="mut">'+x[2]+'</div>';a.append(d)})}
-function picker(){let z=$('zones');z.innerHTML='';Z.forEach((x,i)=>{let ok=i===0||(i===1&&D.boss.incarnam)||(i===2&&D.boss.astrub)||(i===3&&D.boss.tainela),b=document.createElement('button');b.className='choice '+(D.z===i?'sel':'');b.disabled=!ok;b.innerHTML='<b>'+x[0]+'</b> '+(ok?'':'— verrouillée');b.onclick=()=>{D.z=i;render()};z.append(b)});let e=$('mobs');e.innerHTML='';M.filter(m=>m.z===D.z).forEach(m=>{let n=D.master[m.id]||0,b=document.createElement('button');b.className='choice '+(m.boss?'boss':'');b.innerHTML='<b>'+m.n+'</b> · Niv. '+m.l+'<br><span class="mut">'+n+' victoire(s)'+(n>=10?' · Auto disponible':'')+'</span>';b.onclick=()=>startFight(m.id);e.append(b)});if(D.z===0){let b=document.createElement('button');b.className='choice boss';b.innerHTML='<b>Donjon des Bouftous</b> · 4 salles';b.onclick=startDungeon;e.append(b)}}function fight(){let m=mob(),h=mh(),unlocked=(D.master[m.id]||0)>=10;$('fightZone').textContent=Z[m.z][0];$('turn').textContent=auto?'Combat automatique':D.tr?'À toi de jouer':'Tour ennemi';$('mobName').textContent=m.n;$('mobInfo').textContent='Niv. '+m.l+' · '+m.e+' · '+(D.master[m.id]||0)+' victoire(s)';$('enemyHp').textContent=D.eh+' / '+m.h+' PV';$('enemyBar').style.width=100*D.eh/m.h+'%';$('fightHp').textContent=D.hp+' / '+h+' PV';$('playerBar').style.width=100*D.hp/h+'%';$('fightPa').textContent=PA+' / '+maxpa()+' PA';$('roundTxt').textContent='Tour '+D.rd;let e=$('combatSpells');e.innerHTML='';BASE.forEach((_,i)=>{let p=spell(i),b=document.createElement('button');b.disabled=auto||!D.tr||PA<p[2];b.innerHTML='<b>'+p[0]+'</b><br>'+p[2]+' PA · '+p[3]+'–'+p[4];b.onclick=()=>cast(i);e.append(b)});$('endBtn').disabled=auto||!D.tr;$('autoBtn').disabled=!unlocked||!!dungeon;$('autoBtn').textContent=unlocked?(auto?'Arrêter le mode automatique':'Mode automatique'):'Auto : '+(D.master[m.id]||0)+'/10 victoires'}function result(){let m=M.find(x=>x.id===lastResult.mid);$('resultMob').textContent=m.n;$('resultXp').textContent='+'+lastResult.xp;$('resultK').textContent='+'+lastResult.k;$('resultDrops').innerHTML=lastResult.drops.length?lastResult.drops.map(q=>'<div><b>'+meta(q.id).n+'</b> · Jet '+jet(q)+'%</div>').join(''):'<span class="mut">Aucun équipement cette fois</span>'}function render(){dashboard();inventory();spells();collection();picker();$('picker').style.display=mode==='picker'?'block':'none';$('fight').style.display=mode==='fight'?'block':'none';$('result').style.display=mode==='result'?'block':'none';if(mode==='fight')fight();if(mode==='result'&&lastResult)result();save()}function show(p){document.querySelectorAll('.page').forEach(x=>x.classList.toggle('on',x.id===p));document.querySelectorAll('.nav button').forEach(x=>x.classList.toggle('on',x.dataset.page===p));render()}document.querySelectorAll('.nav button').forEach(b=>b.onclick=()=>show(b.dataset.page));$('bagSearch').oninput=inventory;$('sortBtn').onclick=inventory;$('endBtn').onclick=enemy;$('autoBtn').onclick=toggleAuto;$('backMob').onclick=()=>{auto=false;clearTimeout(autoTimer);dungeon=null;mode='picker';render()};$('again').onclick=()=>startFight(lastResult.mid);$('changeMob').onclick=()=>{mode='picker';render()};$('changeZone').onclick=()=>{D.z=0;mode='picker';render()};
-async function boot(){try{let x=JSON.parse(localStorage.getItem('idleMastersV2'));if(x)D={...D,...x}}catch(e){}D.master=D.master||{};D.boss=D.boss||{};D.seen=D.seen||{};D.claimed=D.claimed||{};D.spellLv=D.spellLv||[1,1,1,1,1,1];D.w={Coiffe:null,Cape:null,Amulette:null,Anneau1:null,Anneau2:null,Ceinture:null,Bottes:null,...(D.w||{})};try{let [er,sr]=await Promise.all([fetch('dofus-equipment-1-40.json?v=3.2.9'),fetch('dofus-item-sets.json?v=3.2.9')]);if(!er.ok||!sr.ok)throw Error('local data');buildLocalData(await er.json(),await sr.json())}catch(e){console.error('Équipements locaux indisponibles',e)}D.hp=mh();PA=maxpa();checkAch();render()}boot();</script><script src="bestiary-ui.js?v=3.2.9"></script><script src="bestiary-ui.js?v=3.2.7"></script></body></html>
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width,initial-scale=1,viewport-fit=cover"
+    />
+    <title>Idle Masters V3.3.2</title>
+    <style>
+      :root {
+        --bg: #100e0b;
+        --panel: #211b13;
+        --panel2: #2b2217;
+        --line: #66563c;
+        --line2: #8b7448;
+        --text: #f6eedc;
+        --mut: #b8aa91;
+        --gold: #e7bd58;
+        --green: #92c84d;
+        --red: #e56c57;
+        --blue: #78aee0;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        background: radial-gradient(
+          circle at 50% 0,
+          #2a2116 0,
+          #100e0b 48%,
+          #090806 100%
+        );
+        color: var(--text);
+        font:
+          15px system-ui,
+          -apple-system,
+          sans-serif;
+      }
+      .wrap {
+        max-width: 980px;
+        margin: auto;
+        padding: 14px 12px 100px;
+      }
+      .top,
+      .row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 10px;
+      }
+      .top {
+        padding: 8px 4px 16px;
+      }
+      .brand {
+        font-size: 22px;
+        font-weight: 900;
+      }
+      .version,
+      .pill {
+        border: 1px solid var(--line2);
+        border-radius: 999px;
+        padding: 5px 10px;
+        color: var(--gold);
+        background: #17120d;
+      }
+      .page {
+        display: none;
+      }
+      .page.on {
+        display: block;
+      }
+      .panel {
+        background: linear-gradient(145deg, #302619, #1c1711);
+        border: 1px solid var(--line);
+        border-radius: 24px;
+        padding: 18px;
+        margin-bottom: 14px;
+      }
+      .eyebrow {
+        font-size: 12px;
+        letter-spacing: 2px;
+        text-transform: uppercase;
+        color: #c9ad67;
+        font-weight: 900;
+      }
+      .grid2 {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 14px;
+      }
+      h1,
+      h2,
+      h3 {
+        margin: 5px 0 10px;
+      }
+      .mut {
+        color: var(--mut);
+      }
+      .gold {
+        color: var(--gold);
+      }
+      .good {
+        color: #86dc7c;
+      }
+      .bad {
+        color: #ff8172;
+      }
+      .bar {
+        height: 14px;
+        background: #15110d;
+        border: 1px solid #4c412f;
+        border-radius: 999px;
+        overflow: hidden;
+      }
+      .fill {
+        height: 100%;
+        background: #82b547;
+      }
+      .xp {
+        background: #d9ad4b;
+      }
+      .enemy {
+        background: #d75d4a;
+      }
+      button {
+        border: 1px solid var(--line2);
+        background: linear-gradient(#443621, #302519);
+        color: var(--text);
+        border-radius: 13px;
+        padding: 11px 13px;
+        font-weight: 800;
+        font-size: 14px;
+        touch-action: manipulation;
+      }
+      button:disabled {
+        opacity: 0.38;
+      }
+      .nav {
+        position: fixed;
+        z-index: 20;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: #17120eef;
+        border-top: 1px solid var(--line);
+        display: flex;
+        justify-content: center;
+        padding: 8px 6px calc(8px + env(safe-area-inset-bottom));
+        gap: 5px;
+      }
+      .nav button {
+        flex: 1;
+        max-width: 175px;
+        border-color: transparent;
+        background: transparent;
+        color: #a99d89;
+        padding: 9px 4px;
+        font-size: clamp(8px, 2.3vw, 11px);
+        min-width: 0;
+        padding-left: 2px;
+        padding-right: 2px;
+      }
+      .nav button.on {
+        color: var(--gold);
+        background: #332819;
+        border-color: #695538;
+      }
+      .heroCard {
+        display: grid;
+        grid-template-columns: 118px 1fr;
+        gap: 18px;
+        align-items: center;
+      }
+      .portrait {
+        height: 118px;
+        border-radius: 24px;
+        border: 3px solid #c9a44c;
+        background: #302519;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        position: relative;
+      }
+      .portrait:before {
+        content: "IM";
+        font-size: 38px;
+        font-weight: 900;
+        color: #e8c66f;
+      }
+      .levelBadge {
+        position: absolute;
+        right: -9px;
+        bottom: -9px;
+        background: #d4aa4d;
+        color: #1b140b;
+        border-radius: 12px;
+        padding: 7px 11px;
+        font-weight: 900;
+      }
+      .heroMeta {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+        margin-top: 12px;
+      }
+      .metric {
+        border: 1px solid #66543a;
+        border-radius: 14px;
+        padding: 8px 12px;
+        background: #1b160f;
+      }
+      .quick {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+      }
+      .quickCard {
+        min-height: 125px;
+        border: 1px solid var(--line);
+        border-radius: 22px;
+        padding: 18px;
+        background: #2b2218;
+      }
+      .quickCard.wide {
+        grid-column: 1/-1;
+      }
+      .quickIcon {
+        width: 48px;
+        height: 48px;
+        border: 1px solid #6b604e;
+        border-radius: 16px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 12px;
+        font-weight: 900;
+      }
+      .stat {
+        display: grid;
+        grid-template-columns: 1fr auto auto;
+        gap: 10px;
+        align-items: center;
+        border-top: 1px solid #463a2a;
+        padding: 11px 0;
+      }
+      .invSummary {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 10px;
+        margin-top: 14px;
+      }
+      .summaryBox {
+        border: 1px solid #5d4c34;
+        border-radius: 17px;
+        padding: 12px;
+        background: #1b160f;
+      }
+      .summaryBox b {
+        display: block;
+        font-size: 22px;
+      }
+      .gearGrid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 12px;
+      }
+      .gearSlot {
+        text-align: center;
+      }
+      .gearBox {
+        aspect-ratio: 1;
+        border: 1px dashed #66543a;
+        border-radius: 18px;
+        background: #17130e;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .gearBox.filled {
+        border-style: solid;
+        border-color: #8a744b;
+      }
+      .gearGlyph {
+        font-size: 13px;
+        font-weight: 900;
+        padding: 5px;
+      }
+      .bagTools,
+      .itemActions {
+        display: flex;
+        gap: 8px;
+      }
+      .bagTools input {
+        flex: 1;
+        min-width: 0;
+        background: #17130e;
+        color: var(--text);
+        border: 1px solid #5e4e37;
+        border-radius: 13px;
+        padding: 11px;
+      }
+      .item,
+      .card {
+        border: 1px solid #5f4e36;
+        border-radius: 16px;
+        background: #211a12;
+        padding: 13px;
+        margin: 8px 0;
+      }
+      .itemHead {
+        display: flex;
+        justify-content: space-between;
+        gap: 8px;
+      }
+      .itemName {
+        font-weight: 900;
+        font-size: 17px;
+      }
+      .itemStats {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 5px 14px;
+        margin: 10px 0;
+      }
+      .itemRange {
+        font-size: 12px;
+        color: var(--mut);
+      }
+      .itemInfo {
+        background: #17130e;
+        border: 1px solid #4d402e;
+        border-radius: 12px;
+        padding: 10px;
+        margin: 10px 0;
+      }
+      .compare {
+        background: #15110d;
+        border: 1px solid #4e412e;
+        border-radius: 14px;
+        padding: 10px;
+        margin-top: 10px;
+      }
+      .compareLine {
+        display: flex;
+        justify-content: space-between;
+        padding: 3px 0;
+      }
+      .ringChoice {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+        margin-top: 8px;
+      }
+      .choice {
+        width: 100%;
+        text-align: left;
+        margin: 5px 0;
+      }
+      .sel {
+        outline: 2px solid var(--gold);
+      }
+      .boss {
+        border-color: #c69c3e;
+      }
+      .spellgrid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+      }
+      .log {
+        height: 130px;
+        overflow: auto;
+        background: #120f0b;
+        border-radius: 12px;
+        padding: 9px;
+      }
+      .paBox {
+        text-align: center;
+        color: #8fc6f1;
+        font-size: 22px;
+        font-weight: 900;
+        margin: 10px;
+      }
+      .wide {
+        width: 100%;
+      }
+      .actions {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 8px;
+      }
+      .locked {
+        opacity: 0.55;
+      }
+      .bestiaryCard {
+        cursor: pointer;
+      }
+      .bestiaryCard.open {
+        border-color: var(--gold);
+      }
+      .mobDetails {
+        display: none;
+        margin-top: 12px;
+        border-top: 1px solid #51432f;
+        padding-top: 12px;
+      }
+      .bestiaryCard.open .mobDetails {
+        display: block;
+      }
+      .mobStats {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 7px;
+        margin: 10px 0;
+      }
+      .mobStat,
+      .dropRow {
+        background: #17130e;
+        border: 1px solid #4d402e;
+        border-radius: 12px;
+        padding: 9px;
+      }
+      .dropRow {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 10px;
+        margin: 6px 0;
+      }
+      .dropRate {
+        color: var(--gold);
+        font-weight: 900;
+        white-space: nowrap;
+      }
+      .rarity80 {
+        color: #86dc7c;
+      }
+      .rarity90 {
+        color: #7db9ef;
+      }
+      .rarity95 {
+        color: #ca93ee;
+      }
+      .rarity100 {
+        color: #ffd568;
+      }
+      @media (max-width: 720px) {
+        .grid2 {
+          grid-template-columns: 1fr;
+        }
+        .heroCard {
+          grid-template-columns: 92px 1fr;
+        }
+        .portrait {
+          height: 92px;
+        }
+        .gearGrid {
+          grid-template-columns: repeat(4, 1fr);
+          gap: 8px;
+        }
+        .invSummary {
+          grid-template-columns: 1fr 1fr;
+        }
+        .itemStats {
+          grid-template-columns: 1fr;
+        }
+        .actions {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <div class="top">
+        <div class="brand">Idle Masters</div>
+        <span class="version">V3.3.2 · Combats locaux</span>
+      </div>
+      <section id="dashboard" class="page on">
+        <div class="panel">
+          <div class="eyebrow">Mon personnage</div>
+          <div class="heroCard">
+            <div class="portrait">
+              <span class="levelBadge" id="levelBadge">1</span>
+            </div>
+            <div>
+              <h1>Aventurier</h1>
+              <div class="mut">Niveau <b id="lv"></b></div>
+              <div class="bar"><div id="xpBar" class="fill xp"></div></div>
+              <div id="xpTxt" class="mut"></div>
+              <div class="heroMeta">
+                <span class="metric"><b id="dashK"></b> K</span
+                ><span class="metric"><b id="pts"></b> points</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="quick">
+          <div class="quickCard">
+            <div class="quickIcon">STAT</div>
+            <h2>Personnage</h2>
+            <div class="gold">
+              <span id="quickPts"></span> points à répartir
+            </div>
+          </div>
+          <div class="quickCard">
+            <div class="quickIcon">SORTS</div>
+            <h2>Sorts</h2>
+            <div class="mut"><span id="spellPts"></span> point(s)</div>
+          </div>
+          <div class="quickCard wide">
+            <div class="quickIcon">SAC</div>
+            <h2>Inventaire</h2>
+            <div class="mut">
+              <span id="quickSeen"></span> découverts ·
+              <span id="quickBag"></span> dans le sac
+            </div>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="row">
+            <h2>Caractéristiques</h2>
+            <span class="pill"
+              ><span id="dashHp"></span> PV · <span id="dashPa"></span> PA</span
+            >
+          </div>
+          <div id="stats"></div>
+          <div class="mut" id="achMini"></div>
+        </div>
+      </section>
+      <section id="inventory" class="page">
+        <div class="panel">
+          <div class="eyebrow">Sac d'aventurier</div>
+          <h1>Inventaire</h1>
+          <div class="invSummary">
+            <div class="summaryBox">Collection<b id="seenCount"></b></div>
+            <div class="summaryBox">Dans le sac<b id="bagCount"></b></div>
+            <div class="summaryBox">Équipés<b id="wornCount"></b></div>
+          </div>
+        </div>
+        <div class="panel">
+          <h2>Équipement porté</h2>
+          <div id="worn" class="gearGrid"></div>
+          <div id="sets" class="gold"></div>
+        </div>
+        <div class="panel">
+          <div class="bagTools">
+            <input id="bagSearch" placeholder="Rechercher un objet..." /><button
+              id="sortBtn"
+            >
+              Meilleur jet
+            </button>
+          </div>
+          <div id="bag"></div>
+        </div>
+      </section>
+      <section id="spellsPage" class="page">
+        <div class="panel">
+          <div class="row">
+            <h1>Sorts</h1>
+            <b id="spPtsTop" class="gold"></b>
+          </div>
+          <div id="spellList" class="spellgrid"></div>
+        </div>
+      </section>
+      <section id="collection" class="page">
+        <div class="grid2">
+          <div class="panel">
+            <div class="eyebrow">Encyclopédie</div>
+            <h2>Bestiaire</h2>
+            <div class="mut">
+              Données Dofus locales · attaques, zones et drops adaptés à Idle
+              Masters.
+            </div>
+            <input
+              id="bestiarySearch"
+              placeholder="Rechercher un monstre ou une famille…"
+              style="
+                width: 100%;
+                margin: 12px 0;
+                padding: 12px;
+                background: var(--bg);
+                color: var(--text);
+                border: 1px solid var(--line);
+                border-radius: 12px;
+              "
+            />
+            <div id="bestiary"></div>
+          </div>
+          <div class="panel">
+            <h2>Succès</h2>
+            <div id="achievements"></div>
+          </div>
+        </div>
+      </section>
+      <section id="combat" class="page">
+        <div id="picker">
+          <div class="panel">
+            <h2>Choisir une zone</h2>
+            <div id="zones"></div>
+          </div>
+          <div class="panel">
+            <h2>Monstres & Donjon</h2>
+            <div id="mobs"></div>
+          </div>
+        </div>
+        <div id="fight" style="display: none">
+          <div class="panel">
+            <div class="row">
+              <button id="backMob">Quitter</button
+              ><span id="fightZone" class="gold"></span>
+            </div>
+            <div class="card" style="text-align: center">
+              <div id="turn"></div>
+              <h1 id="mobName"></h1>
+              <div id="mobInfo" class="mut"></div>
+              <div id="enemyHp"></div>
+              <div class="bar">
+                <div id="enemyBar" class="fill enemy"></div>
+              </div>
+            </div>
+            <div class="card">
+              <div class="row">
+                <b>Aventurier</b><span id="roundTxt"></span>
+              </div>
+              <div id="fightHp"></div>
+              <div class="bar"><div id="playerBar" class="fill"></div></div>
+              <div id="fightPa" class="paBox"></div>
+            </div>
+            <div id="combatSpells" class="spellgrid"></div>
+            <button id="endBtn" class="wide">Fin du tour</button
+            ><button id="autoBtn" class="wide" style="margin-top: 8px">
+              Mode automatique
+            </button>
+            <h3>Journal</h3>
+            <div id="log" class="log"></div>
+          </div>
+        </div>
+        <div id="result" style="display: none">
+          <div class="panel" style="text-align: center">
+            <h1>Victoire</h1>
+            <h2 id="resultMob"></h2>
+            <div class="grid2">
+              <div class="card">
+                XP
+                <div id="resultXp"></div>
+              </div>
+              <div class="card">
+                Kamas
+                <div id="resultK"></div>
+              </div>
+            </div>
+            <div class="card" style="text-align: left">
+              <h3>Drops</h3>
+              <div id="resultDrops"></div>
+            </div>
+            <div class="actions">
+              <button id="again">Refaire</button
+              ><button id="changeMob">Changer mob</button
+              ><button id="changeZone">Changer zone</button>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+    <nav class="nav">
+      <button data-page="dashboard" class="on">PERSONNAGE</button
+      ><button data-page="inventory">INVENTAIRE</button
+      ><button data-page="spellsPage">SORTS</button
+      ><button data-page="collection">COLLECTION</button
+      ><button data-page="combat">COMBAT</button>
+    </nav>
+    <script src="local-data.js?v=3.3.2"></script>
+    <script src="bestiary-ui.js?v=3.3.2"></script>
+    <script src="game.js?v=3.3.2"></script>
+  </body>
+</html>

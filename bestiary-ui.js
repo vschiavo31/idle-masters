@@ -1,24 +1,143 @@
-/* Idle Masters V3.3.1 — families + legacy inventory migration */
-(function(){
-  function esc(v){return String(v==null?'':v).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})}
-  function norm(v){return String(v||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]/g,'')}
-  var LEGACY={tofuHat:'Coiffe du Tofu',tofuCape:'Cape du Tofu',tofuRing:'Anneau du Tofu',tofuAmu:'Amulette du Tofu',tofuBelt:'Ceinture du Tofu',tofuBoots:'Bottes du Tofu',boufHat:'Coiffe du Bouftou',boufCape:'Cape Bouffante',boufAmu:'Amulette du Bouftou',boufBoots:'Boufbottes',boufBelt:'Ceinture du Bouftou',boufRing:'Anneau du Bouftou',chefRing:'Anneau du Chef',chefBelt:'Ceinture du Chef',chefHat:'Casque du Chef de Guerre',chefBoots:'Bottes du Chef de Guerre',royalHat:'Coiffe du Bouftou Royal',royalCape:'Cape du Bouftou Royal',royalAmu:'Amulette du Bouftou Royal',royalRing:'Anneau du Bouftou Royal',royalBelt:'Ceinture du Bouftou Royal',royalBoots:'Bottes du Bouftou Royal',piouHat:'Coiffe du Piou',piouCape:'Cape du Piou',piouAmu:'Amulette du Piou',piouRing:'Anneau du Piou',piouBelt:'Ceinture du Piou',piouBoots:'Bottes du Piou',arakBelt:'Ceinture Arakne',arakRing:'Anneau Arakne',arakBoots:'Bottes Arakne',ratHat:'Coiffe du Milirat',ratAmu:'Amulette du Milirat',ratCape:'Cape du Milirat',ratRing:'Anneau du Milirat',warHat:'Casque sauvage',warCape:'Cape sauvage',warBelt:'Ceinture sauvage',warBoots:'Bottes sauvages',guardCape:'Cape du Gardien',guardHat:'Coiffe du Gardien',guardAmu:'Amulette du Gardien',guardRing:'Anneau du Gardien',boarHat:'Coiffe du Sanglier',boarCape:'Cape du Sanglier',boarBelt:'Ceinture du Sanglier',boarBoots:'Bottes du Sanglier',prespicCape:'Cape du Prespic',prespicHat:'Coiffe du Prespic',prespicRing:'Anneau du Prespic',prespicBelt:'Ceinture du Prespic',oakCape:'Cape du Chêne',oakHat:'Coiffe du Chêne',oakAmu:'Amulette du Chêne',oakBoots:'Bottes du Chêne'};
-  function migrateLegacy(){
-    try{
-      if(typeof D==='undefined'||typeof I==='undefined'||!Object.keys(I).length||D.localGearMigration===1)return false;
-      var byName={};Object.keys(I).forEach(function(id){var x=I[id];if(x&&x[0])byName[norm(x[0])]=id});
-      function convert(q){if(!q||I[q.id])return q;var old=LEGACY[q.id],nid=old&&byName[norm(old)];if(!nid)return null;var x=I[nid],st={};Object.keys(x[4]||{}).forEach(function(k){var lo=Math.min(x[4][k][0],x[4][k][1]),hi=Math.max(x[4][k][0],x[4][k][1]),oldv=q.st&&Number(q.st[k]);st[k]=Number.isFinite(oldv)?Math.max(lo,Math.min(hi,oldv)):Math.round((lo+hi)/2)});return {uid:q.uid||D.uid++,id:nid,st:st}}
-      var migrated=0,removed=0,newBag=[];(D.bag||[]).forEach(function(q){var nq=convert(q);if(nq){if(nq!==q)migrated++;newBag.push(nq)}else removed++});D.bag=newBag;
-      Object.keys(D.w||{}).forEach(function(s){var q=D.w[s];if(!q)return;var nq=convert(q);if(nq){if(nq!==q)migrated++;D.w[s]=nq}else{D.w[s]=null;removed++}});
-      var newSeen={};Object.keys(D.seen||{}).forEach(function(id){if(I[id])newSeen[id]=1;else{var old=LEGACY[id],nid=old&&byName[norm(old)];if(nid)newSeen[nid]=1}});D.seen=newSeen;D.localGearMigration=1;D.localGearMigrationInfo={migrated:migrated,removed:removed};if(typeof save==='function')save();if(typeof render==='function')render();return true;
-    }catch(e){console.error('Legacy inventory migration failed',e);return false}
+/* One bestiary view, sharing the same local records as combat. */
+function esc(v) {
+  return String(v ?? "").replace(
+    /[&<>"']/g,
+    (c) =>
+      ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[
+        c
+      ],
+  );
+}
+function familyName(ms) {
+  // raceId groups sometimes mix species; use a representative name rather than an inferred species.
+  const names = [...new Set(ms.map((m) => m.name))];
+  return names.slice(0, 2).join(" / ") + (names.length > 2 ? "…" : "");
+}
+let bestiarySignature = "";
+function renderLocalBestiary(source, combat) {
+  const input = document.getElementById("bestiarySearch");
+  if (!input.oninput)
+    input.oninput = () => {
+      bestiarySignature = "";
+      renderLocalBestiary(source, combat);
+    };
+  const q = input.value.trim().toLocaleLowerCase("fr");
+  const signature = JSON.stringify([q, D.master, D.seen, st("Prospection")]);
+  if (signature === bestiarySignature) return;
+  bestiarySignature = signature;
+  const playable = new Map(combat.map((m) => [m.sourceId, m]));
+  const families = new Map();
+  for (const m of source) {
+    const key = m.raceId;
+    if (!families.has(key)) families.set(key, []);
+    families.get(key).push(m);
   }
-  function waitMigration(n){if(migrateLegacy())return;if(n>0)setTimeout(function(){waitMigration(n-1)},150)}
-  function levels(m){return m.minLevel===m.maxLevel?m.minLevel:m.minLevel+'–'+m.maxLevel}
-  function hp(m){return m.hpMin===m.hpMax?m.hpMin:m.hpMin+'–'+m.hpMax}
-  function familyName(raceId,list){var names=list.map(function(m){return String(m.name||'')});var rules=[[/bouftou/i,'Bouftous'],[/tofu/i,'Tofus'],[/arakne/i,'Araknes'],[/piou/i,'Pious'],[/prespic/i,'Prespics'],[/sanglier/i,'Sangliers'],[/craqueleur/i,'Craqueleurs'],[/blop/i,'Blops'],[/gelée/i,'Gelées'],[/bwork/i,'Bworks'],[/chaf/i,'Chafers'],[/larve/i,'Larves'],[/moskito/i,'Moskitos'],[/sousour/i,'Sousouris'],[/scarafeuille/i,'Scarafeuilles'],[/gobelin/i,'Gobelins']];for(var r=0;r<rules.length;r++)if(names.some(function(n){return rules[r][0].test(n)}))return rules[r][1];var clean=names.filter(function(n){return n&&n.length<45});if(clean.length){var words=clean[0].split(/\s+/).filter(function(w){return w.length>3});for(var i=0;i<words.length;i++){var w=words[i];if(clean.filter(function(n){return n.toLowerCase().indexOf(w.toLowerCase())>=0}).length>=Math.min(2,clean.length))return w+'s'}}return 'Famille '+raceId}
-  function card(m){return '<div class="card" style="margin:7px 0"><div class="row"><div><b>'+esc(m.name)+'</b><div class="mut">Niveau '+esc(levels(m))+'</div></div>'+(m.boss?'<span class="pill">Boss</span>':'')+'</div><div class="mobStats"><div class="mobStat"><small class="mut">PV</small><br><b>'+esc(hp(m))+'</b></div><div class="mobStat"><small class="mut">PA / PM</small><br><b>'+esc(m.pa)+' / '+esc(m.pm)+'</b></div></div></div>'}
-  function install(data){var page=document.getElementById('collection');if(!page)return;var monsters=Array.isArray(data.monsters)?data.monsters:[],grouped={};monsters.forEach(function(m){var k=String(m.raceId);(grouped[k]||(grouped[k]=[])).push(m)});var families=Object.keys(grouped).map(function(k){var ms=grouped[k].sort(function(a,b){return a.minLevel-b.minLevel||String(a.name).localeCompare(String(b.name),'fr')});return{id:k,name:familyName(k,ms),monsters:ms,min:Math.min.apply(null,ms.map(function(x){return x.minLevel})),max:Math.max.apply(null,ms.map(function(x){return x.maxLevel}))}}).sort(function(a,b){return a.min-b.min||a.name.localeCompare(b.name,'fr')});page.innerHTML='<div class="panel"><div class="eyebrow">Encyclopédie Dofus 3</div><h1>Familles de monstres</h1><div class="gold" style="margin-bottom:10px"><b>'+monsters.length+' monstres</b> · '+families.length+' familles candidates · niveaux 1–40</div><div class="mut" style="margin-bottom:12px">Les monstres sont regroupés par famille de données (raceId). Les familles servent de base à la progression par zones.</div><div style="display:grid;grid-template-columns:1fr 110px;gap:8px"><input id="dofusMobSearch" placeholder="Monstre ou famille…" style="min-width:0;background:#17130e;color:var(--text);border:1px solid #5e4e37;border-radius:13px;padding:11px"><select id="dofusMobLevel" style="background:#17130e;color:var(--text);border:1px solid #5e4e37;border-radius:13px;padding:11px"><option value="0">Tous niv.</option>'+Array.from({length:40},function(_,i){return '<option value="'+(i+1)+'">Niv. '+(i+1)+'</option>'}).join('')+'</select></div><div id="dofusMobCount" class="mut" style="margin:10px 0"></div><div id="dofusFamilyList"></div></div>';function draw(){var q=document.getElementById('dofusMobSearch').value.toLowerCase().trim(),lv=Number(document.getElementById('dofusMobLevel').value),shown=0,html='';families.forEach(function(f){var ms=f.monsters.filter(function(m){return(!lv||(m.minLevel<=lv&&m.maxLevel>=lv))&&(!q||f.name.toLowerCase().indexOf(q)>=0||String(m.name||'').toLowerCase().indexOf(q)>=0)});if(!ms.length)return;shown+=ms.length;var boss=ms.some(function(m){return m.boss});html+='<details class="card" style="padding:0;overflow:hidden"><summary style="cursor:pointer;list-style:none;padding:14px"><div class="row"><div><div class="eyebrow">Famille</div><b style="font-size:18px">'+esc(f.name)+'</b><div class="mut">'+ms.length+' monstre(s) · niveaux '+f.min+'–'+f.max+'</div></div><div>'+(boss?'<span class="pill">Boss</span> ':'')+'<span class="pill">'+esc(f.id)+'</span></div></div></summary><div style="padding:0 12px 12px;border-top:1px solid #4d402e">'+ms.map(card).join('')+'</div></details>'});document.getElementById('dofusMobCount').textContent=shown+' monstre(s) dans les familles affichées';document.getElementById('dofusFamilyList').innerHTML=html||'<div class="mut">Aucune famille trouvée.</div>'}document.getElementById('dofusMobSearch').addEventListener('input',draw);document.getElementById('dofusMobLevel').addEventListener('change',draw);draw()}
-  function boot(){waitMigration(40);fetch('dofus-bestiary-1-40.json?v=3.3.1',{cache:'no-store'}).then(function(r){if(!r.ok)throw new Error('HTTP '+r.status);return r.json()}).then(install).catch(function(e){var page=document.getElementById('collection');if(page)page.insertAdjacentHTML('afterbegin','<div class="panel bad"><b>Erreur de chargement du Bestiaire Dofus</b><div>'+esc(e.message)+'</div></div>')})}
-  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot);else boot();
-})();
+  let count = 0;
+  const root = document.getElementById("bestiary");
+  root.innerHTML = "";
+  const status = document.createElement("div");
+  status.className = "mut";
+  root.append(status);
+  [...families.entries()]
+    .sort(
+      (a, b) =>
+        Math.min(...a[1].map((m) => m.minLevel)) -
+        Math.min(...b[1].map((m) => m.minLevel)),
+    )
+    .forEach(([id, ms]) => {
+      const label = familyName(ms);
+      const shown = ms.filter(
+        (m) =>
+          !q ||
+          (label + " " + id + " " + m.name).toLocaleLowerCase("fr").includes(q),
+      );
+      if (!shown.length) return;
+      count += shown.length;
+      const family = document.createElement("details");
+      family.className = "card";
+      const summary = document.createElement("summary");
+      summary.textContent = label + " · " + shown.length + " entrées";
+      family.append(summary);
+      // Render cards only when expanded, so 817 records do not slow each combat action on mobile.
+      let populated = false;
+      family.addEventListener("toggle", () => {
+        if (!family.open || populated) return;
+        populated = true;
+        shown
+          .sort(
+            (a, b) =>
+              a.minLevel - b.minLevel || a.name.localeCompare(b.name, "fr"),
+          )
+          .forEach((m) => {
+            const live = playable.get(m.id),
+              card = document.createElement("div");
+            card.className = "card";
+            card.innerHTML =
+              "<b>" +
+              esc(m.name) +
+              '</b><div class="mut">Niv. ' +
+              m.minLevel +
+              "–" +
+              m.maxLevel +
+              " · " +
+              m.hpMin +
+              "–" +
+              m.hpMax +
+              " PV · " +
+              m.pa +
+              " PA / " +
+              m.pm +
+              " PM</div>";
+            if (live) {
+              const n = D.master[live.id] || 0;
+              card.insertAdjacentHTML(
+                "beforeend",
+                '<div class="gold">' +
+                  esc(Z[live.z][0]) +
+                  " · " +
+                  n +
+                  " victoire(s)" +
+                  (live.boss ? " · Boss Idle Masters" : "") +
+                  "</div>",
+              );
+              const drops = document.createElement("details");
+              const ds = document.createElement("summary");
+              ds.textContent =
+                "Drops Idle Masters · " +
+                equipmentChance().toFixed(1) +
+                " % de chance d’équipement";
+              drops.append(ds);
+              const info = document.createElement("div");
+              info.className = "mut";
+              info.textContent =
+                "Au maximum un équipement par victoire, choisi uniformément dans cette table. Ces taux sont propres au jeu ; les drops officiels Dofus ne figurent pas dans le fichier source.";
+              drops.append(info);
+              for (const item of lootPool(live)) {
+                const row = document.createElement("div");
+                row.className = "dropRow";
+                row.innerHTML =
+                  "<span>" +
+                  esc(item.name) +
+                  " · niv. " +
+                  item.level +
+                  '</span><span class="dropRate">' +
+                  dropRate("d" + item.id, live).toFixed(2) +
+                  " %</span>";
+                drops.append(row);
+              }
+              card.append(drops);
+            } else {
+              const note = document.createElement("div");
+              note.className = "mut";
+              note.textContent =
+                "Fiche encyclopédique · rencontre non intégrée au jeu.";
+              card.append(note);
+            }
+            family.append(card);
+          });
+      });
+      root.append(family);
+    });
+  status.textContent =
+    count + " entrées locales · " + combat.length + " rencontres jouables";
+}
