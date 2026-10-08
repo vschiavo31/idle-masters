@@ -38,6 +38,15 @@ async function main() {
     const pathname = decodeURIComponent(
       new URL(req.url, "http://test").pathname,
     );
+    // Exercise retained legacy saves against the previous data fixture; the full world is tested below in an independent account.
+    if (
+      pathname === "/game-world.json" &&
+      !(req.headers.cookie || "").includes("test-user=world-")
+    ) {
+      res.writeHead(200, { "Content-Type": "application/json" });
+      res.end("null");
+      return;
+    }
     const file = path.resolve(
       root,
       "." + (pathname === "/" ? "/index.html" : pathname),
@@ -488,7 +497,7 @@ async function main() {
           ).includes("6/6"),
           true,
         );
-        // Ten hard wins unlock exactly the next displayed zone; level cannot bypass it.
+        // Zone access is free even with no wins and level one.
         const gateBackup = await page.evaluate(() => D.encounterWins);
         await page.evaluate(() => {
           D.encounterWins = {};
@@ -496,25 +505,11 @@ async function main() {
           show("combat");
         });
         const order = await page.evaluate(() => ZONE_ORDER);
-        assert.equal(await page.locator("#zones button:enabled").count(), 1);
-        await page.evaluate(() => {
-          D.encounterWins["0:0"] = 100;
-          D.encounterWins["0:1"] = 100;
-          D.encounterWins["0:2"] = 9;
-          render();
-        });
-        assert.equal(
-          await page
-            .locator(`#zones button[data-zone="${order[1]}"]`)
-            .isEnabled(),
-          false,
-        );
-        await page.evaluate(() => {
-          D.encounterWins["0:2"] = 10;
-          render();
-        });
-        await page.locator(`#zones button[data-zone="${order[1]}"]`).click();
-        assert.equal(await page.evaluate(() => D.z), order[1]);
+        assert.equal(await page.locator("#zones button:enabled").count(), 25);
+        await page
+          .locator(`#zones button[data-zone="${order.at(-1)}"]`)
+          .click();
+        assert.equal(await page.evaluate(() => D.z), order.at(-1));
         await page.evaluate((backup) => {
           D.encounterWins = backup;
           ZONE_ORDER.forEach((id) => (D.encounterWins[id + ":2"] = 10));
@@ -999,6 +994,92 @@ async function main() {
           "_top",
         );
         await isolated.close();
+        // Real 688-monster world, same assets and API as production.
+        const full = await browser.newContext({
+          viewport: { width: 390, height: 844 },
+          isMobile: true,
+          hasTouch: true,
+        });
+        await full.addCookies([
+          { name: "test-user", value: "world-" + engine.name(), url: origin },
+        ]);
+        const worldPage = await full.newPage();
+        worldPage.on("pageerror", (e) => errors.push(e.message));
+        await worldPage.goto(origin);
+        await worldPage.waitForFunction(() => M.length === 688);
+        await worldPage.locator("#classSelect").selectOption("iop");
+        await worldPage
+          .locator("#nicknameInput")
+          .fill("Monde-" + engine.name());
+        await worldPage.locator("#confirmClassBtn").click();
+        await worldPage.waitForFunction(() => GameSave.profile && D.classId);
+        await worldPage.evaluate(() => show("combat"));
+        assert.equal(await worldPage.locator("#zones button").count(), 270);
+        assert.equal(
+          await worldPage.locator("#zones button:enabled").count(),
+          270,
+        );
+        const worldState = await worldPage.evaluate(() => ({
+          ids: M.map((m) => m.sourceId),
+          valid: WORLD.zones.every(
+            (z) =>
+              z.monsters.length &&
+              z.monsters.every((id) =>
+                M.some((m) => m.sourceId === id && monsterInZone(m, z.id)),
+              ),
+          ),
+        }));
+        assert.equal(new Set(worldState.ids).size, 688);
+        assert.equal(worldState.valid, true);
+        for (const index of [0, 100, 269]) {
+          const zone = await worldPage.evaluate((i) => ZONE_ORDER[i], index);
+          await worldPage.locator(`#zones button[data-zone="${zone}"]`).click();
+          for (let tier = 0; tier < 3; tier++) {
+            await worldPage.locator("#mobs button").nth(tier).click();
+            assert.equal(
+              await worldPage.locator("#enemyGroup button").count(),
+              tier + 1,
+            );
+            assert.equal(
+              await worldPage.evaluate(() =>
+                encounter.members.every((e) =>
+                  monsterInZone(
+                    M.find((m) => m.id === e.id),
+                    D.z,
+                  ),
+                ),
+              ),
+              true,
+            );
+            await worldPage.locator("#backMob").click();
+          }
+        }
+        await worldPage.evaluate(() => {
+          const random = Math.random;
+          Math.random = () => 0;
+          sourceLoot({
+            sourceDrops: [{ itemId: 384, rate: 100, criterion: "" }],
+          });
+          Math.random = random;
+          show("inventory");
+        });
+        assert.ok(
+          (await worldPage.locator("#resourceList").textContent()).includes(
+            "Laine de Bouftou",
+          ),
+        );
+        await worldPage.evaluate(() => GameSave.flush());
+        await worldPage.reload();
+        await worldPage.waitForFunction(() => M.length === 688);
+        assert.equal(await worldPage.evaluate(() => D.resources["384"]), 1);
+        assert.equal(
+          await worldPage.evaluate(
+            () => document.documentElement.scrollWidth > innerWidth,
+          ),
+          false,
+        );
+        await full.close();
+
         assert.deepEqual(errors, []);
         assert.deepEqual(external, []);
         console.log(

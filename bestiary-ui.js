@@ -100,6 +100,11 @@ function renderLocalBestiary(source, combat) {
                   (live.boss ? " · Boss Idle Masters" : "") +
                   "</div>",
               );
+              if (live.sourceDrops) {
+                card.append(sourceDropDetails(live));
+                family.append(card);
+                return;
+              }
               const drops = document.createElement("details");
               const ds = document.createElement("summary");
               ds.textContent =

@@ -96,6 +96,11 @@ function localBaseRate(l) {
 }
 // These are Idle Masters equipment tables, not official Dofus drops.
 function lootPool(m) {
+  if (m.sourceDrops)
+    return m.sourceDrops
+      .filter((d) => I["d" + d.itemId] && !d.criterion && d.rate > 0)
+      .map((d) => EQ.find((i) => i.id === d.itemId))
+      .filter(Boolean);
   if (lootPools.has(m.sourceId)) return lootPools.get(m.sourceId);
   const table = FAMILY_LOOT[m.sourceId];
   if (!table) return [];
@@ -357,6 +362,10 @@ function equipmentChance() {
   return Math.max(0, Math.min(72, 30 * (1 + st("Prospection") / 100)));
 }
 function dropRate(id, m = mob()) {
+  if (m.sourceDrops)
+    return m.sourceDrops
+      .filter((d) => "d" + d.itemId === id)
+      .reduce((total, d) => total + sourceDropChance(d), 0);
   let pool = mobDrops(m);
   return pool.includes(id) ? equipmentChance() / pool.length : 0;
 }
@@ -383,6 +392,7 @@ function gainxp(x) {
   return g;
 }
 function loot(m = mob()) {
+  if (m.sourceDrops) return sourceLoot(m);
   let out = [],
     pool = mobDrops(m);
   if (pool.length && Math.random() * 100 < equipmentChance()) {
@@ -593,12 +603,13 @@ function beginFight(
     return;
   }
   const chosen = ids.map((id) => M.find((m) => m.id === id));
+  const fightZone = key ? Number(key.split(":")[0]) : chosen[0]?.z;
   if (
     !playerClass() ||
     chosen.some((m) => !m) ||
     !chosen.length ||
-    chosen.some((m) => m.z !== chosen[0].z) ||
-    !zoneOpen(chosen[0].z)
+    chosen.some((m) => !monsterInZone(m, fightZone)) ||
+    !zoneOpen(fightZone)
   )
     return;
   clearTimeout(autoTimer);
@@ -611,7 +622,7 @@ function beginFight(
   };
   targetIndex = 0;
   D.mid = ids[0];
-  D.z = chosen[0].z;
+  D.z = fightZone;
   D.eh = chosen[0].h;
   D.hp = mh();
   D.rd = 1;
@@ -1272,31 +1283,17 @@ function collection() {
   });
 }
 // Keep persistent zone IDs; progression follows the displayed difficulty order.
-const ZONE_ORDER = Z.map((zone, id) => ({ zone, id }))
+let ZONE_ORDER = Z.map((zone, id) => ({ zone, id }))
   .sort((a, b) => a.zone[1] - b.zone[1] || a.id - b.id)
   .map(({ id }) => id);
 function hardWins(id) {
   return D.encounterWins[id + ":2"] || 0;
 }
 function zoneOpen(id) {
-  const position = ZONE_ORDER.indexOf(id);
-  return (
-    position >= 0 &&
-    ZONE_ORDER.slice(0, position).every((previous) => hardWins(previous) >= 10)
-  );
+  return ZONE_ORDER.includes(id) && !!Z[id];
 }
 function zoneRequirement(id) {
-  const position = ZONE_ORDER.indexOf(id);
-  const missing = ZONE_ORDER.slice(0, position).find(
-    (previous) => hardWins(previous) < 10,
-  );
-  return missing === undefined
-    ? ""
-    : "— Combat difficile : " +
-        Z[missing][0] +
-        " · " +
-        Math.min(10, hardWins(missing)) +
-        "/10 victoires";
+  return "";
 }
 function picker() {
   let z = $("zones");
@@ -1314,7 +1311,7 @@ function picker() {
       "</b> · niv. " +
       Z[i][1] +
       "–" +
-      Math.max(...M.filter((m) => m.z === i).map((m) => m.l)) +
+      Math.max(...M.filter((m) => monsterInZone(m, i)).map((m) => m.l)) +
       " " +
       (ok ? "" : zoneRequirement(i));
     b.onclick = () => {
@@ -1359,11 +1356,19 @@ function picker() {
     b.onclick = () => startEncounter(D.z, tier);
     e.append(b);
   });
-  if (D.z === 2) {
+  if (
+    D.z === 2 ||
+    (WORLD &&
+      Z[D.z][0].toLowerCase().includes("bouftou") &&
+      [101, 4822, 148, 147].every((id) => M.some((m) => m.sourceId === id)))
+  ) {
     let b = document.createElement("button");
     b.className = "choice boss";
     b.innerHTML = "<b>Donjon des Bouftous</b> · 4 salles";
     b.disabled = !playerClass();
+    b.disabled = ![101, 4822, 148, 147].every((id) =>
+      M.some((m) => m.sourceId === id),
+    );
     b.onclick = startDungeon;
     e.append(b);
   }
@@ -1372,7 +1377,7 @@ function fight() {
   let m = mob(),
     h = mh(),
     unlocked = autoWins() >= 10;
-  $("fightZone").textContent = Z[m.z][0];
+  $("fightZone").textContent = Z[D.z][0];
   $("turn").textContent = auto
     ? "Combat automatique"
     : D.tr
@@ -1501,17 +1506,30 @@ function result() {
   $("resultK").textContent = "+" + lastResult.k;
   $("resultDrops").innerHTML = lastResult.drops.length
     ? lastResult.drops
-        .map(
-          (q) => "<div><b>" + meta(q.id).n + "</b> · Jet " + jet(q) + "%</div>",
+        .map((q) =>
+          q.resourceId
+            ? "<div><b>" +
+              esc(
+                WORLD_ITEMS.get(q.resourceId)?.name || "Objet " + q.resourceId,
+              ) +
+              "</b> × " +
+              q.quantity +
+              "</div>"
+            : "<div><b>" +
+              esc(meta(q.id).n) +
+              "</b> · Jet " +
+              jet(q) +
+              "%</div>",
         )
         .join("")
-    : '<span class="mut">Aucun équipement cette fois</span>';
+    : '<span class="mut">Aucun drop cette fois</span>';
 }
 function render() {
   renderClassChoice();
   combatProgress();
   dashboard();
   inventory();
+  resourceInventory();
   spells();
   collection();
   picker();
@@ -1540,6 +1558,7 @@ function show(p) {
   }
 }
 $("openRosterSelection").onclick = () => show("rosterSelection");
+$("resourceSearch").oninput = resourceInventory;
 $("rosterBack").onclick = () => show("collection");
 document
   .querySelectorAll(".nav button")
@@ -1748,10 +1767,11 @@ async function boot() {
       "dofus-equipment-1-40.json",
       "dofus-item-sets.json",
       "dofus-bestiary-1-40.json",
+      "game-world.json",
     ];
-    let [eq, sets, bestiary] = await Promise.all(
+    let [eq, sets, bestiary, world] = await Promise.all(
       files.map(async (f) => {
-        let r = await fetch(f + "?v=3.10.1");
+        let r = await fetch(f + "?v=3.11.0");
         if (!r.ok) throw Error(f + " : HTTP " + r.status);
         return r.json();
       }),
@@ -1770,6 +1790,7 @@ async function boot() {
       migrateCombatSave(D, M);
     }
     D.localCombatMigration = 1;
+    activateWorld(world);
     if (!M.some((m) => m.id === D.mid)) D.mid = M[0].id;
     if (!Z[D.z] || !zoneOpen(D.z))
       D.z = ZONE_ORDER.filter(zoneOpen).at(-1) ?? ZONE_ORDER[0];

@@ -23,6 +23,7 @@ function game() {
   vm.runInContext(read("local-data.js"), c);
   vm.runInContext(read("classes.js"), c);
   vm.runInContext(read("combat-effects.js"), c);
+  vm.runInContext(read("world-data.js"), c);
   const src = read("game.js");
   vm.runInContext(src.slice(0, src.indexOf("function show(")), c);
   c.eq = data("dofus-equipment-1-40.json");
@@ -481,30 +482,10 @@ test("class confirmation is free initially, costs 20000 thereafter, and cannot d
   assert.equal(run("D.k"), 20000);
 });
 
-test("zones unlock in displayed order only after ten hard wins in every preceding zone", () => {
+test("all nonempty zones are freely accessible at level one with zero victories", () => {
   const { run } = game();
-  const order = JSON.parse(run("JSON.stringify(ZONE_ORDER)"));
-  assert.equal(new Set(order).size, 25);
-  assert.equal(order[0], 0);
-  run("D.lv=40;D.boss={incarnam:1,astrub:1,tainela:1};D.master.m4785=999");
-  assert.equal(run(`!!zoneOpen(${order[1]})`), false);
-  run('D.encounterWins={"8:2":17}');
-  assert.equal(
-    run("!!zoneOpen(1)"),
-    false,
-    "Later saved wins cannot skip predecessors",
-  );
-  run("D.encounterWins={}");
-  for (let n = 1; n < order.length; n++) {
-    const previous = order[n - 1],
-      next = order[n];
-    run(
-      `D.encounterWins['${previous}:0']=100;D.encounterWins['${previous}:1']=100;D.encounterWins['${previous}:2']=9`,
-    );
-    assert.equal(run(`!!zoneOpen(${next})`), false);
-    run(`D.encounterWins['${previous}:2']=10`);
-    assert.equal(run(`!!zoneOpen(${next})`), true);
-  }
+  run("D.lv=1;D.encounterWins={};D.master={};D.boss={}");
+  assert.equal(run("ZONE_ORDER.every(zoneOpen)"), true);
   assert.equal(run("zoneOpen(-1)"), false);
   assert.equal(run("zoneOpen(500)"), false);
 });
@@ -689,4 +670,59 @@ test("filtered catalogue keeps eligible monsters and all zones are sorted by lev
   }
   assert.equal(placed.size, 1692);
   assert.ok(c.monsters.every((m) => m.name && m.minLevel > 0));
+});
+
+test("validated world contains exactly the 688 selected monsters and no empty zones", () => {
+  const world = data("game-world.json"),
+    selection = data("selected-monsters.json");
+  assert.equal(world.monsters.length, 688);
+  assert.equal(world.zones.length, 270);
+  assert.deepEqual(
+    [...world.selectedIds].sort((a, b) => a - b),
+    [...selection.selectedIds].sort((a, b) => a - b),
+  );
+  const { c, run } = game();
+  c.world = world;
+  run("D.lv=1;D.xp=50;activateWorld(world)");
+  assert.equal(run("M.length"), 688);
+  assert.equal(run("ZONE_ORDER.every(zoneOpen)"), true);
+  assert.equal(
+    run(
+      "ZONE_ORDER.every(z=>ENCOUNTER_TIERS[z].flat(2).every(id=>M.some(m=>m.sourceId===id&&monsterInZone(m,z))))",
+    ),
+    true,
+  );
+  assert.equal(
+    run(
+      "M.every(m=>ZONE_ORDER.some(z=>ENCOUNTER_TIERS[z].flat(2).includes(m.sourceId)))",
+    ),
+    true,
+  );
+  assert.equal(run("D.xp"), 55);
+  run("activateWorld(world)");
+  assert.equal(run("D.xp"), 55);
+  assert.ok(run("Object.keys(I).length") >= 2100);
+  assert.equal(run("meta('d2411').n"), "Coiffe du Bouftou");
+  assert.equal(
+    run("M.every(m=>m.sourceDrops.every(d=>WORLD_ITEMS.has(d.itemId)))"),
+    true,
+  );
+  run("D.encounterWins={};startEncounter(ZONE_ORDER.at(-2),2)");
+  assert.equal(run("mode"), "fight");
+});
+test("source drops use per-item rates, retain resources and reject unmet source conditions", () => {
+  const { c, run } = game();
+  c.world = data("game-world.json");
+  run("activateWorld(world);D.resources={};D.bag=[];Math.random=()=>0");
+  run(
+    "sourceLoot({sourceDrops:[{itemId:384,rate:100,criterion:''},{itemId:2411,rate:100,criterion:''},{itemId:999999,rate:100,criterion:'Qa=1'}]})",
+  );
+  assert.equal(run("D.resources['384']"), 1);
+  assert.equal(run("D.bag.length"), 1);
+  assert.equal(run("D.bag[0].id"), "d2411");
+  assert.equal(run("D.resources['999999']||0"), 0);
+  run(
+    "Math.random=()=>.99999;sourceLoot({sourceDrops:[{itemId:384,rate:1,criterion:''}]})",
+  );
+  assert.equal(run("D.resources['384']"), 1);
 });
