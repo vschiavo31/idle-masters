@@ -17,16 +17,12 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          RELEASE=$(curl -fsSL \
-            -H "Authorization: Bearer $GH_TOKEN" \
-            -H "Accept: application/vnd.github+json" \
-            -H "X-GitHub-Api-Version: 2022-11-28" \
-            https://api.github.com/repos/dofusdude/dofus3-main/releases/latest)
+          RELEASE=$(curl -fsSL -H "Authorization: Bearer $GH_TOKEN" -H "Accept: application/vnd.github+json" -H "X-GitHub-Api-Version: 2022-11-28" https://api.github.com/repos/dofusdude/dofus3-main/releases/latest)
           TAG=$(printf '%s' "$RELEASE" | python3 -c "import sys,json; print(json.load(sys.stdin)['tag_name'])")
           echo "$TAG" > /tmp/dofus_version
           MONSTERS_URL=$(printf '%s' "$RELEASE" | python3 -c "import sys,json; r=json.load(sys.stdin); print(next(a['browser_download_url'] for a in r['assets'] if a['name']=='monsters.json'))")
-          curl -fL --retry 3 --retry-all-errors "$MONSTERS_URL" -o /tmp/monsters.json
           FR_URL=$(printf '%s' "$RELEASE" | python3 -c "import sys,json; r=json.load(sys.stdin); print(next((a['browser_download_url'] for a in r['assets'] if a['name']=='fr.json'),''))")
+          curl -fL --retry 3 --retry-all-errors "$MONSTERS_URL" -o /tmp/monsters.json
           if [ -n "$FR_URL" ]; then curl -fL --retry 3 --retry-all-errors "$FR_URL" -o /tmp/fr.json; else printf '{}' > /tmp/fr.json; fi
       - name: Build lightweight level 1-40 bestiary
         run: |
@@ -36,94 +32,94 @@ jobs:
           root=json.load(open('/tmp/monsters.json',encoding='utf-8'))
           fr=json.load(open('/tmp/fr.json',encoding='utf-8'))
           version=Path('/tmp/dofus_version').read_text().strip()
-
           def norm(k): return ''.join(c for c in str(k).lower() if c.isalnum())
           def get(d,*names):
               if not isinstance(d,dict): return None
               low={norm(k):v for k,v in d.items()}
               for n in names:
-                  if norm(n) in low: return low[norm(n)]
-              return None
-          def tr(v):
-              if isinstance(v,str) and not v.isdigit(): return v
-              for c in ([fr]+[fr.get(k) for k in ('texts','entries','translations','data') if isinstance(fr,dict) and isinstance(fr.get(k),dict)]):
-                  if not isinstance(c,dict): continue
-                  for key in (v,str(v)):
-                      if key in c:
-                          x=c[key]
-                          if isinstance(x,str): return x
-                          if isinstance(x,dict):
-                              for z in ('text','value','name'):
-                                  if isinstance(x.get(z),str): return x[z]
-              return None
-          def records(obj):
-              # doduda exports are commonly maps keyed by Ankama ID; accept lists and wrapped maps too.
-              if isinstance(obj,list): return obj
-              if isinstance(obj,dict):
-                  for k in ('monsters','data','items'):
-                      v=get(obj,k)
-                      if isinstance(v,list): return v
-                      if isinstance(v,dict) and v and all(isinstance(x,dict) for x in v.values()): return list(v.values())
-                  vals=list(obj.values())
-                  if vals and all(isinstance(x,dict) for x in vals): return vals
+                  if norm(n) in low:return low[norm(n)]
+          def records(obj,depth=0):
+              if depth>4:return []
+              if isinstance(obj,list):
+                  if obj and sum(isinstance(x,dict) for x in obj)>=max(1,len(obj)//2): return obj
+                  return []
+              if not isinstance(obj,dict):return []
+              # Dofus release exports can use a metadata envelope; recursively find the monster collection.
+              preferred=('monsters','data','items','entries','values','records','objects','content')
+              for k in preferred:
+                  v=get(obj,k)
+                  r=records(v,depth+1)
+                  if r:return r
+              vals=list(obj.values())
+              dictvals=[x for x in vals if isinstance(x,dict)]
+              if len(dictvals)>=20:return dictvals
+              for v in vals:
+                  r=records(v,depth+1)
+                  if len(r)>=20:return r
               return []
           def grade_records(v):
-              if isinstance(v,list): return v
-              if isinstance(v,dict): return [x for x in v.values() if isinstance(x,dict)]
+              if isinstance(v,list):return [x for x in v if isinstance(x,dict)]
+              if isinstance(v,dict):return [x for x in v.values() if isinstance(x,dict)]
               return []
           def num(v):
-              if isinstance(v,(int,float)) and not isinstance(v,bool): return int(v)
-              return None
+              if isinstance(v,(int,float)) and not isinstance(v,bool):return int(v)
+              if isinstance(v,str) and v.lstrip('-').isdigit():return int(v)
+          def tr(v):
+              if isinstance(v,str) and not v.isdigit():return v
+              def walk(o,depth=0):
+                  if depth>3:return None
+                  if isinstance(o,dict):
+                      for key in (v,str(v)):
+                          if key in o:
+                              x=o[key]
+                              if isinstance(x,str):return x
+                              if isinstance(x,dict):
+                                  for z in ('text','value','name'):
+                                      if isinstance(x.get(z),str):return x[z]
+                      for x in o.values():
+                          if isinstance(x,dict):
+                              y=walk(x,depth+1)
+                              if y:return y
+                  return None
+              return walk(fr)
           def stat(g,*names):
-              v=get(g,*names)
-              n=num(v)
+              n=num(get(g,*names))
               if n is not None:return n
-              stats=get(g,'stats','characteristics','characteristic')
-              if isinstance(stats,dict):
-                  v=get(stats,*names); n=num(v)
-                  if n is not None:return n
-              return None
-
+              for sk in ('stats','characteristics','characteristic'):
+                  s=get(g,sk)
+                  if isinstance(s,dict):
+                      n=num(get(s,*names))
+                      if n is not None:return n
           src=records(root)
-          print('Root type:',type(root).__name__,'records:',len(src))
-          if src: print('Sample monster keys:',sorted(map(str,src[0].keys()))[:80])
+          print('Root type:',type(root).__name__,'root keys:',list(root.keys())[:40] if isinstance(root,dict) else 'n/a','records:',len(src))
+          if src:print('Sample keys:',list(src[0].keys())[:80])
           out=[]
           for m in src:
-              if not isinstance(m,dict): continue
+              if not isinstance(m,dict):continue
               grades=grade_records(get(m,'grades','monsterGrades','monster_grades'))
               levels=[]; hp=[]; pa=[]; pm=[]
               for g in grades:
-                  lv=stat(g,'level','gradeLevel'); life=stat(g,'lifePoints','life_points','health','hp','life')
-                  ap=stat(g,'actionPoints','action_points','pa','ap'); mp=stat(g,'movementPoints','movement_points','pm','mp')
-                  if lv is not None: levels.append(lv)
-                  if life is not None: hp.append(life)
-                  if ap is not None: pa.append(ap)
-                  if mp is not None: pm.append(mp)
+                  for bucket,names in ((levels,('level','gradeLevel')),(hp,('lifePoints','life_points','health','hp','life')),(pa,('actionPoints','action_points','pa','ap')),(pm,('movementPoints','movement_points','pm','mp'))):
+                      n=stat(g,*names)
+                      if n is not None:bucket.append(n)
               for v in (get(m,'level'),get(m,'minLevel','min_level'),get(m,'maxLevel','max_level')):
                   n=num(v)
-                  if n is not None: levels.append(n)
-              if not levels or min(levels)>40 or max(levels)<1: continue
+                  if n is not None:levels.append(n)
+              if not levels or min(levels)>40 or max(levels)<1:continue
               name=get(m,'name','nameFr','name_fr')
-              if isinstance(name,dict): name=get(name,'fr','frFR','fr_fr','value','text')
+              if isinstance(name,dict):name=get(name,'fr','frFR','fr_fr','value','text')
               if not isinstance(name,str) or not name.strip():
                   nid=get(m,'nameId','name_id'); name=tr(nid) if nid is not None else None
-              if not isinstance(name,str) or not name.strip(): continue
+              if not isinstance(name,str) or not name.strip():continue
               mid=get(m,'id','monsterId','monster_id','ankamaId','ankama_id')
-              race=get(m,'raceId','race_id','monsterRaceId','monster_race_id')
-              boss=bool(get(m,'isBoss','is_boss','boss'))
-              out.append({'id':mid,'name':name.strip(),'minLevel':max(1,min(levels)),'maxLevel':min(40,max(levels)),'hpMin':min(hp) if hp else None,'hpMax':max(hp) if hp else None,'pa':max(pa) if pa else None,'pm':max(pm) if pm else None,'raceId':race,'boss':boss})
+              out.append({'id':mid,'name':name.strip(),'minLevel':max(1,min(levels)),'maxLevel':min(40,max(levels)),'hpMin':min(hp) if hp else None,'hpMax':max(hp) if hp else None,'pa':max(pa) if pa else None,'pm':max(pm) if pm else None,'raceId':get(m,'raceId','race_id','monsterRaceId','monster_race_id'),'boss':bool(get(m,'isBoss','is_boss','boss'))})
           seen=set(); clean=[]
           for x in sorted(out,key=lambda x:(x['minLevel'],x['name'],str(x['id']))):
               key=x['id'] if x['id'] is not None else (x['name'],x['minLevel'])
-              if key in seen: continue
-              seen.add(key); clean.append(x)
+              if key not in seen:seen.add(key);clean.append(x)
           print('Built',len(clean),'monsters from Dofus',version)
-          if len(clean)<20:
-              if src:
-                  print('First record sample:',json.dumps(src[0],ensure_ascii=False)[:5000])
-              raise SystemExit('Extraction suspiciously small; refusing to publish')
-          payload={'source':'dofusdude/dofus3-main','version':version,'range':[1,40],'count':len(clean),'monsters':clean}
-          Path('dofus-bestiary-1-40.json').write_text(json.dumps(payload,ensure_ascii=False,separators=(',',':')),encoding='utf-8')
+          if len(clean)<20:raise SystemExit('Extraction suspiciously small; refusing to publish')
+          Path('dofus-bestiary-1-40.json').write_text(json.dumps({'source':'dofusdude/dofus3-main','version':version,'range':[1,40],'count':len(clean),'monsters':clean},ensure_ascii=False,separators=(',',':')),encoding='utf-8')
           PY
       - name: Commit generated bestiary
         shell: bash
