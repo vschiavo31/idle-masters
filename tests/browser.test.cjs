@@ -1170,6 +1170,71 @@ async function main() {
           ),
           false,
         );
+        // Owned copies keep their rolled stats across all three loot surfaces.
+        const copies=await worldPage.evaluate(()=>{
+          const id=Object.keys(I).find(id=>meta(id).s==='Cape');
+          const copies=[roll(id),roll(id),roll(id)];D.bag.push(...copies);show('inventory');
+          return copies.map(q=>({uid:q.uid,id:q.id,st:q.st}));
+        });
+        await worldPage.locator('#inventoryView').selectOption('icons');
+        await worldPage.locator('.itemIconButton[data-uid="'+copies[0].uid+'"]').click();
+        assert.equal(await worldPage.locator('#itemInspector').evaluate(el=>el.open),true);
+        assert.ok(await worldPage.locator('#itemInspectorBody .itemStats').textContent());
+        await worldPage.locator('#itemInspector').getByRole('button',{name:'Vendre · 5 K',exact:true}).click();
+        const kamas=await worldPage.evaluate(()=>D.k);
+        await worldPage.locator('#itemInspector').getByRole('button',{name:'Confirmer la vente',exact:true}).click();
+        assert.equal(await worldPage.evaluate(()=>D.k),kamas+5);
+        assert.equal(await worldPage.evaluate(uid=>!!itemByUid(uid),copies[0].uid),false);
+        await worldPage.locator('#itemInspectorClose').click();
+        await worldPage.locator('#inventoryView').selectOption('details');
+        const saleCard=worldPage.locator('.item[data-uid="'+copies[1].uid+'"]');
+        await saleCard.getByRole('button',{name:'Vendre · 5 K',exact:true}).click();
+        assert.equal(await saleCard.locator('.inlineSale').count(),1);
+        await saleCard.getByRole('button',{name:'Confirmer la vente',exact:true}).click();
+        assert.equal(await worldPage.evaluate(()=>D.k),kamas+10);
+        await worldPage.evaluate(uid=>{
+          show('combat');startEncounter(ZONE_ORDER[0],0);
+          encounter.members.forEach(e=>e.hp=0);victory();
+          lastResult.drops=[itemByUid(uid)];render();
+        },copies[2].uid);
+        await worldPage.locator('#resultDrops .lootCard').click();
+        assert.equal(await worldPage.locator('#itemInspector .itemStats').textContent().then(Boolean),true);
+        await worldPage.locator('#itemInspector').getByRole('button',{name:'Équiper',exact:true}).click();
+        assert.equal(await worldPage.evaluate(uid=>Object.values(D.w).some(q=>q?.uid===uid),copies[2].uid),true);
+        await worldPage.locator('#itemInspectorClose').click();
+        await worldPage.locator('#again').click();
+        await worldPage.evaluate(()=>{D.encounterWins[ZONE_ORDER[0]+':0']=10;render()});
+        await worldPage.locator('#autoBtn').click();
+        await worldPage.evaluate(()=>{
+          clearTimeout(autoTimer);const random=Math.random;Math.random=()=>0;
+          encounter.members.forEach(e=>e.hp=0);victory();clearTimeout(autoTimer);
+          startEncounter(ZONE_ORDER[0],0,true);encounter.members.forEach(e=>e.hp=0);victory();clearTimeout(autoTimer);
+          Math.random=random;
+        });
+        const session=await worldPage.evaluate(()=>structuredClone(D.autoSession));
+        assert.equal(session.battles,2);assert.equal(session.wins,2);assert.ok(session.drops.length>0);
+        await worldPage.locator('#autoRecapBtn').click();
+        assert.equal(await worldPage.evaluate(()=>auto),false);
+        assert.ok((await worldPage.locator('#autoRecapTotals').textContent()).includes('2 combat(s)'));
+        await worldPage.locator('#autoRecapDrops summary').first().click();
+        await worldPage.locator('#autoRecapDrops .lootCard').first().click();
+        await worldPage.locator('#itemInspector').getByRole('button',{name:'Vendre · 5 K',exact:true}).click();
+        const autoKamas=await worldPage.evaluate(()=>D.k);
+        await worldPage.locator('#itemInspector').getByRole('button',{name:'Confirmer la vente',exact:true}).click();
+        assert.equal(await worldPage.evaluate(()=>D.k),autoKamas+5);
+        assert.deepEqual(await worldPage.evaluate(()=>D.autoSession),session);
+        await worldPage.locator('#itemInspectorClose').click();
+        await worldPage.locator('#autoRecapClose').click();
+        await worldPage.locator('#resultClose').click();
+        await worldPage.locator('#backMob').click();
+        await worldPage.evaluate(()=>{show('inventory');D.inventoryView='icons';inventory();save()});
+        await worldPage.evaluate(()=>GameSave.flush());await worldPage.reload();
+        await worldPage.waitForFunction(()=>M.length===688);
+        await worldPage.evaluate(()=>show('inventory'));
+        assert.equal(await worldPage.locator('#inventoryView').inputValue(),'icons');
+        await worldPage.locator('#autoRecapHistory').click();
+        assert.deepEqual(await worldPage.evaluate(()=>D.autoSession),session);
+        await worldPage.locator('#autoRecapClose').click();
         await full.close();
 
         assert.deepEqual(errors, []);

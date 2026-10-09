@@ -190,3 +190,10 @@ Les planches WebP transparentes sont servies localement : aucun appel à DofusDB
 Le combat occupe la hauteur visible de l’écran, avec choix de la cible, personnages, PV, PA, neuf actions (sorts et arme) et fin du tour. Le journal reste accessible dans un panneau qui ne déplace pas l’arène. Les petits écrans et l’orientation paysage ont une disposition adaptée.
 
 Victoire et défaite ouvrent un résultat en fenêtre superposée. Refaire, réessayer ou fermer cette fenêtre relance la même difficulté sans déplacer la page. Les récompenses restent attribuées une seule fois à la victoire ; la défaite ne donne aucune récompense. Les boutons de changement de zone permettent de revenir à la sélection.
+
+
+## Gestion du butin (3.18.0)
+
+L’inventaire propose une vue icônes, conservée dans la sauvegarde avec les filtres et le tri. Une icône ouvre la fiche du jet possédé avec comparaison totale, bonus de panoplie inclus, choix d’emplacement et vente. La confirmation individuelle se fait dans la fiche ou juste sous les boutons de l’objet, sans remonter à la sélection globale. Les objets verrouillés et ceux déjà vendus ne peuvent pas être revendus.
+
+Les drops de résultat ouvrent cette même fiche. Une session auto compte les combats terminés, victoires/défaites, XP réellement créditée, kamas et chaque exemplaire obtenu. Le bilan arrête l’automatique, regroupe les objets par nom et permet de consulter, équiper ou vendre chaque exemplaire. Il reste consultable depuis l’inventaire après rechargement ; une nouvelle activation auto démarre un nouveau bilan. Les jets restent dans le sac ou les emplacements portés ; le bilan sauvegarde leurs identifiants sans dupliquer leurs caractéristiques.

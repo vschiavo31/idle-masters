@@ -6,7 +6,7 @@
       name="viewport"
       content="width=device-width,initial-scale=1,viewport-fit=cover"
     />
-    <title>Idle Masters V3.17.0</title>
+    <title>Idle Masters V3.18.0</title>
     <style>
       :root {
         --bg: #100e0b;
@@ -680,13 +680,32 @@
       .fighterName > span {min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
       #fight #enemyGroup .choice {min-height:0;overflow:hidden;}
       #fight #enemyGroup .enemyStatus {white-space:nowrap;width:100%;overflow:hidden;text-overflow:ellipsis;}
+      .iconBag {display:grid;grid-template-columns:repeat(auto-fill,minmax(72px,1fr));gap:10px;}
+      .itemIconButton {position:relative;min-width:0;padding:4px;aspect-ratio:1;background:radial-gradient(circle,#36412b,#151c14);border-radius:15px;}
+      .itemIconButton .art {width:64px;height:64px;max-width:100%;}
+      .iconLock {position:absolute;bottom:2px;left:0;right:0;font-size:10px;}
+      .inlineSale {width:100%;padding:10px;border:1px solid var(--gold);border-radius:12px;background:#312c17;display:flex;flex-wrap:wrap;gap:8px;}
+      .inlineSale > span {width:100%;font-size:14px;}
+      .itemActions {flex-wrap:wrap;}
+      dialog {width:min(560px,calc(100% - 24px));max-height:85dvh;overflow:auto;overscroll-behavior:contain;border:1px solid var(--gold);border-radius:22px;padding:18px;background:#1d271d;color:var(--text);box-shadow:0 20px 80px #0008;}
+      dialog::backdrop {background:#050d09bb;backdrop-filter:blur(4px);}
+      .dialogHeader {display:flex;align-items:start;justify-content:space-between;gap:14px;}
+      .dialogHeader h2 {font-size:21px;min-width:0;}
+      .dialogHeader button {flex-shrink:0;font-size:24px;padding:2px 12px;}
+      .inspectHero {display:flex;align-items:center;gap:16px;margin:12px 0;}
+      .inspectActions {position:sticky;bottom:-18px;padding:12px 0;background:#1d271d;}
+      .inspectActions select {width:100%;min-width:0;}
+      #resultDrops .lootCard,#autoRecapDrops .lootCard {width:100%;}
+      #autoRecapDrops summary {display:flex;align-items:center;gap:10px;cursor:pointer;}
+      #autoRecapBtn {font-size:11px;padding:6px;white-space:nowrap;}
+      #autoRecapBtn[hidden] {display:none;}
     </style>
   </head>
   <body>
     <div class="wrap">
       <div class="top">
         <div class="brand">Idle Masters</div>
-        <span class="version">V3.17 · Arène</span>
+        <span class="version">V3.18 · Butin</span>
       </div>
       <div class="row" style="margin-bottom: 12px">
         <small id="saveStatus" class="mut" role="status"
@@ -817,6 +836,7 @@
         <div class="panel">
           <div class="bagTools">
             <input id="bagSearch" placeholder="Rechercher un objet..." />
+            <label for="inventoryView">Affichage</label><select id="inventoryView"><option value="details">Fiches détaillées</option><option value="icons">Icônes uniquement</option></select>
             <label for="bagSort">Trier les objets</label>
             <select id="bagSort">
               <option value="levelAsc">Niveau : plus bas au plus haut</option>
@@ -881,6 +901,7 @@
             <button id="confirmSale">Confirmer la vente</button
             ><button id="cancelSale">Annuler</button>
           </div>
+          <button id="autoRecapHistory" hidden>Dernier bilan auto</button>
           <div id="bag"></div>
         </div>
       </section>
@@ -1087,7 +1108,7 @@
         </div>
         <div id="fight" style="display: none">
           <div class="arenaShell">
-            <div class="arenaHeader"><button id="backMob">Quitter</button><span id="fightZone" class="gold"></span><span id="roundTxt"></span><button id="arenaMenu">Menu</button></div>
+            <div class="arenaHeader"><button id="backMob">Quitter</button><span id="fightZone" class="gold"></span><span id="roundTxt"></span><button id="autoRecapBtn" hidden>Bilan auto</button><button id="arenaMenu">Menu</button></div>
             <div id="enemyGroup" aria-label="Choisir la cible"></div>
             <div class="arenaStage">
               <div class="playerFocus">
@@ -1139,7 +1160,7 @@
             <div class="actions">
               <button id="again">Refaire</button
               ><button id="changeMob">Changer mob</button
-              ><button id="changeZone">Changer zone</button>
+              ><button id="changeZone">Changer zone</button><button id="resultAutoRecapBtn" hidden>Bilan auto</button>
             </div>
           </div>
         </div>
@@ -1152,14 +1173,17 @@
       ><button data-page="collection">COLLECTION</button
       ><button data-page="combat">COMBAT</button>
     </nav>
-    <script src="local-data.js?v=3.17.0"></script>
-    <script src="bestiary-ui.js?v=3.17.0"></script>
-    <script src="saving.js?v=3.17.0"></script>
-    <script src="classes.js?v=3.17.0"></script>
-    <script src="combat-effects.js?v=3.17.0"></script>
-    <script src="roster-selection.js?v=3.17.0"></script>
-    <script src="world-data.js?v=3.17.0"></script>
-    <script src="game-art.js?v=3.17.0"></script>
-    <script src="game.js?v=3.17.0"></script>
+    <script src="local-data.js?v=3.18.0"></script>
+    <script src="bestiary-ui.js?v=3.18.0"></script>
+    <script src="saving.js?v=3.18.0"></script>
+    <script src="classes.js?v=3.18.0"></script>
+    <script src="combat-effects.js?v=3.18.0"></script>
+    <script src="roster-selection.js?v=3.18.0"></script>
+    <script src="world-data.js?v=3.18.0"></script>
+    <script src="game-art.js?v=3.18.0"></script>
+    <dialog id="itemInspector"><div class="dialogHeader"><h2 id="itemInspectorTitle"></h2><button id="itemInspectorClose" aria-label="Fermer la fiche">×</button></div><div id="itemInspectorBody"></div></dialog>
+    <dialog id="autoRecap"><div class="dialogHeader"><h2>Bilan des combats automatiques</h2><button id="autoRecapClose" aria-label="Fermer le bilan">×</button></div><p id="autoRecapTotals"></p><p class="mut">Ouvre un groupe pour consulter chaque objet obtenu, l’équiper ou le vendre. Le combat automatique est arrêté pendant ce bilan.</p><div id="autoRecapDrops"></div></dialog>
+    <script src="game.js?v=3.18.0"></script>
+    <script src="loot-ui.js?v=3.18.0"></script>
   </body>
 </html>

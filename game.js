@@ -554,6 +554,7 @@ function victory() {
     drops,
   };
   if (auto && !dungeon) {
+    recordAutoRewards(xg,kg,drops);
     save();
     render();
     return (autoTimer = setTimeout(
@@ -617,6 +618,7 @@ function enemy() {
     }
     endEffectRound();
     if (D.hp <= 0) {
+      if(auto && D.autoSession) {D.autoSession.battles++;D.autoSession.losses=(D.autoSession.losses||0)+1;}
       auto = false;
       D.hp = mh();
       D.end = true;
@@ -675,12 +677,18 @@ function autoWins() {
     ? D.encounterWins[encounter.key] || 0
     : D.master[D.mid] || 0;
 }
+function recordAutoRewards(xp,k,drops) {
+ D.autoSession ||= {battles:0,wins:0,losses:0,xp:0,k:0,drops:[]};
+ D.autoSession.battles++;D.autoSession.wins=(D.autoSession.wins||0)+1;D.autoSession.xp+=xp;D.autoSession.k+=k;
+ D.autoSession.drops.push(...drops.filter(q=>q.uid&&meta(q.id)).map(q=>({uid:q.uid,id:q.id,rayonnant:!!q.rayonnant})));
+}
 function toggleAuto() {
   if (autoWins() < 10 || dungeon) return;
   auto = !auto;
-  if (auto) scheduleAuto();
-  else clearTimeout(autoTimer);
+  if (auto) {D.autoSession={battles:0,wins:0,losses:0,xp:0,k:0,drops:[]};scheduleAuto();}
+  else {clearTimeout(autoTimer);if(D.end&&lastResult)mode="result";}
   render();
+  if(!auto && typeof openAutoRecap==='function')openAutoRecap();
 }
 function beginFight(
   ids,
@@ -968,6 +976,10 @@ function sellItems(ids) {
   render();
   return items.length;
 }
+function confirmSingleSale(uid,id) {
+ const q=D.bag.find(item=>item.uid===uid&&item.id===id&&!item.locked);
+ return q?sellItems([uid]):0;
+}
 function sell(uid) {
   return sellItems([uid]);
 }
@@ -1164,6 +1176,7 @@ function equipmentExtraInfo(id, item = {id}) {
 }
 function inventory() {
   let search = ($("bagSearch").value || "").toLowerCase();
+  $("inventoryView").value = D.inventoryView === "icons" ? "icons" : "details";
   $("bagCount").textContent = D.bag.length;
   $("seenCount").textContent = Object.keys(D.seen || {}).length;
   $("wornCount").textContent =
@@ -1202,6 +1215,7 @@ function inventory() {
   $("sets").textContent = txt(sb()) || "Aucun bonus de panoplie actif";
   let e = $("bag");
   e.innerHTML = "";
+  e.classList.toggle("iconBag",D.inventoryView==="icons");
   let ready = D.bag.slice().filter((q) => meta(q.id));
   let pending = D.bag.length - ready.length;
   $("bagSort").value = INVENTORY_SORTS.includes(D.inventorySort)
@@ -1245,6 +1259,11 @@ function inventory() {
     " kamas";
   $("sellSelected").disabled = !saleSelection.size;
   visible.forEach((q) => {
+    if(D.inventoryView==="icons") {
+      const icon=document.createElement("button");icon.type="button";icon.className="itemIconButton"+(q.rayonnant?" radiant":"");icon.dataset.uid=q.uid;
+      icon.setAttribute("aria-label",meta(q.id).n+" · niveau "+meta(q.id).l+(q.locked?" · verrouillé":""));
+      icon.innerHTML=itemArt(q.id)+(q.locked?'<span class="iconLock">Verrouillé</span>':'');icon.onclick=()=>openItemInspector(q);e.append(icon);return;
+    }
     let x = meta(q.id),
       j = jet(q),
       d = document.createElement("div");
@@ -1320,7 +1339,7 @@ function inventory() {
     let s = document.createElement("button");
     s.textContent = "Vendre · 5 K";
     s.disabled = !!q.locked;
-    s.onclick = () => requestSale([q.uid]);
+    s.onclick = () => showInlineSale(q,a);
     const lock = document.createElement("button");
     lock.textContent = q.locked ? "Déverrouiller" : "Verrouiller";
     lock.onclick = () => toggleItemLock(q.uid);
@@ -1643,23 +1662,13 @@ function result() {
     : "";
   $("resultXp").textContent = "+" + lastResult.xp;
   $("resultK").textContent = "+" + lastResult.k;
-  $("resultDrops").innerHTML = lastResult.drops.length
-    ? lastResult.drops
-        .map((q) =>
-          q.resourceId
-            ? "<div><b>" +
-              esc(
-                WORLD_ITEMS.get(q.resourceId)?.name || "Objet " + q.resourceId,
-              ) +
-              "</b> × " +
-              q.quantity +
-              "</div>"
-            : '<div class="lootCard ' + (q.rayonnant ? 'radiant' : '') + '">' + itemArt(q.id) + "<div><b>" +
-              esc(meta(q.id).n) +
-              "</b> · " + (q.rayonnant ? '<span class="gold">Rayonnant · ×1,5</span>' : "Jet " + jet(q) + "%") + "</div></div>",
-        )
-        .join("")
-    : '<span class="mut">Aucun drop cette fois</span>';
+  const dropsRoot=$("resultDrops");dropsRoot.replaceChildren();
+  for(const q of lastResult.drops) {
+    if(q.resourceId)continue;
+    dropsRoot.append(lootButton(q));
+  }
+  if(!dropsRoot.children.length)dropsRoot.innerHTML='<span class="mut">Aucun drop cette fois</span>';
+
 }
 let resultWasVisible = false;
 function render() {
@@ -1682,6 +1691,10 @@ function render() {
   const resultVisible = arenaVisible && mode === "result";
   if(resultVisible && !resultWasVisible) $("again").focus({preventScroll:true});
   resultWasVisible = resultVisible;
+  if(typeof refreshLootUI==='function')refreshLootUI();
+  $("autoRecapBtn").hidden = !D.autoSession;
+  $("autoRecapHistory").hidden = !D.autoSession;
+  $("resultAutoRecapBtn").hidden = !D.autoSession;
   save();
 }
 function show(p) {
@@ -1772,12 +1785,14 @@ $("arenaMenu").onclick = () => show("dashboard");
 $("endBtn").onclick = enemy;
 $("autoBtn").onclick = toggleAuto;
 $("backMob").onclick = () => {
+  const wasAuto=auto;
   fightToken++;
   auto = false;
   clearTimeout(autoTimer);
   dungeon = null;
   mode = "picker";
   render();
+  if(wasAuto && typeof openAutoRecap==='function')openAutoRecap();
 };
 $("again").onclick = () =>
   lastResult.key
@@ -1785,7 +1800,7 @@ $("again").onclick = () =>
     : startFight(lastResult.mid);
 $("resultClose").onclick = () => $("again").click();
 document.addEventListener("keydown", event => {
-  if(!resultWasVisible) return;
+  if(!resultWasVisible || document.querySelector("dialog[open]")) return;
   if(event.key==="Escape") {event.preventDefault();$("again").click();}
   if(event.key==="Tab") {
     const buttons=Array.from($("result").querySelectorAll("button:not(:disabled)"));
@@ -1929,7 +1944,7 @@ async function boot() {
     ];
     let [eq, sets, bestiary, world, extra] = await Promise.all(
       files.map(async (f) => {
-        let r = await fetch(f + "?v=3.17.0");
+        let r = await fetch(f + "?v=3.18.0");
         if (!r.ok) throw Error(f + " : HTTP " + r.status);
         return r.json();
       }),

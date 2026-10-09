@@ -967,3 +967,24 @@ test("defeat opens a retry result without rewards or changing the selected encou
  assert.equal(run('lastResult.tier'),2);
  assert.equal(run('JSON.stringify([D.k,D.xp,D.master,D.encounterWins,D.bag])'),run('before'));
 });
+
+
+test("single item sales validate ownership, identity, lock and cannot pay twice", () => {
+ const {run}=game();run("D.bag=[{uid:701,id:'d70',st:{}},{uid:702,id:'d70',st:{},locked:true}];startK=D.k");
+ assert.equal(run("confirmSingleSale(701,'wrong')"),0);
+ assert.equal(run("confirmSingleSale(702,'d70')"),0);
+ assert.equal(run("confirmSingleSale(701,'d70')"),1);
+ assert.equal(run("confirmSingleSale(701,'d70')"),0);
+ assert.equal(run('D.k-startK'),5);
+ assert.equal(run('D.bag.length'),1);
+});
+
+test("automatic victories tally exact credited rewards once and keep individual drop identities", () => {
+ const {run}=game();run("startEncounter(0,0);auto=true;D.autoSession={battles:0,wins:0,losses:0,xp:0,k:0,drops:[]};Math.random=()=>0;encounter.members.forEach(e=>e.hp=0);victory();clearTimeout(autoTimer)");
+ assert.equal(run('D.autoSession.battles'),1);
+ assert.equal(run('D.autoSession.wins'),1);
+ assert.equal(run('D.autoSession.xp===lastResult.xp&&D.autoSession.k===lastResult.k'),true);
+ assert.equal(run('D.autoSession.drops.map(q=>q.uid).join()===lastResult.drops.map(q=>q.uid).join()'),true);
+ run('victory()');assert.equal(run('D.autoSession.battles'),1);
+ assert.equal(run('D.autoSession.drops.every(q=>!q.st)'),true);
+});
