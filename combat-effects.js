@@ -133,6 +133,7 @@ function attackValue(p, kind) {
     Math.floor(R(p[3], p[4]) * (1 + bonus(p[1]) / 100) * boost) +
       st("Dommages") + st(p[1]),
   );
+  damage = Math.max(0, Math.floor(damage * Math.max(0, 1 + st("% Dommages aux sorts") / 100)));
   const criticalChance = Math.max(0, Math.min(100, 5 + st("Critique")));
   if (Math.random() * 100 < criticalChance) {
     damage = Math.max(0, Math.floor(damage * 1.5) + st("DommagesCritiques"));
@@ -269,9 +270,15 @@ function castClassSpell(i) {
       break;
     default: {
       const amount = attackValue(p, kind);
+      const extra = kind !== "aoe" ? livingTargets().filter(index => index !== targetIndex)
+        .sort((a, b) => Math.abs(a - targetIndex) - Math.abs(b - targetIndex) || b - a)[0] : undefined;
       let total = 0;
       for (const index of kind === "aoe" ? livingTargets() : [targetIndex])
         total += hurtTarget(index, amount);
+      if (extra !== undefined && Math.random() * 100 < Math.max(0, Math.min(100, st("Portee")))) {
+        total += hurtTarget(extra, amount);
+        lg("Portée : l’attaque touche également " + M.find(m => m.id === encounter.members[extra].id).n + ".");
+      }
       lg(
         s.n +
           " : " +
@@ -333,6 +340,11 @@ function endEffectRound() {
 }
 function incomingDamage(m, index) {
   let value = R(m.a[0], m.a[1]);
+  const critical = Math.random() * 100 < Math.max(0, Math.min(100, m.criticalChance ?? 5));
+  if (critical) {
+    value = Math.floor(value * 1.5);
+    lg(m.n + " : coup critique !");
+  }
   if (m.boss && D.rd % 3 === 0) value = Math.floor(value * 1.5);
   value = Math.floor(
     value *
@@ -341,6 +353,7 @@ function incomingDamage(m, index) {
   );
   const resistance = Math.min(100, st("% Résistance " + (m.e || "Neutre")));
   value = Math.max(0, Math.floor(value * (1 - resistance / 100)));
+  value = Math.max(0, value - st("Résistance " + (m.e || "Neutre")) - (critical ? st("ResistanceCritiques") : 0));
   const absorbed = Math.min(effects.shield, value);
   effects.shield -= absorbed;
   if (absorbed) lg("Bouclier : " + absorbed + " dégâts absorbés.");

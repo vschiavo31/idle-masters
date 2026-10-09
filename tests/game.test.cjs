@@ -222,7 +222,7 @@ test("target HP is independent and full-group victory pays each enemy exactly on
 test("dead enemies do not attack and group auto progress is separate from individual kills", async () => {
   const { run } = game();
   run(
-    "Math.random=()=>0;startEncounter(0,2);encounter.members[0].hp=0;selectTarget(1,true);enemy()",
+    "Math.random=()=>0;M.forEach(m=>m.criticalChance=0);startEncounter(0,2);encounter.members[0].hp=0;selectTarget(1,true);enemy()",
   );
   await new Promise((r) => setTimeout(r, 350));
   assert.equal(
@@ -705,7 +705,7 @@ test("validated world contains exactly the 688 selected monsters and no empty zo
   assert.equal(run("D.xp"), 55);
   run("activateWorld(world)");
   assert.equal(run("D.xp"), 55);
-  assert.ok(run("Object.keys(I).length") >= 2100);
+  assert.equal(run("Object.keys(I).length"), 2031);
   assert.equal(run("meta('d2411').n"), "Coiffe du Bouftou");
   assert.equal(
     run("M.every(m=>m.sourceDrops.every(d=>WORLD_ITEMS.has(d.itemId)))"),
@@ -812,4 +812,76 @@ test("percentage resistance matches the enemy element, then shields absorb damag
   assert.equal(run("incomingDamage({a:[100,100],e:'Feu'},0)"), 110);
   run("D.w.Cape.st={'% Resistance Feu':150}");
   assert.equal(run("incomingDamage({a:[100,100],e:'Feu'},0)"), 0);
+});
+
+test("class equipment and deleted stats disappear from drops, sets and existing saves", () => {
+  const { c, run } = game();
+  c.world = data('game-world.json');
+  run("D.bag=[{uid:800,id:'d16143',st:{'Points de vie':13100}},{uid:801,id:'d2411',st:{Force:5,Pod:10,Invocation:1,'Dommage Pieges':3,Fuite:2,'Esquive PA':2}}];D.w.Cape={uid:802,id:'d8639',st:{}};D.seen.d16143=1;activateWorld(world)");
+  assert.equal(run("removedClassGearIds.size"), 95);
+  assert.equal(run("removedClassGearIds.has('d16143')"), true);
+  assert.equal(run("D.bag.length"), 1);
+  assert.equal(run("D.bag[0].uid"), 801);
+  assert.equal(run("Object.keys(D.bag[0].st).join(',')"), 'Force');
+  assert.equal(run("D.w.Cape"), null);
+  assert.equal(run("D.seen.d16143"), undefined);
+  assert.equal(run("Object.keys(I).every(id=>!removedClassGearIds.has(id)&&Object.keys(meta(id).x).every(name=>!removedEquipmentStat(name)))"), true);
+  assert.equal(run("Object.values(SET).every(tiers=>Object.values(tiers).every(stats=>Object.keys(stats).every(name=>!removedEquipmentStat(name))))"), true);
+  assert.equal(run("M.every(m=>mobDrops(m).every(id=>!removedClassGearIds.has(id)))"), true);
+  const snapshot = run('JSON.stringify(D)');
+  run('cleanEquipmentSave(D)');
+  assert.equal(run('JSON.stringify(D)'), snapshot);
+});
+
+test("spell percent bonuses multiply attacks without affecting healing or reserved effects", () => {
+  const { run } = game();
+  run("I.audit=['Audit','Cape',null,1,{},1,1];D.w={Cape:{id:'audit',st:{'% Dommages aux sorts':2}}};D.inv={};Math.random=()=>.999;resetEffects()");
+  assert.equal(run("attackValue(['Test','Feu',1,100,100],'dmg')"), 102);
+  assert.equal(run("healValue(['Test','Soin',1,100,100])"), 100);
+  run("D.w.Cape.st={'% Dommages aux sorts':-5}");
+  assert.equal(run("attackValue(['Test','Feu',1,100,100],'dmg')"), 95);
+  run("D.w.Cape.st={Initiative:1000,\"% Dommages d'armes\":200,'% Resistance melee':50,'% Resistance distance':50,'Dommages Renvoyes':99}");
+  assert.equal(run("attackValue(['Test','Feu',1,100,100],'dmg')"), 100);
+  assert.equal(run("incomingDamage({a:[100,100],e:'Feu',criticalChance:0},0)"), 100);
+});
+
+test("flat elemental and critical resistances reduce only their matching attacks", () => {
+  const { run } = game();
+  run("I.audit=['Audit','Cape',null,1,{},1,1];D.w={Cape:{id:'audit',st:{'Résistance Feu':1,'Résistance Critiques':2}}};Math.random=()=>.999;resetEffects()");
+  assert.equal(run("incomingDamage({a:[5,5],e:'Feu',criticalChance:0},0)"), 4);
+  assert.equal(run("incomingDamage({a:[10,10],e:'Feu',criticalChance:0},0)"), 9);
+  assert.equal(run("incomingDamage({a:[10,10],e:'Air',criticalChance:0},0)"), 10);
+  assert.equal(run("incomingDamage({a:[7,7],e:'Air',criticalChance:100},0)"), 8);
+  assert.equal(run("incomingDamage({a:[10,10],e:'Air',criticalChance:100},0)"), 13);
+  run("D.w.Cape.st={'Resistance Feu':1000}");
+  assert.equal(run("incomingDamage({a:[5,5],e:'Feu',criticalChance:0},0)"), 0);
+});
+
+test("range can hit one adjacent living enemy without duplicating area damage or cascading", () => {
+  const { run } = game();
+  run("I.audit=['Audit','Cape',null,1,{},1,1];D.w={Cape:{id:'audit',st:{PO:100}}};D.lv=40;Math.random=()=>.999;startEncounter(0,2);encounter.members.forEach(e=>e.hp=1000);D.eh=1000;selectTarget(0,true)");
+  run('cast(0)');
+  assert.equal(run('encounter.members[0].hp===encounter.members[1].hp'), true);
+  assert.equal(run('encounter.members[2].hp'), 1000);
+  run("PA=20;effects.casts={};encounter.members.forEach(e=>e.hp=1000);D.eh=1000;cast(3)");
+  assert.equal(run('new Set(encounter.members.map(e=>e.hp)).size'), 1);
+  run("PA=20;effects.casts={};encounter.members.forEach(e=>e.hp=1000);D.eh=1000;D.w.Cape.st={Portee:2};rolls=[.1,.99,.019];Math.random=()=>rolls.shift()??.999;cast(0)");
+  assert.equal(run('encounter.members[0].hp===encounter.members[1].hp'), true);
+  assert.equal(run('encounter.members[2].hp'), 1000);
+  run("PA=20;effects.casts={};encounter.members.forEach(e=>e.hp=1000);D.eh=1000;rolls=[.1,.99,.02];cast(0)");
+  assert.equal(run('encounter.members[1].hp'), 1000);
+  run("PA=20;effects.casts={};D.w.Cape.st={Portee:100};Math.random=()=>.999;encounter.members[0].hp=0;encounter.members[1].hp=0;encounter.members[2].hp=1000;selectTarget(2,true);cast(0)");
+  assert.equal(run('encounter.members[0].hp+encounter.members[1].hp'), 0);
+  assert.equal(run('mode'), 'fight');
+});
+
+test("legacy fixed resistance and critical effect IDs keep rolls while correcting labels", () => {
+  const { run } = game();
+  run("buildLocalData({items:[{id:90001,name:'Legacy',slot:'Cape',level:1,effects:[{effectId:243,stat:'Feu (fixe)',min:1,max:3},{effectId:421,stat:'Critiques (fixe)',min:2,max:4},{effectId:419,stat:'Critiques',min:10,max:20}]}]},{sets:[]});D.bag=[{uid:44,id:'d90001',st:{'Feu (fixe)':2,'Critiques (fixe)':3,Critique:15}}];cleanEquipmentSave(D);D.w={Cape:D.bag[0]}");
+  assert.equal(run("st('Resistance Feu')"), 2);
+  assert.equal(run("st('ResistanceCritiques')"), 3);
+  assert.equal(run("st('DommagesCritiques')"), 15);
+  assert.equal(run("st('Critique')"), 0);
+  assert.equal(run("D.bag[0].uid"), 44);
+  assert.equal(run("Object.keys(meta('d90001').x).sort().join(',')"), 'DommagesCritiques,Resistance Feu,ResistanceCritiques');
 });

@@ -11,6 +11,7 @@ function activateWorld(data, state = D) {
   const previousZone = Z[state.z]?.[0];
   const fraction = Math.max(0, Math.min(0.999999, state.xp / need(state.lv)));
   buildLocalData(data.equipment, data.sets);
+  cleanEquipmentSave(state);
   Z.length = 0;
   ENCOUNTER_TIERS.length = 0;
   for (const zone of data.zones) {

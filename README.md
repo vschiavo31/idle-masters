@@ -153,3 +153,13 @@ Les dommages fixes sont ajoutés après le calcul des dégâts de base et de pui
 Les résistances élémentaires en pourcentage réduisent les attaques entrantes selon l’élément Idle Masters du monstre, après ses modificateurs et avant le bouclier. Les malus augmentent les dégâts reçus ; une résistance supérieure à 100 % ne provoque jamais de soin. La puissance renforce les dégâts de base de tous les éléments de 1 % par point. Les soins fixes s’ajoutent après le calcul de soin existant.
 
 PM, portée, tacle, fuite, initiative, retrait/esquive PA ou PM, dommages/résistances de poussée, résistances fixes/critiques, effets de pièges, renvoi, pourcentages mêlée/distance/sorts/armes et modifications spécifiques aux sorts de classe restent sans mécanique dédiée.
+
+## Simplification et effets supplémentaires (3.14.0)
+
+Les 95 équipements des 19 panoplies de classe sont exclus du catalogue jouable et retirés des anciens sacs/emplacements. Les bonus pods, invocations, pièges, esquive PA, fuite, retrait PM et résistance poussée sont retirés des équipements, des jets sauvegardés et des bonus de panoplie. Les sorts d’invocation des classes sont conservés. Le catalogue conserve 2031 équipements avec caractéristiques après ce nettoyage.
+
+`% Dommages aux sorts` multiplie le résultat d’attaque avant le critique, sans modifier les soins. Un point de portée donne 1 % de chance, bornée entre 0 et 100 %, de toucher aussi le monstre vivant le plus proche de la cible (à droite en cas d’égalité) avec une attaque directe sur une cible. Ce second coup utilise le même résultat d’attaque, applique les effets propres à la seconde cible et contribue au vol de vie. Il ne déclenche aucune chaîne et n’ajoute pas de coup aux sorts de zone.
+
+Les monstres ont désormais 5 % de critique de base avec dégâts ×1,5. Les dégâts entrants appliquent les modificateurs de monstre/classe, la résistance élémentaire en pourcentage, puis la résistance élémentaire fixe et, en cas de critique, la résistance critique ; le bouclier intervient ensuite. Les dégâts ne peuvent pas devenir négatifs. Les anciens libellés de résistance fixe et les effets critiques identifiés par leurs IDs sont corrigés sans reroller les valeurs possédées.
+
+Les bonus d’armes, l’initiative, les dommages renvoyés et les résistances % mêlée/distance sont conservés sans effet. Le corps à corps est réservé à une version future. PM, esquive PM, tacle, dommages de poussée et retrait PA restent sans mécanique définie.

@@ -43,10 +43,43 @@ function slotName(s) {
   return s === "Chapeau" ? "Coiffe" : s;
 }
 const lootPools = new Map();
+let removedClassGearIds = new Set();
+let equipmentStatAliases = new Map();
+function equipmentEffectKey(effect) {
+  const fixed = String(effect.stat || "").match(/^(Feu|Air|Terre|Eau|Neutre) \(fixe\)$/);
+  if (fixed) return "Resistance " + fixed[1];
+  if (effect.stat === "Critiques (fixe)") return "ResistanceCritiques";
+  if (effect.stat === "Critiques" && [418, 419].includes(effect.effectId)) return "DommagesCritiques";
+  return statKey(effect.stat);
+}
+function removedEquipmentStat(name) {
+  return /^(Pods?|Invocation(s)?|Esquive PA|Fuite|Retrait PM|Resistance Poussee|Poussee \(fixe\))$/.test(statKey(name)) ||
+    /Pieges/.test(statKey(name));
+}
+function cleanEquipmentSave(state) {
+  const clean = item => {
+    if (!item || removedClassGearIds.has(item.id)) return null;
+    item.st = Object.fromEntries(Object.entries(item.st || {}).filter(([name]) => !removedEquipmentStat(name)));
+    for (const [oldKey, newKey] of equipmentStatAliases.get(item.id) || []) {
+      if (oldKey in item.st && !(newKey in item.st)) {
+        item.st[newKey] = item.st[oldKey];
+        delete item.st[oldKey];
+      }
+    }
+    return item;
+  };
+  state.bag = (state.bag || []).map(clean).filter(Boolean);
+  for (const slot of Object.keys(state.w || {})) state.w[slot] = clean(state.w[slot]);
+  for (const id of removedClassGearIds) delete (state.seen || {})[id];
+}
 function buildLocalData(eq, sets) {
   lootPools.clear();
-  EQ = eq.items || [];
-  SETS = sets.sets || [];
+  const source = eq.items || [];
+  equipmentStatAliases = new Map(source.map(item => ["d" + item.id, (item.effects || []).map(e => [statKey(e.stat), equipmentEffectKey(e)]).filter(([a, b]) => a !== b)]));
+  const classSets = new Set(source.filter(item => (item.effects || []).some(e => String(e.stat || "").startsWith(":"))).map(item => item.setId).filter(Boolean));
+  removedClassGearIds = new Set(source.filter(item => classSets.has(item.setId) || (item.effects || []).some(e => String(e.stat || "").startsWith(":"))).map(item => "d" + item.id));
+  EQ = source.filter(item => !removedClassGearIds.has("d" + item.id)).map(item => ({...item, effects: (item.effects || []).filter(e => !removedEquipmentStat(e.stat))}));
+  SETS = (sets.sets || []).filter(set => !classSets.has(set.id));
   I = {};
   EQ.forEach((x) => {
     let st = {};
@@ -57,7 +90,7 @@ function buildLocalData(eq, sets) {
       if (!Number.isFinite(a)) return;
       if (!Number.isFinite(b)) b = a;
       if (b < a) [a, b] = [b, a];
-      st[statKey(e.stat)] = [a, b];
+      st[equipmentEffectKey(e)] = [a, b];
     });
     if (!Object.keys(st).length) return;
     I["d" + x.id] = [
@@ -78,10 +111,11 @@ function buildLocalData(eq, sets) {
     (s.bonuses || []).forEach((row) => {
       let o = {};
       (row.effects || []).forEach((e) => {
-        if (!e.stat) return;
+        if (!e.stat || removedEquipmentStat(e.stat)) return;
         let v = Number(e.max);
         if (!Number.isFinite(v) || v === 0) v = Number(e.min) || 0;
-        o[statKey(e.stat)] = (o[statKey(e.stat)] || 0) + v;
+        const key = equipmentEffectKey(e);
+        o[key] = (o[key] || 0) + v;
       });
       if (Object.keys(o).length) SET[key][row.pieces] = o;
     });
@@ -297,12 +331,17 @@ function st(k) {
     Critiques: "Critique",
     "Dommage Critique": "DommagesCritiques",
     "Dommages Critiques": "DommagesCritiques",
+    "Resistance Critiques": "ResistanceCritiques",
+    "Resistance Critique": "ResistanceCritiques",
+    PO: "Portee",
+    "Critiques (fixe)": "ResistanceCritiques",
   };
   const key = name => {
     const normalized = statKey(name);
     if (aliases[normalized]) return aliases[normalized];
     const elemental = normalized.match(/^Dommages? (Feu|Air|Terre|Eau|Neutre)$/);
-    return elemental ? elemental[1] : normalized;
+    const fixed = normalized.match(/^(Feu|Air|Terre|Eau|Neutre) \(fixe\)$/);
+    return elemental ? elemental[1] : fixed ? "Resistance " + fixed[1] : normalized;
   };
   const wanted = key(k);
   return Object.entries(gt()).reduce((sum, [name, value]) =>
@@ -1800,7 +1839,7 @@ async function boot() {
     ];
     let [eq, sets, bestiary, world] = await Promise.all(
       files.map(async (f) => {
-        let r = await fetch(f + "?v=3.13.0");
+        let r = await fetch(f + "?v=3.14.0");
         if (!r.ok) throw Error(f + " : HTTP " + r.status);
         return r.json();
       }),
@@ -1820,6 +1859,7 @@ async function boot() {
     }
     D.localCombatMigration = 1;
     activateWorld(world);
+    cleanEquipmentSave(D);
     if (!M.some((m) => m.id === D.mid)) D.mid = M[0].id;
     if (!Z[D.z] || !zoneOpen(D.z))
       D.z = ZONE_ORDER.filter(zoneOpen).at(-1) ?? ZONE_ORDER[0];
