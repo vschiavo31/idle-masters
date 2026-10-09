@@ -6,7 +6,7 @@
       name="viewport"
       content="width=device-width,initial-scale=1,viewport-fit=cover"
     />
-    <title>Idle Masters V3.16.0</title>
+    <title>Idle Masters V3.17.0</title>
     <style>
       :root {
         --bg: #100e0b;
@@ -626,13 +626,65 @@
       .brand {font-size:22px;white-space:nowrap;}
       .version {font-size:12px;max-width:170px;text-align:center;}
       @media (max-width:720px) {#mobName {font-size:27px;margin-top:0;}.combatArtwork {min-height:140px;}.monsterLarge {width:136px;height:136px;}#enemyGroup .art {width:68px;height:68px;}}
+
+      /* A single viewport arena; only reward content can scroll inside its dialog. */
+      body.arenaMode {overflow:hidden;overscroll-behavior:none;}
+      #fight {position:fixed;inset:0;z-index:60;background:radial-gradient(ellipse at 60% 20%,#374c32,#121b16 70%);height:100dvh;padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom);}
+      .arenaShell {height:100%;max-width:940px;margin:auto;padding:10px 12px;display:grid;grid-template-rows:40px 104px minmax(132px,1fr) 26px 204px 46px 24px;gap:7px;min-height:0;}
+      .arenaHeader {display:flex;gap:10px;align-items:center;}
+      .arenaHeader #fightZone {flex:1;min-width:0;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+      .arenaHeader #roundTxt {font-size:13px;white-space:nowrap;color:var(--mut);}
+      .arenaHeader button {padding:8px 12px;font-size:14px;}
+      #fight #enemyGroup {margin:0;gap:8px;}
+      #fight #enemyGroup .choice {padding:5px 6px;margin:0;gap:2px;justify-content:center;border-radius:14px;}
+      #fight #enemyGroup .art {width:42px;height:42px;}
+      #fight #enemyGroup b {font-size:12px;max-height:29px;overflow:hidden;line-height:1.15;}
+      #fight #enemyGroup .enemyStatus {font-size:11px;line-height:1.1;}
+      .arenaStage {position:relative;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:18px;align-items:end;min-height:0;padding:4px 4px 8px;background:radial-gradient(ellipse at 26% 74%,#adc95c22,transparent 27%),radial-gradient(ellipse at 75% 56%,#adc95c22,transparent 28%);border-bottom:1px solid #e7bd5840;}
+      .playerFocus,.enemyFocus {min-width:0;text-align:center;position:relative;}
+      .enemyFocus {align-self:start;}
+      #fight #mobName {font-size:16px;line-height:1.1;margin:0;max-height:36px;overflow:hidden;}
+      #fight #arenaEnemyLevel {font-size:12px;}
+      #fight #mobInfo {display:none;}
+      #fight .combatArtwork {min-height:0;height:86px;}
+      #fight .monsterLarge {width:86px;height:86px;}
+      #fight #fightPlayerArt {height:86px;margin:0;}
+      #fight #fightPlayerArt .art {width:86px;height:86px;transform:scaleX(-1);}
+      .fighterName {font-size:14px;display:flex;align-items:center;justify-content:space-between;gap:6px;}
+      #fight .paBox {font-size:16px;padding:0;white-space:nowrap;}
+      #fight #enemyHp,#fight #fightHp {font-size:13px;font-weight:700;line-height:1.2;}
+      #fight .bar {height:7px;margin:4px 0 0;}
+      #fightEffects {font-size:11px;position:absolute;left:0;right:0;bottom:100%;max-height:26px;overflow:hidden;pointer-events:none;}
+      .arenaStatus {display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:13px;}
+      #arenaXp {font-size:12px;color:var(--mut);}
+      #fight #combatSpells {display:grid;grid-template-columns:repeat(3,minmax(0,1fr));grid-template-rows:repeat(3,minmax(0,1fr));gap:6px;margin:0;min-height:0;}
+      #fight #combatSpells button {min-width:0;margin:0;padding:5px;font-size:12px;line-height:1.15;border-radius:12px;overflow:hidden;}
+      #fight #combatSpells b {font-size:13px;}
+      #fight #combatSpells .mut {font-size:11px;}
+      .arenaFooter {display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px;}
+      .arenaFooter button {padding:7px;font-size:13px;margin:0;border-radius:12px;}
+      #endBtn {background:linear-gradient(#dcc06d,#a88735);color:#1a2115;border-color:#efd899;font-weight:900;}
+      .arenaJournal > summary {color:var(--mut);font-size:12px;text-align:center;cursor:pointer;}
+      .arenaJournal[open] .log {position:absolute;z-index:5;left:12px;right:12px;bottom:86px;height:220px;max-height:40dvh;background:#0e1710f5;border:1px solid var(--line2);box-shadow:0 10px 40px #000b;}
+      #result {position:fixed;inset:0;z-index:80;background:#050c09cc;backdrop-filter:blur(5px);padding:24px 14px;align-items:center;justify-content:center;}
+      #result > .panel {position:relative;width:min(540px,100%);max-height:calc(100dvh - 48px);overflow:auto;overscroll-behavior:contain;margin:0;padding:22px 18px;border:1px solid #ddbd69;box-shadow:0 24px 80px #000a;}
+      #resultTitle {font-size:28px;color:var(--gold);}
+      #resultMob {font-size:17px;}
+      #result .grid2 {grid-template-columns:1fr 1fr;gap:8px;}
+      #result .actions {display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+      #result .actions #again {grid-column:1 / -1;background:#c6a34e;color:#171e12;font-weight:900;}
+      #resultClose {position:absolute;z-index:2;top:max(8px,env(safe-area-inset-top));right:14px;width:38px;height:38px;padding:0;font-size:27px;border-radius:50%;}
+      @media (max-height:720px) {.arenaShell {grid-template-rows:34px 85px minmax(114px,1fr) 22px 177px 42px 20px;gap:5px;padding:6px 10px;}#fight #enemyGroup .art {width:32px;height:32px;}#fight .combatArtwork,#fight #fightPlayerArt {height:65px;}#fight .monsterLarge,#fight #fightPlayerArt .art {width:65px;height:65px;}#fight #combatSpells .mut {display:none;}}
+      @media (min-width:760px) and (min-height:721px) {.arenaShell {grid-template-rows:42px 112px minmax(180px,1fr) 28px 220px 48px 24px;gap:10px;}#fight #enemyGroup .art {width:52px;height:52px;}#fight .combatArtwork,#fight #fightPlayerArt {height:150px;}#fight .monsterLarge,#fight #fightPlayerArt .art {width:150px;height:150px;}#fight #combatSpells button {font-size:14px;}#fight #combatSpells b {font-size:16px;}}
+      @media (max-height:500px) {.arenaShell {grid-template-columns:1fr 1fr;grid-template-rows:32px 75px minmax(100px,1fr) 38px 18px;gap:5px;}.arenaHeader {grid-column:1 / -1;}#enemyGroup {grid-column:1;grid-row:2;}.arenaStage {grid-column:1;grid-row:3;}.arenaStatus {grid-column:1;grid-row:4;}#fight #combatSpells {grid-column:2;grid-row:2 / 4;}.arenaFooter {grid-column:2;grid-row:4;}.arenaJournal {grid-column:1 / -1;grid-row:5;}#fight #arenaEnemyLevel {display:none;}#fight #mobName {font-size:13px;}#fight .fighterName {font-size:12px;}}
+      .fighterName > span {min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
     </style>
   </head>
   <body>
     <div class="wrap">
       <div class="top">
         <div class="brand">Idle Masters</div>
-        <span class="version">V3.16 · Galerie des aventuriers</span>
+        <span class="version">V3.17 · Arène</span>
       </div>
       <div class="row" style="margin-bottom: 12px">
         <small id="saveStatus" class="mut" role="status"
@@ -1032,43 +1084,34 @@
           </div>
         </div>
         <div id="fight" style="display: none">
-          <div class="panel">
-            <div class="row">
-              <button id="backMob">Quitter</button
-              ><span id="fightZone" class="gold"></span>
-            </div>
-            <div id="enemyGroup"></div>
-            <div class="card" style="text-align: center">
-              <div id="turn"></div>
-              <div id="combatArtwork" class="combatArtwork"></div>
-              <h1 id="mobName"></h1>
-              <div id="mobInfo" class="mut"></div>
-              <div id="enemyHp"></div>
-              <div class="bar">
-                <div id="enemyBar" class="fill enemy"></div>
+          <div class="arenaShell">
+            <div class="arenaHeader"><button id="backMob">Quitter</button><span id="fightZone" class="gold"></span><span id="roundTxt"></span><button id="arenaMenu">Menu</button></div>
+            <div id="enemyGroup" aria-label="Choisir la cible"></div>
+            <div class="arenaStage">
+              <div class="playerFocus">
+                <div class="fighterName"><span id="arenaPlayerName">Aventurier</span><b id="fightPa" class="paBox"></b></div>
+                <div id="fightPlayerArt"></div>
+                <div id="fightHp"></div>
+                <div class="bar"><div id="playerBar" class="fill"></div></div>
+                <div id="fightEffects" class="gold"></div>
+              </div>
+              <div class="enemyFocus">
+                <h1 id="mobName"></h1><span id="arenaEnemyLevel" class="mut"></span>
+                <div id="combatArtwork" class="combatArtwork"></div>
+                <div id="mobInfo" class="mut"></div><div id="enemyHp"></div>
+                <div class="bar"><div id="enemyBar" class="fill enemy"></div></div>
               </div>
             </div>
-            <div class="card">
-              <div class="row">
-                <b><span id="fightPlayerArt"></span> Aventurier</b><span id="roundTxt"></span>
-              </div>
-              <div id="fightHp"></div>
-              <div class="bar"><div id="playerBar" class="fill"></div></div>
-              <div id="fightPa" class="paBox"></div>
-              <div id="fightEffects" class="gold"></div>
-            </div>
+            <div class="arenaStatus"><span id="turn"></span><span id="arenaXp"></span></div>
             <div id="combatSpells" class="spellgrid"></div>
-            <button id="endBtn" class="wide">Fin du tour</button
-            ><button id="autoBtn" class="wide" style="margin-top: 8px">
-              Mode automatique
-            </button>
-            <h3>Journal</h3>
-            <div id="log" class="log"></div>
+            <div class="arenaFooter"><button id="autoBtn">Mode automatique</button><button id="endBtn">Fin du tour</button></div>
+            <details class="arenaJournal"><summary>Journal du combat</summary><div id="log" class="log"></div></details>
           </div>
         </div>
-        <div id="result" style="display: none">
+        <div id="result" style="display: none" role="dialog" aria-modal="true" aria-labelledby="resultTitle">
+          <button id="resultClose" aria-label="Fermer et rejouer">×</button>
           <div class="panel" style="text-align: center">
-            <h1>Victoire</h1>
+            <h1 id="resultTitle">Victoire</h1>
             <h2 id="resultMob"></h2>
             <div
               id="resultLevelUp"
@@ -1107,14 +1150,14 @@
       ><button data-page="collection">COLLECTION</button
       ><button data-page="combat">COMBAT</button>
     </nav>
-    <script src="local-data.js?v=3.16.0"></script>
-    <script src="bestiary-ui.js?v=3.16.0"></script>
-    <script src="saving.js?v=3.16.0"></script>
-    <script src="classes.js?v=3.16.0"></script>
-    <script src="combat-effects.js?v=3.16.0"></script>
-    <script src="roster-selection.js?v=3.16.0"></script>
-    <script src="world-data.js?v=3.16.0"></script>
-    <script src="game-art.js?v=3.16.0"></script>
-    <script src="game.js?v=3.16.0"></script>
+    <script src="local-data.js?v=3.17.0"></script>
+    <script src="bestiary-ui.js?v=3.17.0"></script>
+    <script src="saving.js?v=3.17.0"></script>
+    <script src="classes.js?v=3.17.0"></script>
+    <script src="combat-effects.js?v=3.17.0"></script>
+    <script src="roster-selection.js?v=3.17.0"></script>
+    <script src="world-data.js?v=3.17.0"></script>
+    <script src="game-art.js?v=3.17.0"></script>
+    <script src="game.js?v=3.17.0"></script>
   </body>
 </html>

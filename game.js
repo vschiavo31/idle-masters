@@ -621,7 +621,8 @@ function enemy() {
       D.hp = mh();
       D.end = true;
       dungeon = null;
-      mode = "picker";
+      lastResult = {defeat:true,mid:D.mid,ids:encounter?.members.map(e=>e.id)||[D.mid],key:encounter?.key,zone:D.z,tier:encounter?.tier,xp:0,k:0,drops:[],levelBefore:D.lv,levelAfter:D.lv,levelsGained:0};
+      mode = "result";
       return render();
     }
     D.rd++;
@@ -1508,6 +1509,9 @@ function fight() {
     h = mh(),
     unlocked = autoWins() >= 10;
   $("fightZone").textContent = Z[D.z][0];
+  $("arenaPlayerName").textContent = GameSave.profile?.nickname || playerClass()?.name || "Aventurier";
+  $("arenaEnemyLevel").textContent = "Niv. " + m.l;
+  $("arenaXp").textContent = "Niv. " + D.lv + (D.lv===MAX_LEVEL ? " · MAX" : " · XP " + Math.floor(100*D.xp/need(D.lv)) + "%");
   $("turn").textContent = auto
     ? "Combat automatique"
     : D.tr
@@ -1583,7 +1587,7 @@ function fight() {
   ]
     .filter(Boolean)
     .join(" · ");
-  $("endBtn").disabled = auto || !D.tr;
+  $("endBtn").disabled = auto || !D.tr || D.end;
   $("autoBtn").disabled = !unlocked || !!dungeon;
   $("autoBtn").textContent = unlocked
     ? auto
@@ -1617,6 +1621,8 @@ function combatProgress() {
   );
 }
 function result() {
+  $("resultTitle").textContent = lastResult.defeat ? "Défaite" : "Victoire";
+  $("again").textContent = lastResult.defeat ? "Réessayer" : "Refaire";
   let m = M.find((x) => x.id === lastResult.mid);
   $("resultMob").textContent = (lastResult.ids || [m.id])
     .map((id) => M.find((x) => x.id === id).n)
@@ -1655,6 +1661,7 @@ function result() {
         .join("")
     : '<span class="mut">Aucun drop cette fois</span>';
 }
+let resultWasVisible = false;
 function render() {
   renderClassChoice();
   combatProgress();
@@ -1665,10 +1672,16 @@ function render() {
   collection();
   picker();
   $("picker").style.display = mode === "picker" ? "block" : "none";
-  $("fight").style.display = mode === "fight" ? "block" : "none";
-  $("result").style.display = mode === "result" ? "block" : "none";
-  if (mode === "fight") fight();
+  const arenaVisible = $("combat").classList.contains("on") && ["fight","result"].includes(mode);
+  document.body.classList.toggle("arenaMode", arenaVisible);
+  $("fight").style.display = ["fight","result"].includes(mode) ? "block" : "none";
+  $("result").style.display = mode === "result" ? "flex" : "none";
+  $("fight").inert = mode === "result";
+  if (["fight","result"].includes(mode)) fight();
   if (mode === "result" && lastResult) result();
+  const resultVisible = arenaVisible && mode === "result";
+  if(resultVisible && !resultWasVisible) $("again").focus({preventScroll:true});
+  resultWasVisible = resultVisible;
   save();
 }
 function show(p) {
@@ -1755,6 +1768,7 @@ $("bagSort").onchange = () => {
   inventory();
   save();
 };
+$("arenaMenu").onclick = () => show("dashboard");
 $("endBtn").onclick = enemy;
 $("autoBtn").onclick = toggleAuto;
 $("backMob").onclick = () => {
@@ -1769,12 +1783,24 @@ $("again").onclick = () =>
   lastResult.key
     ? startEncounter(lastResult.zone, lastResult.tier)
     : startFight(lastResult.mid);
+$("resultClose").onclick = () => $("again").click();
+document.addEventListener("keydown", event => {
+  if(!resultWasVisible) return;
+  if(event.key==="Escape") {event.preventDefault();$("again").click();}
+  if(event.key==="Tab") {
+    const buttons=Array.from($("result").querySelectorAll("button:not(:disabled)"));
+    const index=buttons.indexOf(document.activeElement);
+    if(event.shiftKey ? index<=0 : index===buttons.length-1 || index<0) {
+      event.preventDefault();buttons[event.shiftKey ? buttons.length-1 : 0].focus({preventScroll:true});
+    }
+  }
+});
 $("changeMob").onclick = () => {
   mode = "picker";
   render();
 };
 $("changeZone").onclick = () => {
-  D.z = 0;
+  D.z = ZONE_ORDER[0];
   mode = "picker";
   render();
 };
@@ -1903,7 +1929,7 @@ async function boot() {
     ];
     let [eq, sets, bestiary, world, extra] = await Promise.all(
       files.map(async (f) => {
-        let r = await fetch(f + "?v=3.16.0");
+        let r = await fetch(f + "?v=3.17.0");
         if (!r.ok) throw Error(f + " : HTTP " + r.status);
         return r.json();
       }),

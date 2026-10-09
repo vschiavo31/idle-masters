@@ -955,3 +955,15 @@ test("weapon damage spends PA, limits casts, separates spell bonuses and applies
   assert.equal(run('weaponLines(D.w.Arme)[0].min'),15);
   assert.equal(run('weaponAutoScore()'),0);
 });
+
+
+test("defeat opens a retry result without rewards or changing the selected encounter", async () => {
+ const {run}=game();
+ run("startEncounter(0,2);encounter.members.forEach(e=>{e.hp=1000});D.hp=1;Math.random=()=>.999;before=JSON.stringify([D.k,D.xp,D.master,D.encounterWins,D.bag]);enemy()");
+ await new Promise(resolve=>setTimeout(resolve,350));
+ assert.equal(run('mode'),'result');
+ assert.equal(run('lastResult.defeat'),true);
+ assert.equal(run('lastResult.key'),'0:2');
+ assert.equal(run('lastResult.tier'),2);
+ assert.equal(run('JSON.stringify([D.k,D.xp,D.master,D.encounterWins,D.bag])'),run('before'));
+});

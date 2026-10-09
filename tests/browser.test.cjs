@@ -278,6 +278,7 @@ async function main() {
           hp,
           "Stale turn damaged the next fight",
         );
+        await page.locator('#backMob').click();
         await page
           .getByRole("button", { name: "Sauvegarder", exact: true })
           .click();
@@ -449,6 +450,7 @@ async function main() {
               id + " spell " + i + " did not resolve",
             );
           }
+          await page.locator('#arenaMenu').click();
           await page
             .getByRole("button", { name: "SORTS", exact: true })
             .click();
@@ -1124,6 +1126,13 @@ async function main() {
         await worldPage.evaluate(()=>{D.lv=200;show('combat');startEncounter(ZONE_ORDER[0],2);encounter.members.forEach(e=>e.hp=100000);D.eh=100000;PA=6;Math.random=()=>.999;render()});
         assert.equal(await worldPage.locator('#combatArtwork .art[data-art]').count(),1);
         assert.equal(await worldPage.locator('#enemyGroup .art[data-art]').count(),3);
+        for(const height of [844,667]) {
+          await worldPage.setViewportSize({width:390,height});
+          const bounds=await worldPage.evaluate(()=>({height:innerHeight,rects:[...document.querySelectorAll('#combatSpells button,#endBtn,#autoBtn,#enemyGroup button')].map(el=>{const r=el.getBoundingClientRect();return {top:r.top,bottom:r.bottom,left:r.left,right:r.right}}),arena:document.querySelector('.arenaShell').scrollHeight<=document.querySelector('.arenaShell').clientHeight}));
+          assert.equal(bounds.arena,true);
+          assert.equal(bounds.rects.every(r=>r.top>=0&&r.bottom<=bounds.height&&r.left>=0&&r.right<=390),true);
+        }
+        await worldPage.setViewportSize({width:390,height:844});
         const artwork=await worldPage.locator('#combatArtwork .art').evaluate(el=>getComputedStyle(el).backgroundImage.match(/url\(["']?(.*?)["']?\)/)[1]);
         const imageResponse=await worldPage.request.get(artwork);assert.equal(imageResponse.status(),200);
         assert.equal(imageResponse.headers()['content-type'],'image/webp');
@@ -1133,6 +1142,13 @@ async function main() {
         await worldPage.locator('#weaponAttack').click();
         assert.ok(await worldPage.evaluate(()=>encounter.members[0].hp)<beforeWeapon.hp);
         assert.equal(await worldPage.evaluate(()=>PA),beforeWeapon.pa-beforeWeapon.cost);
+        const arenaPosition=await worldPage.evaluate(()=>({scroll:scrollY,top:document.querySelector('#fight').getBoundingClientRect().top}));
+        await worldPage.evaluate(()=>{encounter.members.forEach(e=>e.hp=0);victory()});
+        assert.equal(await worldPage.locator('#result[role="dialog"]').isVisible(),true);
+        assert.equal(await worldPage.evaluate(()=>document.activeElement.id),'again');
+        await worldPage.locator('#resultClose').click();
+        assert.equal(await worldPage.evaluate(()=>mode),'fight');
+        assert.deepEqual(await worldPage.evaluate(()=>({scroll:scrollY,top:document.querySelector('#fight').getBoundingClientRect().top})),arenaPosition);
         await worldPage.locator('#backMob').click();
         await worldPage.evaluate(()=>show('inventory'));
         await worldPage.evaluate(() => GameSave.flush());

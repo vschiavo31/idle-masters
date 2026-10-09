@@ -183,3 +183,10 @@ Chaque équipement obtenu a indépendamment 1 % de chance d’être rayonnant. S
 Les portraits de monstres, icônes d’équipements et têtes de classe proviennent des archives d’images de la même version 3.7.4.4 de dofusdude/dofus3-main. Les identifiants gfxId, iconId et classe de la source relient les visuels aux fiches. Toutes les images des 688 monstres jouables et des 3184 équipements utilisables sont disponibles, ainsi que celles des anciennes fiches de bestiaire conservées. Les illustrations de Dofus appartiennent à Ankama.
 
 Les planches WebP transparentes sont servies localement : aucun appel à DofusDB ou à un hébergeur d’images au démarrage. Elles apparaissent dans les groupes de combat, la cible, les choix de rencontres, l’inventaire, les objets portés, les drops et l’encyclopédie. La présentation conserve la progression, les filtres et les règles de combat.
+
+
+## Arène compacte (3.17.0)
+
+Le combat occupe la hauteur visible de l’écran, avec choix de la cible, personnages, PV, PA, neuf actions (sorts et arme) et fin du tour. Le journal reste accessible dans un panneau qui ne déplace pas l’arène. Les petits écrans et l’orientation paysage ont une disposition adaptée.
+
+Victoire et défaite ouvrent un résultat en fenêtre superposée. Refaire, réessayer ou fermer cette fenêtre relance la même difficulté sans déplacer la page. Les récompenses restent attribuées une seule fois à la victoire ; la défaite ne donne aucune récompense. Les boutons de changement de zone permettent de revenir à la sélection.
