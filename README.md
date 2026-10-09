@@ -163,3 +163,7 @@ Les 95 équipements des 19 panoplies de classe sont exclus du catalogue jouable 
 Les monstres ont désormais 5 % de critique de base avec dégâts ×1,5. Les dégâts entrants appliquent les modificateurs de monstre/classe, la résistance élémentaire en pourcentage, puis la résistance élémentaire fixe et, en cas de critique, la résistance critique ; le bouclier intervient ensuite. Les dégâts ne peuvent pas devenir négatifs. Les anciens libellés de résistance fixe et les effets critiques identifiés par leurs IDs sont corrigés sans reroller les valeurs possédées.
 
 Les bonus d’armes, l’initiative, les dommages renvoyés et les résistances % mêlée/distance sont conservés sans effet. Le corps à corps est réservé à une version future. PM, esquive PM, tacle, dommages de poussée et retrait PA restent sans mécanique définie.
+
+## Points de vie (3.14.1)
+
+Le libellé `Points de vie` est un alias de `Vitalite` pour le calcul des PV maximum. Les jets déjà sauvegardés et les bonus de panoplie sont pris en compte sans réécriture des objets : 100 PV de base et un équipement +50 Points de vie donnent 150 PV maximum. Les bonus Vitalité et Points de vie se cumulent.

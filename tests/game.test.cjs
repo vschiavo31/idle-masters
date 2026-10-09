@@ -885,3 +885,19 @@ test("legacy fixed resistance and critical effect IDs keep rolls while correctin
   assert.equal(run("D.bag[0].uid"), 44);
   assert.equal(run("Object.keys(meta('d90001').x).sort().join(',')"), 'DommagesCritiques,Resistance Feu,ResistanceCritiques');
 });
+
+test("points of life and vitality share maximum HP, including set bonuses and old rolls", () => {
+  const { run } = game();
+  run("I.life=['Life','Cape',null,1,{'Points de vie':[50,50]},1,90001];D.bh=100;D.w={Cape:{uid:91,id:'life',st:{'Points de vie':50}}};lifeSnapshot=JSON.stringify(D.w)");
+  assert.equal(run('mh()'), 150);
+  assert.equal(run("st('Vitalite')"), 50);
+  assert.equal(run('JSON.stringify(D.w)'), run('lifeSnapshot'));
+  run("D.w.Cape.st.Vitalite=20");
+  assert.equal(run('mh()'), 170);
+  run("I.other=['Other','Anneau','lifeSet',1,{},1,90002];I.life[2]='lifeSet';SET.lifeSet={2:{'Points de vie':25}};D.w.Anneau1={id:'other',st:{}}");
+  assert.equal(run('mh()'), 195);
+  run("D.w.Cape=null");
+  assert.equal(run('mh()'), 100);
+  run("D.w.Cape={id:'life',st:{'Points de vie':-200}}");
+  assert.equal(run('mh()'), 1);
+});

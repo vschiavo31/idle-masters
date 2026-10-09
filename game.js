@@ -325,6 +325,7 @@ function gt(worn = D.w) {
 }
 function st(k) {
   const aliases = {
+    "Points de vie": "Vitalite",
     Soin: "Soins",
     Dommage: "Dommages",
     "% Critique": "Critique",
@@ -1839,7 +1840,7 @@ async function boot() {
     ];
     let [eq, sets, bestiary, world] = await Promise.all(
       files.map(async (f) => {
-        let r = await fetch(f + "?v=3.14.0");
+        let r = await fetch(f + "?v=3.14.1");
         if (!r.ok) throw Error(f + " : HTTP " + r.status);
         return r.json();
       }),
