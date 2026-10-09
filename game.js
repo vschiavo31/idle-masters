@@ -96,11 +96,16 @@ function localBaseRate(l) {
 }
 // These are Idle Masters equipment tables, not official Dofus drops.
 function lootPool(m) {
-  if (m.sourceDrops)
-    return m.sourceDrops
-      .filter((d) => I["d" + d.itemId] && d.rate > 0)
-      .map((d) => EQ.find((i) => i.id === d.itemId))
-      .filter(Boolean);
+  if (lootPools.has(m.sourceId)) return lootPools.get(m.sourceId);
+  if (m.sourceDrops) {
+    const ids = new Set([
+      ...m.sourceDrops.filter((d) => d.rate > 0).map((d) => d.itemId),
+      ...(m.adaptedGearIds || []).map((id) => Number(id.slice(1))),
+    ]);
+    const pool = EQ.filter((item) => I["d" + item.id] && ids.has(item.id));
+    lootPools.set(m.sourceId, pool);
+    return pool;
+  }
   if (lootPools.has(m.sourceId)) return lootPools.get(m.sourceId);
   const table = FAMILY_LOOT[m.sourceId];
   if (!table) return [];
@@ -362,10 +367,17 @@ function equipmentChance() {
   return Math.max(0, Math.min(72, 30 * (1 + st("Prospection") / 100)));
 }
 function dropRate(id, m = mob()) {
-  if (m.sourceDrops)
-    return m.sourceDrops
+  if (m.sourceDrops) {
+    const source = m.sourceDrops
       .filter((d) => "d" + d.itemId === id)
-      .reduce((total, d) => total + sourceDropChance(d), 0);
+      .reduce((sum, d) => sum + sourceDropChance(d), 0);
+    return (
+      source +
+      ((m.adaptedGearIds || []).includes(id)
+        ? equipmentChance() / m.adaptedGearIds.length
+        : 0)
+    );
+  }
   let pool = mobDrops(m);
   return pool.includes(id) ? equipmentChance() / pool.length : 0;
 }
@@ -1771,7 +1783,7 @@ async function boot() {
     ];
     let [eq, sets, bestiary, world] = await Promise.all(
       files.map(async (f) => {
-        let r = await fetch(f + "?v=3.11.1");
+        let r = await fetch(f + "?v=3.12.0");
         if (!r.ok) throw Error(f + " : HTTP " + r.status);
         return r.json();
       }),

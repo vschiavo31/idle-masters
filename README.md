@@ -141,3 +141,5 @@ V3.11.0: Apply the uploaded validated 688-ID selection (selected-monsters.json).
 
 V3.11.1: Combat drops and bestiary tables now contain supported equipment only for all 688 monsters. Resource, quest-object and consumable drops are filtered out, with a second check at award time. Previously collected resources remain in the save.
 Equipment quest/profession/event criteria are ignored as requested; source base rates and prospection remain.
+
+V3.12.0: All 2,136 usable equipment records enter shared bonus drop pools on every monster within ±10 levels (monster level capped at 200 for loot selection). Original per-item drops retain their rates and are excluded from the bonus pool to avoid duplicates. One bonus equipment roll per defeated monster, 30% base chance modified by prospection, capped at 72%; each pool item shares that chance equally. Bestiary rates show both kinds of drops. No resources or source conditions.

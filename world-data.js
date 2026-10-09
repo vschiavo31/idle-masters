@@ -59,6 +59,16 @@ function activateWorld(data, state = D) {
     k: [Math.max(1, m.minLevel), Math.max(3, m.minLevel * 2)],
     sourceDrops: m.drops.filter((drop) => I["d" + drop.itemId]),
   }));
+  for (const m of M) {
+    const level = Math.min(200, m.l);
+    const original = new Set(m.sourceDrops.map((d) => d.itemId));
+    m.adaptedGearIds = EQ.filter(
+      (item) =>
+        I["d" + item.id] &&
+        Math.abs(item.level - level) <= 10 &&
+        !original.has(item.id),
+    ).map((item) => "d" + item.id);
+  }
   need = (l) => (l >= 200 ? 1 : data.xpNeeds[Math.max(0, l - 1)]);
   if (!state.selectedWorldMigration) {
     state.xp = state.lv >= 200 ? 0 : Math.floor(fraction * need(state.lv));
@@ -87,6 +97,12 @@ function sourceLoot(m) {
       D.bag.push(q);
       out.push(q);
     }
+  }
+  const pool = m.adaptedGearIds || [];
+  if (pool.length && Math.random() * 100 < equipmentChance()) {
+    const q = roll(pool[R(0, pool.length - 1)]);
+    D.bag.push(q);
+    out.push(q);
   }
   return out;
 }
@@ -134,7 +150,9 @@ function sourceDropDetails(live) {
   const details = document.createElement("details"),
     summary = document.createElement("summary");
   summary.textContent =
-    "Équipements de la base · " + live.sourceDrops.length + " objets";
+    "Drops · " +
+    (live.sourceDrops.length + live.adaptedGearIds.length) +
+    " équipements";
   details.append(summary);
   details.addEventListener("toggle", () => {
     if (!details.open || details.dataset.loaded) return;
@@ -144,18 +162,22 @@ function sourceDropDetails(live) {
     info.textContent =
       "Un tirage indépendant par équipement. Aucune condition de quête, métier ou événement.";
     details.append(info);
-    for (const drop of live.sourceDrops) {
-      const row = document.createElement("div");
+    info.textContent =
+      "Drops d’origine conservés. Équipements à ±10 niveaux : " +
+      equipmentChance().toFixed(1) +
+      " % de chance de recevoir un équipement supplémentaire, partagé entre les items de cette sélection. Aucune condition de quête, métier ou événement.";
+    for (const id of mobDrops(live)) {
+      const item = meta(id),
+        row = document.createElement("div");
       row.className = "dropRow";
-      const item = WORLD_ITEMS.get(drop.itemId);
       row.innerHTML =
         "<span>" +
-        esc(item?.name || "Objet " + drop.itemId) +
+        esc(item.n) +
         " · niv. " +
-        (item?.level || 1) +
+        item.l +
         '</span><span class="dropRate">' +
-        (sourceDropChance(drop).toFixed(2) + " %") +
-        "</span>";
+        dropRate(id, live).toFixed(3) +
+        " %</span>";
       details.append(row);
     }
   });

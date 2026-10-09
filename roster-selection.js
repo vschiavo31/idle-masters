@@ -114,7 +114,7 @@ const RosterSelection = (() => {
     try {
       if (!catalogue) {
         el("rosterStatus").textContent = "Chargement de la liste complète…";
-        loading ||= fetch("monster-catalogue.json?v=3.11.1")
+        loading ||= fetch("monster-catalogue.json?v=3.12.0")
           .then((r) => {
             if (!r.ok) throw Error("HTTP " + r.status);
             return r.json();

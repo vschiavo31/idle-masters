@@ -730,3 +730,33 @@ test("source drops use per-item rates, exclude resources and allow conditioned e
   );
   assert.equal(run("D.resources['384']||0"), 0);
 });
+
+test("all usable equipment is obtainable by level with original drops preserved", () => {
+  const { c, run } = game();
+  c.world = data("game-world.json");
+  run("activateWorld(world);D.w={};D.inv.Sagesse=0");
+  assert.equal(
+    run("Object.keys(I).every(id=>M.some(m=>mobDrops(m).includes(id)))"),
+    true,
+  );
+  assert.equal(
+    run(
+      "M.every(m=>m.adaptedGearIds.every(id=>Math.abs(meta(id).l-Math.min(200,m.l))<=10 && !m.sourceDrops.some(d=>'d'+d.itemId===id)))",
+    ),
+    true,
+  );
+  assert.equal(run("M.every(m=>m.adaptedGearIds.length>0)"), true);
+  assert.equal(
+    run(
+      "M.every(m=>Math.abs(m.adaptedGearIds.reduce((sum,id)=>sum+dropRate(id,m),0)-30)<1e-8)",
+    ),
+    true,
+  );
+  run(
+    "fixtureMob=M.find(m=>m.sourceDrops.length===0);D.bag=[];Math.random=()=>0;sourceLoot(fixtureMob)",
+  );
+  assert.equal(run("D.bag.length"), 1);
+  assert.equal(run("fixtureMob.adaptedGearIds.includes(D.bag[0].id)"), true);
+  run("Math.random=()=>.99999;sourceLoot(fixtureMob)");
+  assert.equal(run("D.bag.length"), 1);
+});
