@@ -98,7 +98,7 @@ function localBaseRate(l) {
 function lootPool(m) {
   if (m.sourceDrops)
     return m.sourceDrops
-      .filter((d) => I["d" + d.itemId] && !d.criterion && d.rate > 0)
+      .filter((d) => I["d" + d.itemId] && d.rate > 0)
       .map((d) => EQ.find((i) => i.id === d.itemId))
       .filter(Boolean);
   if (lootPools.has(m.sourceId)) return lootPools.get(m.sourceId);
@@ -1771,7 +1771,7 @@ async function boot() {
     ];
     let [eq, sets, bestiary, world] = await Promise.all(
       files.map(async (f) => {
-        let r = await fetch(f + "?v=3.11.0");
+        let r = await fetch(f + "?v=3.11.1");
         if (!r.ok) throw Error(f + " : HTTP " + r.status);
         return r.json();
       }),

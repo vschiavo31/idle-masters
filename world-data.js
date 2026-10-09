@@ -57,7 +57,7 @@ function activateWorld(data, state = D) {
     ],
     xp: m.xp,
     k: [Math.max(1, m.minLevel), Math.max(3, m.minLevel * 2)],
-    sourceDrops: m.drops,
+    sourceDrops: m.drops.filter((drop) => I["d" + drop.itemId]),
   }));
   need = (l) => (l >= 200 ? 1 : data.xpNeeds[Math.max(0, l - 1)]);
   if (!state.selectedWorldMigration) {
@@ -74,24 +74,18 @@ function activateWorld(data, state = D) {
     state.mid = M.find((m) => monsterInZone(m, state.z))?.id || M[0].id;
 }
 function sourceDropChance(drop) {
-  // Conditions requiring quests, professions or events are retained in the bestiary,
-  // but cannot be met in this game and do not award their conditional objects.
-  if (drop.criterion) return 0;
   return Math.max(0, Math.min(100, drop.rate * (1 + st("Prospection") / 100)));
 }
 function sourceLoot(m) {
   const out = [];
   for (const drop of m.sourceDrops) {
-    if (Math.random() * 100 >= sourceDropChance(drop)) continue;
+    if (!I["d" + drop.itemId] || Math.random() * 100 >= sourceDropChance(drop))
+      continue;
     const id = "d" + drop.itemId;
     if (I[id]) {
       const q = roll(id);
       D.bag.push(q);
       out.push(q);
-    } else {
-      const key = String(drop.itemId);
-      D.resources[key] = (D.resources[key] || 0) + 1;
-      out.push({ id: "r" + drop.itemId, resourceId: drop.itemId, quantity: 1 });
     }
   }
   return out;
@@ -140,7 +134,7 @@ function sourceDropDetails(live) {
   const details = document.createElement("details"),
     summary = document.createElement("summary");
   summary.textContent =
-    "Drops de la base · " + live.sourceDrops.length + " objets";
+    "Équipements de la base · " + live.sourceDrops.length + " objets";
   details.append(summary);
   details.addEventListener("toggle", () => {
     if (!details.open || details.dataset.loaded) return;
@@ -148,7 +142,7 @@ function sourceDropDetails(live) {
     const info = document.createElement("p");
     info.className = "mut";
     info.textContent =
-      "Un tirage indépendant par objet. Les drops conditionnels de quête, métier ou événement restent indiqués mais ne sont pas actifs ici.";
+      "Un tirage indépendant par équipement. Aucune condition de quête, métier ou événement.";
     details.append(info);
     for (const drop of live.sourceDrops) {
       const row = document.createElement("div");
@@ -160,9 +154,7 @@ function sourceDropDetails(live) {
         " · niv. " +
         (item?.level || 1) +
         '</span><span class="dropRate">' +
-        (drop.criterion
-          ? "Conditionnel · " + drop.rate.toFixed(2) + " % dans la base"
-          : sourceDropChance(drop).toFixed(2) + " %") +
+        (sourceDropChance(drop).toFixed(2) + " %") +
         "</span>";
       details.append(row);
     }

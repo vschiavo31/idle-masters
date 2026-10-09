@@ -685,6 +685,10 @@ test("validated world contains exactly the 688 selected monsters and no empty zo
   c.world = world;
   run("D.lv=1;D.xp=50;activateWorld(world)");
   assert.equal(run("M.length"), 688);
+  assert.equal(
+    run("M.every(m=>m.sourceDrops.every(d=>!!I['d'+d.itemId]))"),
+    true,
+  );
   assert.equal(run("ZONE_ORDER.every(zoneOpen)"), true);
   assert.equal(
     run(
@@ -710,19 +714,19 @@ test("validated world contains exactly the 688 selected monsters and no empty zo
   run("D.encounterWins={};startEncounter(ZONE_ORDER.at(-2),2)");
   assert.equal(run("mode"), "fight");
 });
-test("source drops use per-item rates, retain resources and reject unmet source conditions", () => {
+test("source drops use per-item rates, exclude resources and allow conditioned equipment", () => {
   const { c, run } = game();
   c.world = data("game-world.json");
   run("activateWorld(world);D.resources={};D.bag=[];Math.random=()=>0");
   run(
-    "sourceLoot({sourceDrops:[{itemId:384,rate:100,criterion:''},{itemId:2411,rate:100,criterion:''},{itemId:999999,rate:100,criterion:'Qa=1'}]})",
+    "sourceLoot({sourceDrops:[{itemId:384,rate:100,criterion:''},{itemId:2411,rate:100,criterion:''},{itemId:2411,rate:100,criterion:'Qa=1'}]})",
   );
-  assert.equal(run("D.resources['384']"), 1);
-  assert.equal(run("D.bag.length"), 1);
+  assert.equal(run("D.resources['384']||0"), 0);
+  assert.equal(run("D.bag.length"), 2);
   assert.equal(run("D.bag[0].id"), "d2411");
   assert.equal(run("D.resources['999999']||0"), 0);
   run(
     "Math.random=()=>.99999;sourceLoot({sourceDrops:[{itemId:384,rate:1,criterion:''}]})",
   );
-  assert.equal(run("D.resources['384']"), 1);
+  assert.equal(run("D.resources['384']||0"), 0);
 });

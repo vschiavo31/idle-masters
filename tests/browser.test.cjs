@@ -1058,20 +1058,33 @@ async function main() {
           const random = Math.random;
           Math.random = () => 0;
           sourceLoot({
-            sourceDrops: [{ itemId: 384, rate: 100, criterion: "" }],
+            sourceDrops: [
+              { itemId: 384, rate: 100, criterion: "" },
+              { itemId: 2411, rate: 100, criterion: "Qa=1" },
+            ],
           });
           Math.random = random;
           show("inventory");
         });
-        assert.ok(
-          (await worldPage.locator("#resourceList").textContent()).includes(
-            "Laine de Bouftou",
-          ),
+        assert.equal(
+          await worldPage.evaluate(() => D.resources["384"] || 0),
+          0,
+        );
+        assert.equal(
+          await worldPage.evaluate(() => D.bag.some((q) => q.id === "d2411")),
+          true,
         );
         await worldPage.evaluate(() => GameSave.flush());
         await worldPage.reload();
         await worldPage.waitForFunction(() => M.length === 688);
-        assert.equal(await worldPage.evaluate(() => D.resources["384"]), 1);
+        assert.equal(
+          await worldPage.evaluate(() => D.resources["384"] || 0),
+          0,
+        );
+        assert.equal(
+          await worldPage.evaluate(() => D.bag.some((q) => q.id === "d2411")),
+          true,
+        );
         assert.equal(
           await worldPage.evaluate(
             () => document.documentElement.scrollWidth > innerWidth,
