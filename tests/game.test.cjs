@@ -760,3 +760,56 @@ test("all usable equipment is obtainable by level with original drops preserved"
   run("Math.random=()=>.99999;sourceLoot(fixtureMob)");
   assert.equal(run("D.bag.length"), 1);
 });
+
+test("imported equipment aliases work without rewriting existing item rolls", () => {
+  const { run } = game();
+  run("I.audit=['Audit','Cape',null,1,{},1,1];D.w={Cape:{id:'audit',st:{Soin:2,Soins:3,'Dommage':2,Dommages:1,'% Critique':4,Critique:2,'Dommage Feu':2,'Dommage Critique':3}}};snapshot=JSON.stringify(D.w)");
+  assert.equal(run('st("Soins")'), 5);
+  assert.equal(run('st("Dommages")'), 3);
+  assert.equal(run('st("Critique")'), 6);
+  assert.equal(run('st("Feu")'), 2);
+  assert.equal(run('st("DommagesCritiques")'), 3);
+  assert.equal(run('JSON.stringify(D.w)===snapshot'), true);
+});
+
+test("flat elemental damage, power and healing match equipment values", () => {
+  const { run } = game();
+  run("I.audit=['Audit','Cape',null,1,{},1,1];D.w={Cape:{id:'audit',st:{}}};D.inv={};Math.random=()=>.999;resetEffects()");
+  for (const element of ['Feu','Air','Terre','Eau','Neutre']) {
+    run(`D.w.Cape.st={'Dommage ${element}':2}`);
+    assert.equal(run(`attackValue(['Test','${element}',1,6,6],'dmg')`), 8);
+    assert.equal(run(`attackValue(['Test','${element}',1,8,8],'aoe')`), 10);
+  }
+  run("D.w.Cape.st={Puissance:1}");
+  for (const element of ['Feu','Air','Terre','Eau','Neutre']) assert.equal(run(`attackValue(['Test','${element}',1,100,100],'dmg')`), 101);
+  run("D.w.Cape.st={Soin:2}");
+  assert.equal(run("healValue(['Test','Soin',1,8,8])"), 10);
+  assert.equal(run("healValue(['Test','Soin',1,10,10])"), 12);
+});
+
+test("critical chance and damage apply only on successful critical rolls", () => {
+  const { run } = game();
+  run("I.audit=['Audit','Cape',null,1,{},1,1];D.w={Cape:{id:'audit',st:{'Dommage Critique':3}}};D.inv={};resetEffects();Math.random=()=>.049");
+  assert.equal(run("attackValue(['Test','Feu',1,10,10],'dmg')"), 18);
+  run("Math.random=()=>.05");
+  assert.equal(run("attackValue(['Test','Feu',1,10,10],'dmg')"), 10);
+  run("D.w.Cape.st['% Critique']=5;Math.random=()=>.099");
+  assert.equal(run("attackValue(['Test','Feu',1,10,10],'dmg')"), 18);
+  run("D.w.Cape.st['% Critique']=-5;Math.random=()=>0");
+  assert.equal(run("attackValue(['Test','Feu',1,10,10],'dmg')"), 10);
+  run("D.w.Cape.st['% Critique']=200;Math.random=()=>.999");
+  assert.equal(run("attackValue(['Test','Feu',1,10,10],'dmg')"), 18);
+});
+
+test("percentage resistance matches the enemy element, then shields absorb damage", () => {
+  const { run } = game();
+  run("I.audit=['Audit','Cape',null,1,{},1,1];D.w={Cape:{id:'audit',st:{'% Resistance Feu':2}}};resetEffects();Math.random=()=>.999");
+  assert.equal(run("incomingDamage({a:[100,100],e:'Feu'},0)"), 98);
+  assert.equal(run("incomingDamage({a:[100,100],e:'Air'},0)"), 100);
+  run("effects.shield=20");
+  assert.equal(run("incomingDamage({a:[100,100],e:'Feu'},0)"), 78);
+  run("D.w.Cape.st={'% Résistance Feu':-10}");
+  assert.equal(run("incomingDamage({a:[100,100],e:'Feu'},0)"), 110);
+  run("D.w.Cape.st={'% Resistance Feu':150}");
+  assert.equal(run("incomingDamage({a:[100,100],e:'Feu'},0)"), 0);
+});

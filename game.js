@@ -290,7 +290,23 @@ function gt(worn = D.w) {
   return t;
 }
 function st(k) {
-  return gt()[k] || 0;
+  const aliases = {
+    Soin: "Soins",
+    Dommage: "Dommages",
+    "% Critique": "Critique",
+    Critiques: "Critique",
+    "Dommage Critique": "DommagesCritiques",
+    "Dommages Critiques": "DommagesCritiques",
+  };
+  const key = name => {
+    const normalized = statKey(name);
+    if (aliases[normalized]) return aliases[normalized];
+    const elemental = normalized.match(/^Dommages? (Feu|Air|Terre|Eau|Neutre)$/);
+    return elemental ? elemental[1] : normalized;
+  };
+  const wanted = key(k);
+  return Object.entries(gt()).reduce((sum, [name, value]) =>
+    sum + (key(name) === wanted ? value : 0), 0);
 }
 function bonus(e) {
   let m = {
@@ -1784,7 +1800,7 @@ async function boot() {
     ];
     let [eq, sets, bestiary, world] = await Promise.all(
       files.map(async (f) => {
-        let r = await fetch(f + "?v=3.12.2");
+        let r = await fetch(f + "?v=3.13.0");
         if (!r.ok) throw Error(f + " : HTTP " + r.status);
         return r.json();
       }),

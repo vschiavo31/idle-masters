@@ -143,3 +143,13 @@ V3.11.1: Combat drops and bestiary tables now contain supported equipment only f
 Equipment quest/profession/event criteria are ignored as requested; source base rates and prospection remain.
 
 V3.12.0: All 2,136 usable equipment records enter shared bonus drop pools on every monster within ±10 levels (monster level capped at 200 for loot selection). Original per-item drops retain their rates and are excluded from the bonus pool to avoid duplicates. One bonus equipment roll per defeated monster, 30% base chance modified by prospection, capped at 72%; each pool item shares that chance equally. Bestiary rates show both kinds of drops. No resources or source conditions.
+
+## Effets des équipements (3.13.0)
+
+Les anciens jets sauvegardés et les bonus de panoplie conservent leurs noms. L’agrégation de combat reconnaît aussi les libellés importés `Soin`, `Dommage`, `Dommage Feu/Air/Terre/Eau/Neutre`, `% Critique` et `Dommage Critique`.
+
+Les dommages fixes sont ajoutés après le calcul des dégâts de base et de puissance, sans réduction liée au type de sort. Chaque appel au calcul d’attaque (y compris la création des dégâts de poison, bombe ou invocation) possède 5 % de critique de base, plus les bonus, bornés entre 0 et 100 %. Un critique multiplie les dégâts par 1,5, arrondit à l’entier inférieur puis ajoute les dommages critiques. Les dégâts des effets différés conservent ce résultat. Le journal indique le critique.
+
+Les résistances élémentaires en pourcentage réduisent les attaques entrantes selon l’élément Idle Masters du monstre, après ses modificateurs et avant le bouclier. Les malus augmentent les dégâts reçus ; une résistance supérieure à 100 % ne provoque jamais de soin. La puissance renforce les dégâts de base de tous les éléments de 1 % par point. Les soins fixes s’ajoutent après le calcul de soin existant.
+
+PM, portée, tacle, fuite, initiative, retrait/esquive PA ou PM, dommages/résistances de poussée, résistances fixes/critiques, effets de pièges, renvoi, pourcentages mêlée/distance/sorts/armes et modifications spécifiques aux sorts de classe restent sans mécanique dédiée.

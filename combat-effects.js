@@ -128,16 +128,17 @@ function attackValue(p, kind) {
     boost *= 1.5;
     lg("Coup chanceux !");
   }
-  const flatScale = ["poison", "summon"].includes(kind)
-    ? 0.35
-    : kind === "aoe"
-      ? 0.6
-      : 1;
-  return Math.max(
+  let damage = Math.max(
     0,
     Math.floor(R(p[3], p[4]) * (1 + bonus(p[1]) / 100) * boost) +
-      Math.floor((st("Dommages") + st(p[1])) * flatScale),
+      st("Dommages") + st(p[1]),
   );
+  const criticalChance = Math.max(0, Math.min(100, 5 + st("Critique")));
+  if (Math.random() * 100 < criticalChance) {
+    damage = Math.max(0, Math.floor(damage * 1.5) + st("DommagesCritiques"));
+    lg("Coup critique !");
+  }
+  return damage;
 }
 function livingTargets() {
   return encounter
@@ -338,6 +339,8 @@ function incomingDamage(m, index) {
       (playerClass()?.trait === "armor" ? 0.85 : 1) *
       (1 - (effects.weakens[index]?.value || 0) / 100),
   );
+  const resistance = Math.min(100, st("% Résistance " + (m.e || "Neutre")));
+  value = Math.max(0, Math.floor(value * (1 - resistance / 100)));
   const absorbed = Math.min(effects.shield, value);
   effects.shield -= absorbed;
   if (absorbed) lg("Bouclier : " + absorbed + " dégâts absorbés.");
