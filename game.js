@@ -1278,6 +1278,7 @@ function spells() {
   });
 }
 function collection() {
+  renderEquipmentSearch(M);
   renderLocalBestiary(BESTIARY, M);
   let a = $("achievements");
   a.innerHTML = "";
@@ -1783,7 +1784,7 @@ async function boot() {
     ];
     let [eq, sets, bestiary, world] = await Promise.all(
       files.map(async (f) => {
-        let r = await fetch(f + "?v=3.12.0");
+        let r = await fetch(f + "?v=3.12.1");
         if (!r.ok) throw Error(f + " : HTTP " + r.status);
         return r.json();
       }),

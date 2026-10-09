@@ -1013,6 +1013,24 @@ async function main() {
           .fill("Monde-" + engine.name());
         await worldPage.locator("#confirmClassBtn").click();
         await worldPage.waitForFunction(() => GameSave.profile && D.classId);
+        await worldPage.evaluate(() => show("collection"));
+        const searched = await worldPage.evaluate(() => {
+          const id = M.find(m => m.adaptedGearIds.length).adaptedGearIds[0];
+          return {id, name: meta(id).n};
+        });
+        await worldPage.locator("#equipmentSearch").fill(searched.name.normalize("NFD").replace(/[\u0300-\u036f]/g, ""));
+        const itemResult = worldPage.locator('#equipmentSearchResults details[data-item-id="' + searched.id + '"]');
+        await itemResult.locator("summary").click();
+        await itemResult.locator(".dropRow").first().waitFor();
+        const actualDrops = await itemResult.locator(".dropRow").evaluateAll(rows => rows.map(row => ({id: row.dataset.monsterId, rate: row.querySelector(".dropRate").textContent})));
+        const expectedDrops = await worldPage.evaluate(id => M.map(m => ({id:m.id,rate:dropRate(id,m)})).filter(x => x.rate > 0), searched.id);
+        assert.equal(actualDrops.length, expectedDrops.length);
+        for (const drop of actualDrops) assert.equal(drop.rate, expectedDrops.find(x => x.id === drop.id).rate.toFixed(3) + " %");
+        assert.ok(await itemResult.textContent().then(text => text.includes("niv.")));
+        await worldPage.locator("#equipmentSearch").fill("zzzz-introuvable-zzzz");
+        assert.equal(await worldPage.locator("#equipmentSearchResults").textContent(), "Aucun équipement trouvé.");
+        await worldPage.locator("#equipmentSearch").fill("");
+        assert.equal(await worldPage.locator("#equipmentSearchResults details").count(), 0);
         await worldPage.evaluate(() => show("combat"));
         assert.equal(await worldPage.locator("#zones button").count(), 270);
         assert.equal(
