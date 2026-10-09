@@ -44,6 +44,17 @@ function slotName(s) {
 }
 const lootPools = new Map();
 let removedClassGearIds = new Set();
+const ACCESSORY_SLOTS = Array.from({length: 6}, (_, i) => "Dofus" + (i + 1));
+function ensureEquipmentSlots(state = D) {
+  state.w ||= {};
+  for (const slot of ["Arme", "Familier", ...ACCESSORY_SLOTS]) if (!(slot in state.w)) state.w[slot] = null;
+  if (!state.extraEquipmentMigration) {
+    const old = ["Coiffe", "Cape", "Amulette", "Anneau", "Ceinture", "Bottes"];
+    if (Array.isArray(state.inventorySlots) && old.every(slot => state.inventorySlots.includes(slot)))
+      state.inventorySlots = [...new Set([...state.inventorySlots, "Arme", "Familier", "Dofus", "Trophée"])];
+    state.extraEquipmentMigration = 1;
+  }
+}
 let equipmentStatAliases = new Map();
 function equipmentEffectKey(effect) {
   const fixed = String(effect.stat || "").match(/^(Feu|Air|Terre|Eau|Neutre) \(fixe\)$/);
@@ -92,7 +103,7 @@ function buildLocalData(eq, sets) {
       if (b < a) [a, b] = [b, a];
       st[equipmentEffectKey(e)] = [a, b];
     });
-    if (!Object.keys(st).length) return;
+    if (!Object.keys(st).length && !x.allowNoStats) return;
     I["d" + x.id] = [
       x.name,
       slotName(x.slot),
@@ -101,6 +112,9 @@ function buildLocalData(eq, sets) {
       st,
       x.level,
       x.id,
+      x.weapon || null,
+      !!x.specialEffects,
+      x.subtype || null,
     ];
   });
   SET = {};
@@ -235,6 +249,9 @@ let D = {
       Anneau2: null,
       Ceinture: null,
       Bottes: null,
+      Arme: null,
+      Familier: null,
+      ...Object.fromEntries(ACCESSORY_SLOTS.map(slot => [slot, null])),
     },
     uid: 1,
     master: {},
@@ -266,7 +283,7 @@ function mob() {
 function meta(id) {
   let x = I[id];
   return x
-    ? { n: x[0], s: x[1], set: x[2], r: x[3], x: x[4], l: x[5], ankamaId: x[6] }
+    ? { n: x[0], s: x[1], set: x[2], r: x[3], x: x[4], l: x[5], ankamaId: x[6], weapon: x[7], specialEffects: x[8], subtype: x[9] }
     : null;
 }
 function sourceOf(id) {
@@ -376,6 +393,7 @@ function save() {
   GameSave.queue(D);
 }
 function jet(q) {
+  if (q.rayonnant) return 150;
   let x = meta(q.id),
     s = 0,
     m = 0;
@@ -388,15 +406,22 @@ function jet(q) {
   }
   return m ? Math.round((100 * s) / m) : 100;
 }
-function roll(id) {
+function roll(id, dropped = false) {
   let x = meta(id),
     a = {};
   if (!x) return null;
   for (let [k, v] of Object.entries(x.x))
     a[k] = R(Math.min(v[0], v[1]), Math.max(v[0], v[1]));
   let q = { uid: D.uid++, id, st: a };
+  if (dropped && Math.random() < 0.01) {
+    q.rayonnant = true;
+    for (const [key, bounds] of Object.entries(x.x)) {
+      const perfect = Math.max(...bounds);
+      q.st[key] = perfect > 0 ? Math.ceil(perfect * 1.5) : perfect;
+    }
+  }
   D.seen[id] = 1;
-  if (jet(q) === 100) D.perfect = true;
+  if (jet(q) >= 100) D.perfect = true;
   return q;
 }
 function spell(i) {
@@ -465,7 +490,7 @@ function loot(m = mob()) {
     pool = mobDrops(m);
   if (pool.length && Math.random() * 100 < equipmentChance()) {
     let id = pool[R(0, pool.length - 1)],
-      q = roll(id);
+      q = roll(id, true);
     if (q) {
       D.bag.push(q);
       out.push(q);
@@ -629,6 +654,8 @@ function bestAutoSpell() {
       best = i;
     }
   });
+  const weaponScore = weaponAutoScore();
+  if (weaponScore > 0 && weaponScore > score) best = -2;
   return best;
 }
 function scheduleAuto() {
@@ -636,8 +663,8 @@ function scheduleAuto() {
   if (!auto || mode !== "fight" || D.end) return;
   autoTimer = setTimeout(() => {
     let i = bestAutoSpell();
-    if (i >= 0) {
-      cast(i);
+    if (i >= 0 || i === -2) {
+      i === -2 ? useWeapon() : cast(i);
       if (auto && !D.end) scheduleAuto();
     } else enemy();
   }, 300);
@@ -873,6 +900,7 @@ function slot(q) {
   let x = meta(q.id);
   if (!x) return null;
   let s = x.s;
+  if (["Dofus", "Trophée"].includes(s)) return ACCESSORY_SLOTS.find(slot => !D.w[slot]) || null;
   if (s !== "Anneau") return s;
   if (!D.w.Anneau1) return "Anneau1";
   if (!D.w.Anneau2) return "Anneau2";
@@ -889,7 +917,7 @@ function equip(u, target) {
     D.lv < x.l ||
     !s ||
     !(s in D.w) ||
-    (x.s === "Anneau" ? !["Anneau1", "Anneau2"].includes(s) : s !== x.s)
+    !compatibleSlots(x).includes(s) || duplicateAccessory(q, s)
   )
     return;
   let o = D.w[s];
@@ -897,6 +925,12 @@ function equip(u, target) {
   D.w[s] = q;
   D.bag.splice(j, 1);
   render();
+}
+function compatibleSlots(x) {
+  return x.s === "Anneau" ? ["Anneau1", "Anneau2"] : ["Dofus", "Trophée"].includes(x.s) ? ACCESSORY_SLOTS : [x.s];
+}
+function duplicateAccessory(q, target) {
+  return ["Dofus", "Trophée"].includes(meta(q.id)?.s) && ACCESSORY_SLOTS.some(slot => slot !== target && D.w[slot]?.id === q.id);
 }
 function uneq(s) {
   if (D.w[s]) {
@@ -940,9 +974,7 @@ function equipmentDelta(q, target) {
   if (
     !x ||
     !(target in D.w) ||
-    (x.s === "Anneau"
-      ? !["Anneau1", "Anneau2"].includes(target)
-      : target !== x.s)
+    !compatibleSlots(x).includes(target)
   )
     return null;
   const before = gt(),
@@ -956,7 +988,7 @@ function equipmentDelta(q, target) {
 function comparison(q) {
   const x = meta(q.id);
   if (!x) return "";
-  return (x.s === "Anneau" ? ["Anneau1", "Anneau2"] : [x.s])
+  return compatibleSlots(x)
     .map((target) => {
       const current = D.w[target],
         delta = equipmentDelta(q, target);
@@ -1092,6 +1124,7 @@ const INVENTORY_SLOTS = [
   "Anneau",
   "Ceinture",
   "Bottes",
+  "Arme", "Familier", "Dofus", "Trophée",
 ];
 function visibleInventorySlots() {
   return Array.isArray(D.inventorySlots)
@@ -1115,6 +1148,16 @@ function sortedInventory(items, order) {
         String(a.uid).localeCompare(String(b.uid), "fr", { numeric: true }),
     );
 }
+function equipmentExtraInfo(id, item = {id}) {
+  const x = meta(id);
+  let html = "";
+  if (x?.weapon) html += '<p class="mut">' + esc(x.subtype || "Arme") + " · " + x.weapon.ap + " PA · " + Math.max(1, x.weapon.casts || 1) + " utilisation(s) par tour<br>" + weaponLineText(item) + "<br>Critique de base : " + x.weapon.criticalChance + " % · Bonus de base sur critique : +" + x.weapon.criticalBonus + "</p>";
+  if (x?.weapon?.unsupported?.length) html += '<p class="mut">Effets annexes de l’arme non actifs : ' + esc(x.weapon.unsupported.join(", ")) + "</p>";
+  if (x?.specialEffects) html += '<p class="mut">Effets spéciaux de la source non actifs dans cette version. Les caractéristiques affichées s’appliquent normalement.</p>';
+  if (x && !Object.keys(x.x).length && !x.weapon) html += '<p class="mut">Aucun bonus de caractéristique actif pour cet objet.</p>';
+  if (item.rayonnant) html += '<p class="gold">Rayonnant : bonus à ×1,5 du jet parfait, arrondis à l’excès. Malus au meilleur jet normal.</p>';
+  return html;
+}
 function inventory() {
   let search = ($("bagSearch").value || "").toLowerCase();
   $("bagCount").textContent = D.bag.length;
@@ -1126,14 +1169,14 @@ function inventory() {
   Object.entries(D.w).forEach(([s, q]) => {
     let x = q && meta(q.id),
       d = document.createElement("div");
-    d.className = "gearSlot";
+    d.className = "gearSlot" + (q?.rayonnant ? " radiant" : "");
     d.innerHTML =
       '<div class="gearBox ' +
       (x ? "filled" : "") +
       '"><div class="gearGlyph">' +
-      (x ? x.n : q ? "Ancien objet" : "+") +
+      (x ? x.n + (q?.rayonnant ? " · Rayonnant" : "") : q ? "Ancien objet" : "+") +
       "</div></div><small>" +
-      s +
+      (ACCESSORY_SLOTS.includes(s) ? "Dofus / Trophée " + s.slice(5) : s) +
       "</small>";
     if (q?.locked) {
       const tag = document.createElement("small");
@@ -1201,7 +1244,7 @@ function inventory() {
     let x = meta(q.id),
       j = jet(q),
       d = document.createElement("div");
-    d.className = "item";
+    d.className = "item" + (q.rayonnant ? " radiant" : "");
     d.dataset.uid = q.uid;
     d.innerHTML =
       '<div class="itemHead"><div><div class="eyebrow">' +
@@ -1212,9 +1255,8 @@ function inventory() {
       x.n +
       '</div></div><b class="' +
       rarity(j) +
-      '">Jet ' +
-      j +
-      '%</b></div><div class="itemStats">' +
+      '">' + (q.rayonnant ? "Rayonnant · ×1,5" : "Jet " + j + "%") +
+      '</b></div>' + equipmentExtraInfo(q.id, q) + '<div class="itemStats">' +
       Object.entries(q.st)
         .map(
           ([k, v]) =>
@@ -1240,7 +1282,23 @@ function inventory() {
       comparison(q) +
       '<div class="itemActions"></div>';
     let a = d.querySelector(".itemActions");
-    if (x.s === "Anneau" && D.w.Anneau1 && D.w.Anneau2) {
+    if (["Dofus", "Trophée"].includes(x.s)) {
+      const choice = document.createElement("select");
+      choice.setAttribute("aria-label", "Emplacement pour " + x.n);
+      for (const target of ACCESSORY_SLOTS) {
+        const option = document.createElement("option");
+        option.value = target;
+        option.textContent = "Emplacement " + target.slice(5) + (D.w[target] ? " · " + meta(D.w[target].id)?.n : " · libre");
+        choice.append(option);
+      }
+      choice.value = slot(q) || ACCESSORY_SLOTS[0];
+      const button = document.createElement("button");
+      button.textContent = "Équiper";
+      button.disabled = D.lv < x.l || duplicateAccessory(q, choice.value);
+      choice.onchange = () => button.disabled = D.lv < x.l || duplicateAccessory(q, choice.value);
+      button.onclick = () => equip(q.uid, choice.value);
+      a.append(choice, button);
+    } else if (x.s === "Anneau" && D.w.Anneau1 && D.w.Anneau2) {
       ["Anneau1", "Anneau2"].forEach((s, i) => {
         let b = document.createElement("button");
         b.textContent = "Remplacer anneau " + (i + 1);
@@ -1509,6 +1567,14 @@ function fight() {
     b.onclick = () => cast(i);
     e.append(b);
   });
+  const weaponButton = document.createElement("button");
+  const equipped = D.w.Arme && meta(D.w.Arme.id);
+  weaponButton.id = "weaponAttack";
+  weaponButton.disabled = auto || !canUseWeapon();
+  weaponButton.innerHTML = "<b>" + (equipped ? esc(equipped.n) : "Corps à corps") + "</b><br>" +
+    (equipped?.weapon ? equipped.weapon.ap + " PA · " + weaponLineText(D.w.Arme) : "Équipe une arme pour attaquer");
+  weaponButton.onclick = useWeapon;
+  e.append(weaponButton);
   $("fightEffects").textContent = [
     effects.shield ? effects.shield + " bouclier" : "",
     effects.buff ? "Puissance +" + effects.buff + " %" : "",
@@ -1586,9 +1652,7 @@ function result() {
               "</div>"
             : "<div><b>" +
               esc(meta(q.id).n) +
-              "</b> · Jet " +
-              jet(q) +
-              "%</div>",
+              "</b> · " + (q.rayonnant ? '<span class="gold">Rayonnant · ×1,5</span>' : "Jet " + jet(q) + "%") + "</div>",
         )
         .join("")
     : '<span class="mut">Aucun drop cette fois</span>';
@@ -1837,15 +1901,17 @@ async function boot() {
       "dofus-item-sets.json",
       "dofus-bestiary-1-40.json",
       "game-world.json",
+      "extra-equipment.json",
     ];
-    let [eq, sets, bestiary, world] = await Promise.all(
+    let [eq, sets, bestiary, world, extra] = await Promise.all(
       files.map(async (f) => {
-        let r = await fetch(f + "?v=3.14.1");
+        let r = await fetch(f + "?v=3.15.0");
         if (!r.ok) throw Error(f + " : HTTP " + r.status);
         return r.json();
       }),
     );
     buildLocalData(eq, sets);
+    EXTRA_EQUIPMENT = extra;
     BESTIARY = bestiary.monsters || [];
     M = buildCombatData(BESTIARY);
     if (M.some((m) => !lootPool(m).length))
@@ -1861,6 +1927,7 @@ async function boot() {
     D.localCombatMigration = 1;
     activateWorld(world);
     cleanEquipmentSave(D);
+    ensureEquipmentSlots(D);
     if (!M.some((m) => m.id === D.mid)) D.mid = M[0].id;
     if (!Z[D.z] || !zoneOpen(D.z))
       D.z = ZONE_ORDER.filter(zoneOpen).at(-1) ?? ZONE_ORDER[0];

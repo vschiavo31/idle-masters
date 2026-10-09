@@ -1099,9 +1099,36 @@ async function main() {
           await worldPage.evaluate(() => D.bag.some((q) => q.id === "d2411")),
           true,
         );
+        const newGear = await worldPage.evaluate(() => {
+          D.lv=200;
+          const weaponId=Object.keys(I).find(id=>meta(id).weapon?.lines.some(line=>line.kind==='damage') && meta(id).weapon.ap<=6);
+          const ids=[weaponId,...['Familier','Dofus','Trophée'].map(slot=>Object.keys(I).find(id=>meta(id).s===slot))];
+          const random=Math.random;Math.random=()=>0;
+          const items=ids.map(id=>roll(id,true));Math.random=random;
+          D.bag.push(...items);show('inventory');
+          return items.map(q=>({uid:q.uid,id:q.id,st:q.st,rayonnant:q.rayonnant}));
+        });
+        assert.equal(await worldPage.locator('#bagFilters input').count(),10);
+        assert.equal(await worldPage.locator('.gearSlot').count(),15);
+        for(const q of newGear) {
+          const card=worldPage.locator('.item[data-uid="'+q.uid+'"]');
+          assert.ok(await card.textContent().then(text=>text.includes('Rayonnant')));
+          await card.getByRole('button',{name:'Équiper',exact:true}).click();
+        }
+        assert.equal(await worldPage.locator('.gearSlot.radiant').count(),4);
+        assert.equal(await worldPage.evaluate(()=>Object.values(D.w).filter(Boolean).length),4);
+        await worldPage.evaluate(()=>{D.lv=200;show('combat');startEncounter(0,2);encounter.members.forEach(e=>e.hp=100000);D.eh=100000;PA=6;Math.random=()=>.999;render()});
+        const beforeWeapon=await worldPage.evaluate(()=>({hp:encounter.members[0].hp,pa:PA,cost:meta(D.w.Arme.id).weapon.ap}));
+        await worldPage.locator('#weaponAttack').click();
+        assert.ok(await worldPage.evaluate(()=>encounter.members[0].hp)<beforeWeapon.hp);
+        assert.equal(await worldPage.evaluate(()=>PA),beforeWeapon.pa-beforeWeapon.cost);
+        await worldPage.locator('#backMob').click();
+        await worldPage.evaluate(()=>show('inventory'));
         await worldPage.evaluate(() => GameSave.flush());
         await worldPage.reload();
         await worldPage.waitForFunction(() => M.length === 688);
+        const restoredGear=await worldPage.evaluate(()=>['Arme','Familier','Dofus1','Dofus2'].map(slot=>{const q=D.w[slot];return {uid:q.uid,id:q.id,st:q.st,rayonnant:q.rayonnant}}));
+        assert.deepEqual(restoredGear,newGear);
         assert.equal(
           await worldPage.evaluate(() => D.resources["384"] || 0),
           0,

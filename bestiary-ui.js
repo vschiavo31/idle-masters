@@ -49,6 +49,7 @@ function renderEquipmentSearch(combat) {
     details.addEventListener("toggle", () => {
       if (!details.open || loaded) return;
       loaded = true;
+      details.insertAdjacentHTML("beforeend", equipmentExtraInfo(id));
       const heading = document.createElement("p");
       heading.textContent = item.s + " · Caractéristiques (jets possibles)";
       details.append(heading);

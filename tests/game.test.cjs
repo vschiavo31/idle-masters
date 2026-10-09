@@ -29,6 +29,8 @@ function game() {
   c.eq = data("dofus-equipment-1-40.json");
   c.sets = data("dofus-item-sets.json");
   c.monsters = data("dofus-bestiary-1-40.json").monsters;
+  c.extra = data("extra-equipment.json");
+  vm.runInContext("EXTRA_EQUIPMENT=extra", c);
   vm.runInContext(
     "buildLocalData(eq,sets);M=buildCombatData(monsters);D.classId='iop';D.k=1000000;render=()=>{};",
     c,
@@ -534,7 +536,7 @@ test("reset characteristics refunds exact tier costs and wisdom without double r
 });
 test("equipment filters support multiple categories and preserve explicit empty selection", () => {
   const { run } = game();
-  assert.equal(run("visibleInventorySlots().length"), 6);
+  assert.equal(run("visibleInventorySlots().length"), 10);
   run('D.inventorySlots=["Anneau","Cape"]');
   assert.equal(run('visibleInventorySlots().join(",")'), "Anneau,Cape");
   run("D.inventorySlots=[]");
@@ -705,7 +707,7 @@ test("validated world contains exactly the 688 selected monsters and no empty zo
   assert.equal(run("D.xp"), 55);
   run("activateWorld(world)");
   assert.equal(run("D.xp"), 55);
-  assert.equal(run("Object.keys(I).length"), 2031);
+  assert.equal(run("Object.keys(I).length"), 3184);
   assert.equal(run("meta('d2411').n"), "Coiffe du Bouftou");
   assert.equal(
     run("M.every(m=>m.sourceDrops.every(d=>WORLD_ITEMS.has(d.itemId)))"),
@@ -900,4 +902,56 @@ test("points of life and vitality share maximum HP, including set bonuses and ol
   assert.equal(run('mh()'), 100);
   run("D.w.Cape={id:'life',st:{'Points de vie':-200}}");
   assert.equal(run('mh()'), 1);
+});
+
+
+test("new source equipment has complete pools, distinct Dofus and no ethereal durability", () => {
+  const {c,run}=game(); c.world=data('game-world.json'); run('activateWorld(world)');
+  const counts={}; for(const row of c.extra.items) counts[row.slot]=(counts[row.slot]||0)+1;
+  assert.deepEqual(counts,{Arme:734,Familier:122,Dofus:31,'Trophée':266});
+  assert.equal(new Set(c.extra.items.filter(x=>x.slot==='Dofus').map(x=>x.name)).size,31);
+  assert.equal(run("[2341,2361,8338,27268].every(id=>!I['d'+id])"),true);
+  assert.equal(run("extra.items.every(row=>M.some(m=>dropRate('d'+row.id,m)>0))"),true);
+  assert.equal(run("Object.keys(D.w).length"),15);
+});
+
+test("new slots preserve saves and share six accessory slots without duplicates or losses", () => {
+  const {c,run}=game(); c.world=data('game-world.json');run("activateWorld(world);D.lv=200;D.inventorySlots=['Cape'];D.extraEquipmentMigration=0;ensureEquipmentSlots();ids=['Arme','Familier','Dofus','Trophée'].map(s=>'d'+extra.items.find(x=>x.slot===s).id);items=ids.map(id=>roll(id));D.bag.push(...items);equip(items[0].uid,'Cape')");
+  assert.equal(run('D.bag.length'),4);
+  run("equip(items[0].uid);equip(items[1].uid);equip(items[2].uid);equip(items[3].uid)");
+  assert.equal(run('D.bag.length'),0);
+  assert.equal(run("D.w.Arme.id===ids[0]&&D.w.Familier.id===ids[1]&&D.w.Dofus1.id===ids[2]&&D.w.Dofus2.id===ids[3]"),true);
+  run("duplicate=roll(ids[2]);D.bag.push(duplicate);equip(duplicate.uid,'Dofus3')");
+  assert.equal(run('D.w.Dofus3'),null);
+  assert.equal(run('D.bag.length'),1);
+  run("uneq('Arme');uneq('Familier');uneq('Dofus1');uneq('Dofus2')");
+  assert.equal(run('D.bag.length'),5);
+  assert.equal(run("D.inventorySlots.join(',')"),'Cape');
+});
+
+test("radiant loot uses 1 percent boundary, ceiling positive perfect rolls and best normal malus", () => {
+  const {run}=game();
+  run("I.audit=['Audit','Arme',null,1,{PA:[1,1],Force:[1,5],Agilite:[-20,-10],PM:[0,0]},1,900001];Math.random=()=>.009;q=roll('audit',true)");
+  assert.equal(run('q.rayonnant'),true);
+  assert.equal(run('JSON.stringify(q.st)'),JSON.stringify({PA:2,Force:8,Agilite:-10,PM:0}));
+  assert.equal(run('jet(q)'),150);
+  assert.equal(run("roll('audit').rayonnant"),undefined);
+  run('Math.random=()=>.01');
+  assert.equal(run("roll('audit',true).rayonnant"),undefined);
+});
+
+test("weapon damage spends PA, limits casts, separates spell bonuses and applies critical damage once", () => {
+  const {run}=game();
+  run("I.audit=['Audit','Arme',null,1,{},1,900001,{ap:3,casts:1,criticalChance:0,criticalBonus:0,lines:[{kind:'damage',element:'Feu',min:10,max:10},{kind:'damage',element:'Air',min:10,max:10}]}];D.w.Arme={id:'audit',st:{\"% Dommages d'armes\":20,'% Dommages aux sorts':100}};Math.random=()=>.999;startEncounter(0,2);encounter.members.forEach(e=>e.hp=1000);D.eh=1000;PA=6");
+  assert.equal(run('useWeapon()'),true);
+  assert.equal(run('encounter.members[0].hp'),976);
+  assert.equal(run('PA'),3);
+  assert.equal(run('useWeapon()'),false);
+  assert.equal(run('PA'),3);
+  run("endEffectRound();D.w.Arme.st={Critique:100,DommagesCritiques:7};PA=6;useWeapon()");
+  assert.equal(run('encounter.members[0].hp'),939);
+  run("endEffectRound();D.w.Arme.rayonnant=true;D.w.Arme.st={};PA=2");
+  assert.equal(run('canUseWeapon()'),false);
+  assert.equal(run('weaponLines(D.w.Arme)[0].min'),15);
+  assert.equal(run('weaponAutoScore()'),0);
 });

@@ -167,3 +167,12 @@ Les bonus d’armes, l’initiative, les dommages renvoyés et les résistances 
 ## Points de vie (3.14.1)
 
 Le libellé `Points de vie` est un alias de `Vitalite` pour le calcul des PV maximum. Les jets déjà sauvegardés et les bonus de panoplie sont pris en compte sans réécriture des objets : 100 PV de base et un équipement +50 Points de vie donnent 150 PV maximum. Les bonus Vitalité et Points de vie se cumulent.
+
+
+## Armes, accessoires et rayonnants (3.15.0)
+
+Import complémentaire de la source épinglée : 734 armes, 122 familiers, 266 trophées et 31 Dofus distincts. Les armes à durabilité (dont les éthérées) et doublons de Dofus de quête sont exclus. Un emplacement arme, un familier et six emplacements partagés Dofus/trophées complètent les sept emplacements existants. Un même accessoire ne peut pas être porté deux fois. Les objets rejoignent les drops adaptés aux niveaux des monstres et la recherche de l’encyclopédie.
+
+Le bouton corps à corps applique les lignes élémentaires, le coût PA, les limites d’utilisation, les critiques et le bonus % dommages d’armes. Les autres effets actifs des armes et les passifs spéciaux des Dofus non simulés sont signalés dans les fiches. Les familiers utilisent leurs caractéristiques de la source sans système de nourrissage.
+
+Chaque équipement obtenu a indépendamment 1 % de chance d’être rayonnant. Ses bonus positifs prennent 1,5 fois le jet parfait, arrondi à l’entier supérieur ; les malus gardent leur meilleur jet normal. Les lignes de dégâts et soins des armes rayonnantes suivent aussi le jet parfait ×1,5. Les objets possédés restent conservés et ne sont pas retirés au hasard à la mise à jour.

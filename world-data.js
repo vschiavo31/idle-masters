@@ -1,6 +1,7 @@
 /* The validated selection is the sole live combat catalogue. */
 let WORLD = null,
-  WORLD_ITEMS = new Map();
+  WORLD_ITEMS = new Map(),
+  EXTRA_EQUIPMENT = {items: [], sets: []};
 function monsterInZone(m, zone) {
   return (m.zones || [m.z]).includes(zone);
 }
@@ -10,8 +11,11 @@ function activateWorld(data, state = D) {
   WORLD_ITEMS = new Map(data.dropItems.map((i) => [i.id, i]));
   const previousZone = Z[state.z]?.[0];
   const fraction = Math.max(0, Math.min(0.999999, state.xp / need(state.lv)));
-  buildLocalData(data.equipment, data.sets);
+  const sets = new Map(data.sets.sets.map(set => [set.id, set]));
+  for (const set of EXTRA_EQUIPMENT.sets) if (!sets.has(set.id)) sets.set(set.id, set);
+  buildLocalData({items: [...data.equipment.items, ...EXTRA_EQUIPMENT.items]}, {sets: [...sets.values()]});
   cleanEquipmentSave(state);
+  ensureEquipmentSlots(state);
   Z.length = 0;
   ENCOUNTER_TIERS.length = 0;
   for (const zone of data.zones) {
@@ -94,14 +98,14 @@ function sourceLoot(m) {
       continue;
     const id = "d" + drop.itemId;
     if (I[id]) {
-      const q = roll(id);
+      const q = roll(id, true);
       D.bag.push(q);
       out.push(q);
     }
   }
   const pool = m.adaptedGearIds || [];
   if (pool.length && Math.random() * 100 < equipmentChance()) {
-    const q = roll(pool[R(0, pool.length - 1)]);
+    const q = roll(pool[R(0, pool.length - 1)], true);
     D.bag.push(q);
     out.push(q);
   }

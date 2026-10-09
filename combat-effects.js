@@ -19,6 +19,7 @@ function resetEffects() {
     casts: {},
     lastElement: null,
     rage: 0,
+    weaponCasts: 0,
   };
 }
 resetEffects();
@@ -111,10 +112,10 @@ function restoreHp(h) {
   D.hp += gain;
   return gain;
 }
-function attackValue(p, kind) {
+function attackValue(p, kind, options = {}) {
   const trait = playerClass()?.trait;
   let boost = 1 + effects.buff / 100;
-  if (["dmg", "drain", "aoe"].includes(kind)) boost += effects.focus / 100;
+  if (["dmg", "drain", "aoe", "weapon"].includes(kind)) boost += effects.focus / 100;
   if (trait === "precision" && ["dmg", "drain"].includes(kind)) boost += 0.1;
   if (trait === "ambush" && effects.shield > 0) boost += 0.15;
   if (trait === "fury" && D.hp < mh() * 0.5) boost += 0.2;
@@ -133,11 +134,12 @@ function attackValue(p, kind) {
     Math.floor(R(p[3], p[4]) * (1 + bonus(p[1]) / 100) * boost) +
       st("Dommages") + st(p[1]),
   );
-  damage = Math.max(0, Math.floor(damage * Math.max(0, 1 + st("% Dommages aux sorts") / 100)));
+  const percent = kind === "weapon" ? st("% Dommages d'armes") : st("% Dommages aux sorts");
+  damage = Math.max(0, Math.floor(damage * Math.max(0, 1 + percent / 100)));
   const criticalChance = Math.max(0, Math.min(100, 5 + st("Critique")));
-  if (Math.random() * 100 < criticalChance) {
-    damage = Math.max(0, Math.floor(damage * 1.5) + st("DommagesCritiques"));
-    lg("Coup critique !");
+  if (options.critical ?? (Math.random() * 100 < criticalChance)) {
+    damage = Math.max(0, Math.floor(damage * 1.5) + (options.criticalDamage === false ? 0 : st("DommagesCritiques")));
+    if (!options.quiet) lg("Coup critique !");
   }
   return damage;
 }
@@ -337,6 +339,80 @@ function endEffectRound() {
     for (const [key, row] of Object.entries(table))
       if (--row.turns <= 0) delete table[key];
   effects.casts = {};
+  effects.weaponCasts = 0;
+}
+function weaponLines(item) {
+  const weapon = item && meta(item.id)?.weapon;
+  if (!weapon) return [];
+  return weapon.lines.map(line => {
+    const perfect = Math.max(line.min, line.max);
+    const value = item.rayonnant ? Math.ceil(perfect * 1.5) : null;
+    return {...line, min: value ?? line.min, max: value ?? line.max};
+  });
+}
+function weaponLineText(item) {
+  const lines = weaponLines(item);
+  return lines.map(line => line.min + "–" + line.max + " " +
+    (line.kind === "heal" ? "soins" : line.kind === "drain" ? "vol de vie" : "dégâts") + " " +
+    (line.element === "Best" ? "du meilleur élément" : line.element)).join(" · ") || "Aucune attaque compatible";
+}
+function canUseWeapon() {
+  const weapon = D.w.Arme && meta(D.w.Arme.id)?.weapon;
+  return !!(weapon && weapon.ap > 0 && weapon.lines.length && D.tr && !D.end && mode === "fight" &&
+    PA >= weapon.ap && effects.weaponCasts < Math.max(1, weapon.casts || 1));
+}
+function weaponElement(element) {
+  return element === "Best" ? ["Terre", "Feu", "Eau", "Air"].sort((a, b) => bonus(b) - bonus(a))[0] : element;
+}
+function weaponAutoScore() {
+  if (!canUseWeapon()) return 0;
+  const weapon = meta(D.w.Arme.id).weapon;
+  if (weapon.lines.some(line => line.kind === "heal") && D.hp < mh() * 0.4) return 100;
+  return weaponLines(D.w.Arme).filter(line => line.kind !== "heal").reduce((sum, line) =>
+    sum + ((line.min + line.max) / 2) * (1 + bonus(weaponElement(line.element)) / 100) + st("Dommages") + st(weaponElement(line.element)), 0) / weapon.ap;
+}
+function useWeapon() {
+  if (!canUseWeapon()) return false;
+  const item = D.w.Arme, weapon = meta(item.id).weapon;
+  PA -= weapon.ap;
+  effects.weaponCasts++;
+  const critical = Math.random() * 100 < Math.max(0, Math.min(100, weapon.criticalChance + st("Critique")));
+  if (critical) lg("Corps à corps : coup critique !");
+  const primary = targetIndex;
+  const hasDamage = weapon.lines.some(line => line.kind !== "heal");
+  const extra = hasDamage ? livingTargets().filter(index => index !== primary)
+    .sort((a, b) => Math.abs(a - primary) - Math.abs(b - primary) || b - a)[0] : undefined;
+  const targets = [primary];
+  if (extra !== undefined && Math.random() * 100 < Math.max(0, Math.min(100, st("Portee")))) {
+    targets.push(extra);
+    lg("Portée : le corps à corps touche également un second monstre.");
+  }
+  let criticalAdded = false;
+  for (const line of weaponLines(item)) {
+    const element = weaponElement(line.element);
+    const extraBase = critical ? weapon.criticalBonus : 0;
+    const p = ["Arme", element, weapon.ap, line.min + extraBase, line.max + extraBase];
+    if (line.kind === "heal") {
+      let amount = healValue(p);
+      if (critical) amount = Math.floor(amount * 1.5);
+      lg("Corps à corps : +" + restoreHp(amount) + " PV");
+      continue;
+    }
+    let amount = attackValue(p, "weapon", {critical, quiet: true, criticalDamage: false});
+    if (critical && !criticalAdded) {
+      amount = Math.max(0, amount + st("DommagesCritiques"));
+      criticalAdded = true;
+    }
+    let dealt = 0;
+    for (const index of targets) dealt += hurtTarget(index, amount);
+    lg("Corps à corps : " + amount + " dégâts " + element + (targets.length > 1 ? " par cible" : "") + ".");
+    if (line.kind === "drain") lg("Vol de vie de l’arme : +" + restoreHp(dealt) + " PV");
+  }
+  effects.focus = 0;
+  effects.focusTurns = 0;
+  if (settleTargets()) return true;
+  render();
+  return true;
 }
 function incomingDamage(m, index) {
   let value = R(m.a[0], m.a[1]);

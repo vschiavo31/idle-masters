@@ -6,7 +6,7 @@
       name="viewport"
       content="width=device-width,initial-scale=1,viewport-fit=cover"
     />
-    <title>Idle Masters V3.14.1</title>
+    <title>Idle Masters V3.15.0</title>
     <style>
       :root {
         --bg: #100e0b;
@@ -564,13 +564,16 @@
         flex-wrap: wrap;
         gap: 10px;
       }
+      .radiant { border-color: #ffe5a0; box-shadow: 0 0 16px #ffcc6b33; }
+      .gearSlot.radiant .gearBox { border-color: #ffe5a0; box-shadow: 0 0 12px #ffcc6b33; }
+      .itemActions select { max-width: 100%; min-width: 0; }
     </style>
   </head>
   <body>
     <div class="wrap">
       <div class="top">
         <div class="brand">Idle Masters</div>
-        <span class="version">V3.11 · 688 monstres</span>
+        <span class="version">V3.15 · Armes et rayonnants</span>
       </div>
       <div class="row" style="margin-bottom: 12px">
         <small id="saveStatus" class="mut" role="status"
@@ -735,6 +738,10 @@
               <label
                 ><input type="checkbox" value="Bottes" checked /> Bottes</label
               >
+              <label><input type="checkbox" value="Arme" checked /> Armes</label>
+              <label><input type="checkbox" value="Familier" checked /> Familiers</label>
+              <label><input type="checkbox" value="Dofus" checked /> Dofus</label>
+              <label><input type="checkbox" value="Trophée" checked /> Trophées</label>
             </div>
             <button id="bagAll">Tout cocher</button
             ><button id="bagNone">Tout décocher</button>
@@ -1038,13 +1045,13 @@
       ><button data-page="collection">COLLECTION</button
       ><button data-page="combat">COMBAT</button>
     </nav>
-    <script src="local-data.js?v=3.14.1"></script>
-    <script src="bestiary-ui.js?v=3.14.1"></script>
-    <script src="saving.js?v=3.14.1"></script>
-    <script src="classes.js?v=3.14.1"></script>
-    <script src="combat-effects.js?v=3.14.1"></script>
-    <script src="roster-selection.js?v=3.14.1"></script>
-    <script src="world-data.js?v=3.14.1"></script>
-    <script src="game.js?v=3.14.1"></script>
+    <script src="local-data.js?v=3.15.0"></script>
+    <script src="bestiary-ui.js?v=3.15.0"></script>
+    <script src="saving.js?v=3.15.0"></script>
+    <script src="classes.js?v=3.15.0"></script>
+    <script src="combat-effects.js?v=3.15.0"></script>
+    <script src="roster-selection.js?v=3.15.0"></script>
+    <script src="world-data.js?v=3.15.0"></script>
+    <script src="game.js?v=3.15.0"></script>
   </body>
 </html>
