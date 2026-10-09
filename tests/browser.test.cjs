@@ -307,7 +307,7 @@ async function main() {
           .click();
         await page.waitForFunction(() => D.rd === 2);
         assert.ok((await page.evaluate(() => D.hp)) < hpBefore);
-        assert.equal(await page.locator("#log div").count(), 3);
+        assert.equal(await page.locator("#log div").evaluateAll(rows => rows.filter(row => / : -\d+ PV$/.test(row.textContent)).length), 3);
         await page
           .getByRole("button", { name: "Quitter", exact: true })
           .click();
