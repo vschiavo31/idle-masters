@@ -1117,7 +1117,7 @@ async function main() {
         }
         assert.equal(await worldPage.locator('.gearSlot.radiant').count(),4);
         assert.equal(await worldPage.evaluate(()=>Object.values(D.w).filter(Boolean).length),4);
-        await worldPage.evaluate(()=>{D.lv=200;show('combat');startEncounter(0,2);encounter.members.forEach(e=>e.hp=100000);D.eh=100000;PA=6;Math.random=()=>.999;render()});
+        await worldPage.evaluate(()=>{D.lv=200;show('combat');startEncounter(ZONE_ORDER[0],2);encounter.members.forEach(e=>e.hp=100000);D.eh=100000;PA=6;Math.random=()=>.999;render()});
         const beforeWeapon=await worldPage.evaluate(()=>({hp:encounter.members[0].hp,pa:PA,cost:meta(D.w.Arme.id).weapon.ap}));
         await worldPage.locator('#weaponAttack').click();
         assert.ok(await worldPage.evaluate(()=>encounter.members[0].hp)<beforeWeapon.hp);
