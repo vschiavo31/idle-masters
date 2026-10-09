@@ -844,6 +844,7 @@ function renderClassChoice() {
   $("classList").hidden = classPreviewOpen;
   $("classDetail").hidden = !classPreviewOpen;
   $("classTraining").hidden = classPreviewOpen;
+  $("classArtwork").innerHTML = classArt(candidate.id,'classLarge');
   $("classPreviewName").textContent = candidate.name;
   $("classPreview").textContent = candidate.style + " · " + candidate.passive;
   $("chooseClassBtn").textContent = "Voir les sorts du " + candidate.name;
@@ -1071,6 +1072,8 @@ function dashboard() {
       Neutre: "Force",
       Sagesse: "Sagesse",
     };
+  $("characterArt").innerHTML = playerClass() ? classArt(D.classId,'classLarge') : '';
+  $("fightPlayerArt").innerHTML = playerClass() ? classArt(D.classId,'artSmall') : '';
   $("lv").textContent = D.lv;
   $("levelBadge").textContent = D.lv;
   $("xpTxt").textContent =
@@ -1173,11 +1176,11 @@ function inventory() {
     d.innerHTML =
       '<div class="gearBox ' +
       (x ? "filled" : "") +
-      '"><div class="gearGlyph">' +
-      (x ? x.n + (q?.rayonnant ? " · Rayonnant" : "") : q ? "Ancien objet" : "+") +
+      '">' + (x ? itemArt(q.id) : '') + '<div class="gearGlyph">' +
+      (x ? (q?.rayonnant ? "Rayonnant" : "") : q ? "Ancien objet" : "+") +
       "</div></div><small>" +
       (ACCESSORY_SLOTS.includes(s) ? "Dofus / Trophée " + s.slice(5) : s) +
-      "</small>";
+      "</small>" + (x ? '<small class="gearName">' + esc(x.n) + '</small>' : '');
     if (q?.locked) {
       const tag = document.createElement("small");
       tag.textContent = "Verrouillé";
@@ -1247,7 +1250,7 @@ function inventory() {
     d.className = "item" + (q.rayonnant ? " radiant" : "");
     d.dataset.uid = q.uid;
     d.innerHTML =
-      '<div class="itemHead"><div><div class="eyebrow">' +
+      '<div class="itemHead">' + itemArt(q.id, "itemIcon") + '<div><div class="eyebrow">' +
       x.s +
       " · Niv. " +
       x.l +
@@ -1465,7 +1468,7 @@ function picker() {
           (pool.length > 3 ? " / +" + (pool.length - 3) + " variantes" : ""),
       )
       .join(" + ");
-    b.innerHTML =
+    b.innerHTML = '<div class="encounterArt">' + slots.map(pool => monsterArt(M.find(m=>m.sourceId===pool[0]))).join('') + '</div>' +
       "<b>Combat " +
       (tier + 1) +
       " · " +
@@ -1517,17 +1520,12 @@ function fight() {
         button = document.createElement("button");
       button.className = "choice " + (targetIndex === index ? "sel" : "");
       button.disabled = enemy.hp <= 0 || auto || !D.tr || D.end;
-      button.textContent =
-        type.n +
-        " · " +
-        enemy.hp +
-        "/" +
-        type.h +
-        " PV" +
-        (enemy.hp <= 0 ? " · Vaincu" : index === targetIndex ? " · Cible" : "");
+      button.innerHTML = monsterArt(type) + '<b>' + esc(type.n) + '</b><span class="enemyStatus">' + enemy.hp + '/' + type.h + ' PV' + (enemy.hp <= 0 ? ' · Vaincu' : index === targetIndex ? ' · Cible' : '') + '</span><span class="miniHp"><span style="width:'+Math.max(0,Math.min(100,100*enemy.hp/type.h))+'%"></span></span>';
+      button.classList.toggle('defeated',enemy.hp<=0);
       button.onclick = () => selectTarget(index);
       $("enemyGroup").append(button);
     });
+  $("combatArtwork").innerHTML = monsterArt(m, "monsterLarge");
   $("mobName").textContent = m.n;
   $("mobInfo").textContent =
     "Niv. " +
@@ -1650,9 +1648,9 @@ function result() {
               "</b> × " +
               q.quantity +
               "</div>"
-            : "<div><b>" +
+            : '<div class="lootCard ' + (q.rayonnant ? 'radiant' : '') + '">' + itemArt(q.id) + "<div><b>" +
               esc(meta(q.id).n) +
-              "</b> · " + (q.rayonnant ? '<span class="gold">Rayonnant · ×1,5</span>' : "Jet " + jet(q) + "%") + "</div>",
+              "</b> · " + (q.rayonnant ? '<span class="gold">Rayonnant · ×1,5</span>' : "Jet " + jet(q) + "%") + "</div></div>",
         )
         .join("")
     : '<span class="mut">Aucun drop cette fois</span>';
@@ -1905,7 +1903,7 @@ async function boot() {
     ];
     let [eq, sets, bestiary, world, extra] = await Promise.all(
       files.map(async (f) => {
-        let r = await fetch(f + "?v=3.15.0");
+        let r = await fetch(f + "?v=3.16.0");
         if (!r.ok) throw Error(f + " : HTTP " + r.status);
         return r.json();
       }),

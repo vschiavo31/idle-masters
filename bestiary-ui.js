@@ -43,7 +43,7 @@ function renderEquipmentSearch(combat) {
     const details = document.createElement("details"), summary = document.createElement("summary");
     details.className = "card";
     details.dataset.itemId = id;
-    summary.textContent = item.n + " · niv. " + item.l;
+    summary.innerHTML = itemArt(id, "artSmall") + '<span>' + esc(item.n) + ' · niv. ' + item.l + '</span>';
     details.append(summary);
     let loaded = false;
     details.addEventListener("toggle", () => {
@@ -82,6 +82,7 @@ function renderEquipmentSearch(combat) {
         label.textContent = m.n + " · niv. " + m.l + " · " + zones.join(" / ");
         chance.className = "dropRate";
         chance.textContent = rate.toFixed(3) + " %";
+        row.insertAdjacentHTML('beforeend',monsterArt(m,'artSmall'));
         row.append(label, chance);
         details.append(row);
       }
@@ -148,7 +149,7 @@ function renderLocalBestiary(source, combat) {
               card = document.createElement("div");
             card.className = "card";
             card.innerHTML =
-              "<b>" +
+              monsterArt(m, "bestiaryPortrait") + "<b>" +
               esc(m.name) +
               '</b><div class="mut">Niv. ' +
               m.minLevel +
@@ -202,7 +203,7 @@ function renderLocalBestiary(source, combat) {
                 const row = document.createElement("div");
                 row.className = "dropRow";
                 row.innerHTML =
-                  "<span>" +
+                  itemArt('d'+item.id,'artSmall') + "<span>" +
                   esc(item.name) +
                   " · niv. " +
                   item.level +

@@ -176,3 +176,10 @@ Import complémentaire de la source épinglée : 734 armes, 122 familiers, 266 t
 Le bouton corps à corps applique les lignes élémentaires, le coût PA, les limites d’utilisation, les critiques et le bonus % dommages d’armes. Les autres effets actifs des armes et les passifs spéciaux des Dofus non simulés sont signalés dans les fiches. Les familiers utilisent leurs caractéristiques de la source sans système de nourrissage.
 
 Chaque équipement obtenu a indépendamment 1 % de chance d’être rayonnant. Ses bonus positifs prennent 1,5 fois le jet parfait, arrondi à l’entier supérieur ; les malus gardent leur meilleur jet normal. Les lignes de dégâts et soins des armes rayonnantes suivent aussi le jet parfait ×1,5. Les objets possédés restent conservés et ne sont pas retirés au hasard à la mise à jour.
+
+
+## Images et présentation (3.16.0)
+
+Les portraits de monstres, icônes d’équipements et têtes de classe proviennent des archives d’images de la même version 3.7.4.4 de dofusdude/dofus3-main. Les identifiants gfxId, iconId et classe de la source relient les visuels aux fiches. Toutes les images des 688 monstres jouables et des 3184 équipements utilisables sont disponibles, ainsi que celles des anciennes fiches de bestiaire conservées. Les illustrations de Dofus appartiennent à Ankama.
+
+Les planches WebP transparentes sont servies localement : aucun appel à DofusDB ou à un hébergeur d’images au démarrage. Elles apparaissent dans les groupes de combat, la cible, les choix de rencontres, l’inventaire, les objets portés, les drops et l’encyclopédie. La présentation conserve la progression, les filtres et les règles de combat.

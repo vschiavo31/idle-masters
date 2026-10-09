@@ -176,7 +176,7 @@ function sourceDropDetails(live) {
         row = document.createElement("div");
       row.className = "dropRow";
       row.innerHTML =
-        "<span>" +
+        itemArt(id,'artSmall') + "<span>" +
         esc(item.n) +
         " · niv. " +
         item.l +

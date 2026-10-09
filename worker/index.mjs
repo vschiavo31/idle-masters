@@ -181,7 +181,7 @@ export default {
     const pathname = url.pathname === "/" ? "/index.html" : url.pathname;
     const asset = SITE_ASSETS[pathname];
     if (!asset) return new Response("Introuvable", { status: 404 });
-    return new Response(request.method === "HEAD" ? null : asset.body, {
+    return new Response(request.method === "HEAD" ? null : asset.binary ? Uint8Array.from(atob(asset.body), c => c.charCodeAt(0)) : asset.body, {
       headers: { "Content-Type": asset.type, "Cache-Control": "no-cache" },
     });
   },

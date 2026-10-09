@@ -8,6 +8,7 @@ fs.mkdirSync(path.join(out, ".openai"), { recursive: true });
 const files = [
   "index.html",
   "game.js",
+  "game-art.js",
   "world-data.js",
   "game-world.json",
   "extra-equipment.json",
@@ -27,12 +28,14 @@ const types = {
   ".js": "application/javascript; charset=utf-8",
   ".json": "application/json; charset=utf-8",
 };
+files.push(...fs.readdirSync(path.join(root,'art')).filter(file=>file.endsWith('.webp')).map(file=>'art/'+file));
 const assets = Object.fromEntries(
   files.map((file) => [
     "/" + file,
     {
-      body: fs.readFileSync(path.join(root, file), "utf8"),
-      type: types[path.extname(file)],
+      body: fs.readFileSync(path.join(root, file), file.endsWith('.webp') ? 'base64' : 'utf8'),
+      binary: file.endsWith('.webp'),
+      type: file.endsWith('.webp') ? 'image/webp' : types[path.extname(file)],
     },
   ]),
 );

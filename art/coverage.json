@@ -1,0 +1,14 @@
+{
+  "item": {
+    "requested": 3300,
+    "covered": 3300,
+    "missingIcons": [],
+    "missingIds": []
+  },
+  "monster": {
+    "requested": 1329,
+    "covered": 1329,
+    "missingIcons": [],
+    "missingIds": []
+  }
+}

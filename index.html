@@ -6,7 +6,7 @@
       name="viewport"
       content="width=device-width,initial-scale=1,viewport-fit=cover"
     />
-    <title>Idle Masters V3.15.0</title>
+    <title>Idle Masters V3.16.0</title>
     <style>
       :root {
         --bg: #100e0b;
@@ -567,13 +567,72 @@
       .radiant { border-color: #ffe5a0; box-shadow: 0 0 16px #ffcc6b33; }
       .gearSlot.radiant .gearBox { border-color: #ffe5a0; box-shadow: 0 0 12px #ffcc6b33; }
       .itemActions select { max-width: 100%; min-width: 0; }
+
+      /* Collectible portraits and equipment, using local transparent source artwork. */
+      body {font-size:16px;background:radial-gradient(ellipse at 15% 0,#26332c 0,transparent 45%),radial-gradient(ellipse at 90% 35%,#322818 0,transparent 45%),#101512;}
+      .panel {background:linear-gradient(145deg,#263029,#171d19);border-color:#52614d;box-shadow:0 12px 32px #0003;}
+      .card,.item {background:linear-gradient(145deg,#252b22,#1b201a);border-color:#4e5947;}
+      .top {border-bottom:1px solid #e7bd5833;margin-bottom:18px;}
+      .brand {letter-spacing:-.5px;font-size:25px;color:#f5d583;}
+      .art {display:inline-block;width:64px;height:64px;flex:0 0 auto;background-image:var(--sheet);background-size:1600% 1600%;background-position:var(--sx) var(--sy);background-repeat:no-repeat;vertical-align:middle;filter:drop-shadow(0 5px 4px #0004);}
+      .artSmall {width:40px;height:40px;}
+      .artMissing {display:inline-flex;align-items:center;justify-content:center;font-size:30px;color:var(--mut);background:none;}
+      .itemHead {display:grid;grid-template-columns:70px minmax(0,1fr);align-items:center;column-gap:12px;}
+      .itemHead > b {grid-column:2;font-size:14px;}
+      .itemIcon {width:70px;height:70px;grid-row:1 / 3;background-color:#131812;border:1px solid #e7bd5840;border-radius:15px;}
+      .itemName {font-size:19px;line-height:1.25;}
+      .itemStats {gap:9px 12px;padding:12px 0;border-top:1px solid #ffffff12;}
+      .gearBox {position:relative;background:radial-gradient(circle,#35402c,#141b14);height:82px;}
+      .gearBox .art {width:68px;height:68px;}
+      .gearGlyph {position:absolute;bottom:0;left:0;right:0;font-size:12px;color:var(--gold);}
+      .gearName {display:block;font-size:12px;color:var(--mut);line-height:1.25;margin-top:4px;overflow-wrap:anywhere;}
+      .gearSlot {min-width:0;}
+      .encounterArt {display:flex;gap:2px;margin-bottom:8px;}
+      .encounterArt .art {width:68px;height:68px;}
+      #mobs .choice {background:linear-gradient(130deg,#303c27,#1f271d);border-color:#728150;}
+      #enemyGroup {display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:18px 0;}
+      #enemyGroup .choice {min-width:0;display:flex;flex-direction:column;align-items:center;padding:10px 6px;text-align:center;gap:6px;border-radius:18px;background:radial-gradient(circle at 50% 30%,#485039,#20251c);}
+      #enemyGroup b {font-size:14px;line-height:1.2;overflow-wrap:anywhere;}
+      #enemyGroup .art {width:80px;height:80px;}
+      #enemyGroup .sel {border-color:#f0cf74;box-shadow:0 0 0 2px #f0cf7440,inset 0 0 22px #e7bd5820;}
+      #enemyGroup .defeated {filter:grayscale(1);opacity:.4;}
+      .enemyStatus {font-size:12px;color:var(--mut);}
+      .miniHp {display:block;width:100%;height:4px;background:#131713;border-radius:5px;overflow:hidden;}
+      .miniHp span {display:block;height:100%;background:#de795f;}
+      .combatArtwork {display:flex;justify-content:center;align-items:center;min-height:170px;background:radial-gradient(ellipse at 50% 80%,#9cb75622,transparent 65%);}
+      .monsterLarge {width:164px;height:164px;filter:drop-shadow(0 12px 9px #0008);}
+      .bestiaryPortrait {float:left;width:88px;height:88px;margin:0 12px 12px 0;}
+      #bestiary .card:after {content:'';display:block;clear:both;}
+      #equipmentSearchResults summary {display:flex;align-items:center;gap:12px;cursor:pointer;list-style:none;}
+      #equipmentSearchResults summary:after {content:'+';margin-left:auto;color:var(--gold);font-size:22px;}
+      #equipmentSearchResults details[open]>summary:after {content:'−';}
+      .dropRow {display:flex;align-items:center;gap:10px;}
+      .dropRow > span:not(.art):not(.dropRate) {flex:1;min-width:0;}
+      .lootCard {display:flex;align-items:center;gap:12px;text-align:left;border:1px solid #5d674c;border-radius:16px;padding:8px 12px;margin:10px 0;background:#1e271a;}
+      .lootCard > div {min-width:0;}
+      .radiant {background-image:linear-gradient(120deg,#edc95714,transparent 60%);}
+      .radiant .art {filter:drop-shadow(0 0 8px #f7cf7588);}
+      button {transition:background .15s,border-color .15s,transform .15s;}
+      button:active:not(:disabled) {transform:translateY(1px);}
+      @media (min-width:760px) {#mobs {display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;}#mobs .choice {margin:0;}#mobs .boss {grid-column:1 / -1;}#enemyGroup .art {width:108px;height:108px;}}
+      @media (prefers-reduced-motion:reduce) {button {transition:none;}}
+      .portrait:before {display:none;}
+      .classLarge {width:94px;height:94px;}
+      #classArtwork {float:left;margin-right:14px;}
+      #fightPlayerArt {margin-right:8px;}
+      .heroCard > div,.row > * {min-width:0;}
+      h1,h2,h3,.itemName {overflow-wrap:anywhere;}
+      @media (max-width:720px) {.portrait .classLarge {width:80px;height:80px;}}
+      .brand {font-size:22px;white-space:nowrap;}
+      .version {font-size:12px;max-width:170px;text-align:center;}
+      @media (max-width:720px) {#mobName {font-size:27px;margin-top:0;}.combatArtwork {min-height:140px;}.monsterLarge {width:136px;height:136px;}#enemyGroup .art {width:68px;height:68px;}}
     </style>
   </head>
   <body>
     <div class="wrap">
       <div class="top">
         <div class="brand">Idle Masters</div>
-        <span class="version">V3.15 · Armes et rayonnants</span>
+        <span class="version">V3.16 · Galerie des aventuriers</span>
       </div>
       <div class="row" style="margin-bottom: 12px">
         <small id="saveStatus" class="mut" role="status"
@@ -624,6 +683,7 @@
           <div class="eyebrow">Mon personnage</div>
           <div class="heroCard">
             <div class="portrait">
+              <div id="characterArt"></div>
               <span class="levelBadge" id="levelBadge">1</span>
             </div>
             <div>
@@ -829,6 +889,7 @@
               </p>
             </div>
             <p id="characterError" role="status" class="bad"></p>
+            <div id="classArtwork"></div>
             <h3 id="classPreviewName"></h3>
             <p id="classPreview"></p>
             <div id="classPreviewSpells" class="spellgrid"></div>
@@ -979,6 +1040,7 @@
             <div id="enemyGroup"></div>
             <div class="card" style="text-align: center">
               <div id="turn"></div>
+              <div id="combatArtwork" class="combatArtwork"></div>
               <h1 id="mobName"></h1>
               <div id="mobInfo" class="mut"></div>
               <div id="enemyHp"></div>
@@ -988,7 +1050,7 @@
             </div>
             <div class="card">
               <div class="row">
-                <b>Aventurier</b><span id="roundTxt"></span>
+                <b><span id="fightPlayerArt"></span> Aventurier</b><span id="roundTxt"></span>
               </div>
               <div id="fightHp"></div>
               <div class="bar"><div id="playerBar" class="fill"></div></div>
@@ -1045,13 +1107,14 @@
       ><button data-page="collection">COLLECTION</button
       ><button data-page="combat">COMBAT</button>
     </nav>
-    <script src="local-data.js?v=3.15.0"></script>
-    <script src="bestiary-ui.js?v=3.15.0"></script>
-    <script src="saving.js?v=3.15.0"></script>
-    <script src="classes.js?v=3.15.0"></script>
-    <script src="combat-effects.js?v=3.15.0"></script>
-    <script src="roster-selection.js?v=3.15.0"></script>
-    <script src="world-data.js?v=3.15.0"></script>
-    <script src="game.js?v=3.15.0"></script>
+    <script src="local-data.js?v=3.16.0"></script>
+    <script src="bestiary-ui.js?v=3.16.0"></script>
+    <script src="saving.js?v=3.16.0"></script>
+    <script src="classes.js?v=3.16.0"></script>
+    <script src="combat-effects.js?v=3.16.0"></script>
+    <script src="roster-selection.js?v=3.16.0"></script>
+    <script src="world-data.js?v=3.16.0"></script>
+    <script src="game-art.js?v=3.16.0"></script>
+    <script src="game.js?v=3.16.0"></script>
   </body>
 </html>

@@ -60,6 +60,7 @@ async function main() {
         ".html": "text/html",
         ".js": "application/javascript",
         ".json": "application/json",
+        ".webp": "image/webp",
       };
       res.writeHead(200, {
         "Content-Type": types[path.extname(file)] || "text/plain",
@@ -1116,8 +1117,18 @@ async function main() {
           await card.getByRole('button',{name:'Équiper',exact:true}).click();
         }
         assert.equal(await worldPage.locator('.gearSlot.radiant').count(),4);
+        assert.equal(await worldPage.evaluate(()=>M.every(m=>GAME_ART.monster[String(m.sourceId)])&&Object.keys(I).every(id=>GAME_ART.item[String(meta(id).ankamaId)])),true);
+        assert.equal(await worldPage.locator('.gearSlot.radiant .art[data-art]').count(),4);
+        if(process.env.QA_SCREENSHOTS) await worldPage.screenshot({path:process.env.QA_SCREENSHOTS+'/inventory-'+engine.name()+'.png',fullPage:true});
         assert.equal(await worldPage.evaluate(()=>Object.values(D.w).filter(Boolean).length),4);
         await worldPage.evaluate(()=>{D.lv=200;show('combat');startEncounter(ZONE_ORDER[0],2);encounter.members.forEach(e=>e.hp=100000);D.eh=100000;PA=6;Math.random=()=>.999;render()});
+        assert.equal(await worldPage.locator('#combatArtwork .art[data-art]').count(),1);
+        assert.equal(await worldPage.locator('#enemyGroup .art[data-art]').count(),3);
+        const artwork=await worldPage.locator('#combatArtwork .art').evaluate(el=>getComputedStyle(el).backgroundImage.match(/url\(["']?(.*?)["']?\)/)[1]);
+        const imageResponse=await worldPage.request.get(artwork);assert.equal(imageResponse.status(),200);
+        assert.equal(imageResponse.headers()['content-type'],'image/webp');
+        assert.equal((await imageResponse.body()).subarray(0,4).toString(),'RIFF');
+        if(process.env.QA_SCREENSHOTS) await worldPage.screenshot({path:process.env.QA_SCREENSHOTS+'/combat-'+engine.name()+'.png',fullPage:true});
         const beforeWeapon=await worldPage.evaluate(()=>({hp:encounter.members[0].hp,pa:PA,cost:meta(D.w.Arme.id).weapon.ap}));
         await worldPage.locator('#weaponAttack').click();
         assert.ok(await worldPage.evaluate(()=>encounter.members[0].hp)<beforeWeapon.hp);
