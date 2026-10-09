@@ -6,7 +6,7 @@
       name="viewport"
       content="width=device-width,initial-scale=1,viewport-fit=cover"
     />
-    <title>Idle Masters V3.18.1</title>
+    <title>Idle Masters V3.19.0</title>
     <style>
       :root {
         --bg: #100e0b;
@@ -699,6 +699,7 @@
       #autoRecapDrops .recapGroup {margin-top:20px;}
       #autoRecapDrops h3 {font-size:16px;margin:0 0 8px;}
       #autoRecapBtn {font-size:11px;padding:6px;white-space:nowrap;}
+      #enemyGroup .acting {opacity:1;border-color:#ffd45e;box-shadow:0 0 0 2px #ffd45e;background:#4b3a19;}
       #autoRecapBtn[hidden] {display:none;}
     </style>
   </head>
@@ -706,7 +707,7 @@
     <div class="wrap">
       <div class="top">
         <div class="brand">Idle Masters</div>
-        <span class="version">V3.18.1 · Bilan auto</span>
+        <span class="version">V3.19 · Tours complets</span>
       </div>
       <div class="row" style="margin-bottom: 12px">
         <small id="saveStatus" class="mut" role="status"
@@ -1126,7 +1127,7 @@
                 <div class="bar"><div id="enemyBar" class="fill enemy"></div></div>
               </div>
             </div>
-            <div class="arenaStatus"><span id="turn"></span><span id="arenaXp"></span></div>
+            <div class="arenaStatus"><span id="turn" aria-live="polite"></span><span id="arenaXp"></span></div>
             <div id="combatSpells" class="spellgrid"></div>
             <div class="arenaFooter"><button id="autoBtn">Mode automatique</button><button id="endBtn">Fin du tour</button></div>
             <details class="arenaJournal"><summary>Journal du combat</summary><div id="log" class="log"></div></details>
@@ -1174,17 +1175,17 @@
       ><button data-page="collection">COLLECTION</button
       ><button data-page="combat">COMBAT</button>
     </nav>
-    <script src="local-data.js?v=3.18.1"></script>
-    <script src="bestiary-ui.js?v=3.18.1"></script>
-    <script src="saving.js?v=3.18.1"></script>
-    <script src="classes.js?v=3.18.1"></script>
-    <script src="combat-effects.js?v=3.18.1"></script>
-    <script src="roster-selection.js?v=3.18.1"></script>
-    <script src="world-data.js?v=3.18.1"></script>
-    <script src="game-art.js?v=3.18.1"></script>
+    <script src="local-data.js?v=3.19.0"></script>
+    <script src="bestiary-ui.js?v=3.19.0"></script>
+    <script src="saving.js?v=3.19.0"></script>
+    <script src="classes.js?v=3.19.0"></script>
+    <script src="combat-effects.js?v=3.19.0"></script>
+    <script src="roster-selection.js?v=3.19.0"></script>
+    <script src="world-data.js?v=3.19.0"></script>
+    <script src="game-art.js?v=3.19.0"></script>
     <dialog id="itemInspector"><div class="dialogHeader"><h2 id="itemInspectorTitle"></h2><button id="itemInspectorClose" aria-label="Fermer la fiche">×</button></div><div id="itemInspectorBody"></div></dialog>
     <dialog id="autoRecap"><div class="dialogHeader"><h2>Bilan des combats automatiques</h2><button id="autoRecapClose" aria-label="Fermer le bilan">×</button></div><p id="autoRecapTotals"></p><p class="mut">Clique sur l’image d’un objet pour voir ses jets, comparer avec ton équipement et le vendre ou l’équiper. Le mode automatique est arrêté.</p><div id="autoRecapDrops"></div></dialog>
-    <script src="game.js?v=3.18.1"></script>
-    <script src="loot-ui.js?v=3.18.1"></script>
+    <script src="game.js?v=3.19.0"></script>
+    <script src="loot-ui.js?v=3.19.0"></script>
   </body>
 </html>

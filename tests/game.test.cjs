@@ -226,7 +226,7 @@ test("dead enemies do not attack and group auto progress is separate from indivi
   run(
     "Math.random=()=>0;M.forEach(m=>m.criticalChance=0);startEncounter(0,2);encounter.members[0].hp=0;selectTarget(1,true);enemy()",
   );
-  await new Promise((r) => setTimeout(r, 350));
+  await new Promise((r) => setTimeout(r, 950));
   assert.equal(
     run("D.hp"),
     96,
@@ -987,4 +987,19 @@ test("automatic victories tally exact credited rewards once and keep individual 
  assert.equal(run('D.autoSession.drops.map(q=>q.uid).join()===lastResult.drops.map(q=>q.uid).join()'),true);
  run('victory()');assert.equal(run('D.autoSession.battles'),1);
  assert.equal(run('D.autoSession.drops.every(q=>!q.st)'),true);
+});
+
+test('a complete round plays every living monster in order before restoring the player', async () => {
+ const {run}=game();
+ run('startEncounter(0,2);D.hp=100;incomingDamage=()=>3;enemy();enemy()');
+ await new Promise(r=>setTimeout(r,350));
+ assert.equal(run('enemyActingIndex'),0);assert.equal(run('D.hp'),97);assert.equal(run('D.rd'),1);assert.equal(run('D.tr'),false);
+ await new Promise(r=>setTimeout(r,300));
+ assert.equal(run('enemyActingIndex'),1);assert.equal(run('D.hp'),94);assert.equal(run('D.rd'),1);
+ await new Promise(r=>setTimeout(r,300));
+ assert.equal(run('enemyActingIndex'),2);assert.equal(run('D.hp'),91);assert.equal(run('D.rd'),1);
+ await new Promise(r=>setTimeout(r,300));
+ assert.equal(run('enemyActingIndex'),null);assert.equal(run('D.rd'),2);assert.equal(run('D.tr'),true);assert.equal(run('PA'),run('maxpa()'));
+ run('enemy();fightToken++;mode="picker"');
+ await new Promise(r=>setTimeout(r,350));assert.equal(run('D.hp'),91);
 });

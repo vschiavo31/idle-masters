@@ -269,6 +269,7 @@ let D = {
   auto = false,
   autoTimer = null,
   fightToken = 0,
+  enemyActingIndex = null,
   encounter = null,
   targetIndex = 0,
   $ = (x) => document.getElementById(x),
@@ -601,21 +602,11 @@ function cast(i) {
 function enemy() {
   if (!D.tr || D.end) return;
   D.tr = false;
-  let token = fightToken;
-  render();
-  setTimeout(() => {
-    if (token !== fightToken || mode !== "fight") return;
-    if (tickFriendlyEffects()) return;
-    const attackers = livingTargets();
-    for (const index of attackers) {
-      const m = encounter
-        ? M.find((m) => m.id === encounter.members[index].id)
-        : mob();
-      const d = incomingDamage(m, index);
-      D.hp = Math.max(0, D.hp - d);
-      lg(m.n + " : -" + d + " PV");
-      if (D.hp <= 0) break;
-    }
+  enemyActingIndex = null;
+  const token = fightToken;
+  const valid = () => token === fightToken && mode === 'fight' && !D.end;
+  function finishRound() {
+    enemyActingIndex = null;
     endEffectRound();
     if (D.hp <= 0) {
       if(auto && D.autoSession) {D.autoSession.battles++;D.autoSession.losses=(D.autoSession.losses||0)+1;}
@@ -624,7 +615,7 @@ function enemy() {
       D.end = true;
       dungeon = null;
       lastResult = {defeat:true,mid:D.mid,ids:encounter?.members.map(e=>e.id)||[D.mid],key:encounter?.key,zone:D.z,tier:encounter?.tier,xp:0,k:0,drops:[],levelBefore:D.lv,levelAfter:D.lv,levelsGained:0};
-      mode = "result";
+      mode = 'result';
       return render();
     }
     D.rd++;
@@ -632,8 +623,31 @@ function enemy() {
     D.tr = true;
     render();
     if (auto) scheduleAuto();
-  }, 300);
+  }
+  render();
+  setTimeout(() => {
+    if (!valid()) return;
+    if (tickFriendlyEffects()) return;
+    const attackers = livingTargets();
+    let cursor = 0;
+    function nextMonster() {
+      if (!valid()) return;
+      while(cursor < attackers.length && encounter && encounter.members[attackers[cursor]].hp <= 0) cursor++;
+      if(cursor === attackers.length) return finishRound();
+      const index = attackers[cursor++];
+      const m = encounter ? M.find(m => m.id === encounter.members[index].id) : mob();
+      enemyActingIndex = index;
+      const damage = incomingDamage(m,index);
+      D.hp = Math.max(0,D.hp-damage);
+      lg(m.n + ' : -' + damage + ' PV');
+      if(D.hp <= 0) return finishRound();
+      render();
+      setTimeout(nextMonster,300);
+    }
+    nextMonster();
+  },300);
 }
+
 function bestAutoSpell() {
   let best = -1,
     score = -1;
@@ -718,6 +732,7 @@ function beginFight(
     return;
   clearTimeout(autoTimer);
   fightToken++;
+  enemyActingIndex = null;
   resetEffects();
   encounter = {
     key,
@@ -1524,18 +1539,16 @@ function picker() {
   }
 }
 function fight() {
-  let m = mob(),
+  let m = enemyActingIndex !== null && encounter ? M.find(x=>x.id===encounter.members[enemyActingIndex].id) : mob(),
     h = mh(),
     unlocked = autoWins() >= 10;
   $("fightZone").textContent = Z[D.z][0];
   $("arenaPlayerName").textContent = GameSave.profile?.nickname || playerClass()?.name || "Aventurier";
   $("arenaEnemyLevel").textContent = "Niv. " + m.l;
   $("arenaXp").textContent = "Niv. " + D.lv + (D.lv===MAX_LEVEL ? " · MAX" : " · XP " + Math.floor(100*D.xp/need(D.lv)) + "%");
-  $("turn").textContent = auto
-    ? "Combat automatique"
-    : D.tr
-      ? "À toi de jouer"
-      : "Tour ennemi";
+  $("turn").textContent = D.tr
+    ? (auto ? 'Ton tour · automatique' : 'À toi de jouer')
+    : enemyActingIndex !== null ? 'Tour de ' + m.n : 'Tour des monstres';
   $("enemyGroup").innerHTML = "";
   if (encounter)
     encounter.members.forEach((enemy, index) => {
@@ -1543,8 +1556,9 @@ function fight() {
         button = document.createElement("button");
       button.className = "choice " + (targetIndex === index ? "sel" : "");
       button.disabled = enemy.hp <= 0 || auto || !D.tr || D.end;
-      button.innerHTML = monsterArt(type) + '<b>' + esc(type.n) + '</b><span class="enemyStatus">' + enemy.hp + '/' + type.h + ' PV' + (enemy.hp <= 0 ? ' · Vaincu' : index === targetIndex ? ' · Cible' : '') + '</span><span class="miniHp"><span style="width:'+Math.max(0,Math.min(100,100*enemy.hp/type.h))+'%"></span></span>';
+      button.innerHTML = monsterArt(type) + '<b>' + esc(type.n) + '</b><span class="enemyStatus">' + enemy.hp + '/' + type.h + ' PV' + (enemy.hp <= 0 ? ' · Vaincu' : index === enemyActingIndex ? ' · Joue' : index === targetIndex ? ' · Cible' : '') + '</span><span class="miniHp"><span style="width:'+Math.max(0,Math.min(100,100*enemy.hp/type.h))+'%"></span></span>';
       button.classList.toggle('defeated',enemy.hp<=0);
+      button.classList.toggle('acting',enemyActingIndex===index);
       button.onclick = () => selectTarget(index);
       $("enemyGroup").append(button);
     });
@@ -1558,8 +1572,9 @@ function fight() {
     " PV · " +
     (D.master[m.id] || 0) +
     " victoire(s)";
-  $("enemyHp").textContent = D.eh + " / " + m.h + " PV";
-  $("enemyBar").style.width = (100 * D.eh) / m.h + "%";
+  const displayedHp = enemyActingIndex !== null && encounter ? encounter.members[enemyActingIndex].hp : D.eh;
+  $("enemyHp").textContent = displayedHp + " / " + m.h + " PV";
+  $("enemyBar").style.width = (100 * displayedHp) / m.h + "%";
   $("fightHp").textContent = D.hp + " / " + h + " PV";
   $("playerBar").style.width = (100 * D.hp) / h + "%";
   $("fightPa").textContent = PA + " / " + maxpa() + " PA";
@@ -1787,6 +1802,7 @@ $("autoBtn").onclick = toggleAuto;
 $("backMob").onclick = () => {
   const wasAuto=auto;
   fightToken++;
+  enemyActingIndex = null;
   auto = false;
   clearTimeout(autoTimer);
   dungeon = null;

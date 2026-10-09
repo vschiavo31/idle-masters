@@ -200,3 +200,6 @@ Les drops de résultat ouvrent cette même fiche. Une session auto compte les co
 
 ### 3.18.1 — Bilan à l’arrêt du mode automatique
 Le bilan montre directement chaque exemplaire obtenu. Un clic sur son image ouvre ses jets et la comparaison, avec vente ou équipement. Le parcours mobile vérifie le bouton Arrêter entre deux combats et pendant un combat.
+
+### 3.19 — Tours complets
+Après le joueur, chaque monstre encore vivant attaque une fois, dans l’ordre. Le monstre actif est mis en évidence. Le compteur de tours et les PA ne se renouvellent qu’après le dernier monstre.
