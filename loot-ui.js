@@ -61,9 +61,9 @@ function renderAutoRecap() {
  const groups=new Map();for(const q of session.drops){if(!groups.has(q.id))groups.set(q.id,[]);groups.get(q.id).push(q)}
  if(!groups.size)root.textContent='Aucun équipement obtenu pour le moment.';
  for(const [id,items] of groups){
-  const section=document.createElement('details');section.className='card';
-  const summary=document.createElement('summary');summary.innerHTML=itemArt(id,'artSmall')+'<span>'+esc(meta(id)?.n||id)+' <b>× '+items.length+'</b></span>';section.append(summary);
-  section.addEventListener('toggle',()=>{if(!section.open||section.dataset.loaded)return;section.dataset.loaded='1';for(const q of items)section.append(lootButton(itemByUid(q.uid)||q))});root.append(section);
+  const section=document.createElement('section');section.className='recapGroup';
+  const heading=document.createElement('h3');heading.textContent=(meta(id)?.n||id)+' × '+items.length;section.append(heading);
+  for(const q of items)section.append(lootButton(itemByUid(q.uid)||q));root.append(section);
  }
 }
 $('itemInspectorClose').onclick=()=>$('itemInspector').close();

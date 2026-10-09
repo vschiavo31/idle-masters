@@ -1213,10 +1213,9 @@ async function main() {
         });
         const session=await worldPage.evaluate(()=>structuredClone(D.autoSession));
         assert.equal(session.battles,2);assert.equal(session.wins,2);assert.ok(session.drops.length>0);
-        await worldPage.locator('#autoRecapBtn').click();
+        await worldPage.locator('#autoBtn').click();
         assert.equal(await worldPage.evaluate(()=>auto),false);
         assert.ok((await worldPage.locator('#autoRecapTotals').textContent()).includes('2 combat(s)'));
-        await worldPage.locator('#autoRecapDrops summary').first().click();
         await worldPage.locator('#autoRecapDrops .lootCard').first().click();
         await worldPage.locator('#itemInspector').getByRole('button',{name:'Vendre · 5 K',exact:true}).click();
         const autoKamas=await worldPage.evaluate(()=>D.k);
@@ -1234,6 +1233,14 @@ async function main() {
         assert.equal(await worldPage.locator('#inventoryView').inputValue(),'icons');
         await worldPage.locator('#autoRecapHistory').click();
         assert.deepEqual(await worldPage.evaluate(()=>D.autoSession),session);
+        await worldPage.locator('#autoRecapClose').click();
+        // Stopping during a fight also opens the recap, without replaying it.
+        await worldPage.evaluate(()=>{show('combat');startEncounter(ZONE_ORDER[0],0);D.encounterWins[encounter.key]=10;render()});
+        await worldPage.locator('#autoBtn').click();
+        await worldPage.locator('#autoBtn').click();
+        assert.equal(await worldPage.locator('#autoRecap').evaluate(el=>el.open),true);
+        assert.equal(await worldPage.evaluate(()=>auto),false);
+        assert.equal(await worldPage.evaluate(()=>D.autoSession.battles),0);
         await worldPage.locator('#autoRecapClose').click();
         await full.close();
 

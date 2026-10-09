@@ -197,3 +197,6 @@ Victoire et défaite ouvrent un résultat en fenêtre superposée. Refaire, rée
 L’inventaire propose une vue icônes, conservée dans la sauvegarde avec les filtres et le tri. Une icône ouvre la fiche du jet possédé avec comparaison totale, bonus de panoplie inclus, choix d’emplacement et vente. La confirmation individuelle se fait dans la fiche ou juste sous les boutons de l’objet, sans remonter à la sélection globale. Les objets verrouillés et ceux déjà vendus ne peuvent pas être revendus.
 
 Les drops de résultat ouvrent cette même fiche. Une session auto compte les combats terminés, victoires/défaites, XP réellement créditée, kamas et chaque exemplaire obtenu. Le bilan arrête l’automatique, regroupe les objets par nom et permet de consulter, équiper ou vendre chaque exemplaire. Il reste consultable depuis l’inventaire après rechargement ; une nouvelle activation auto démarre un nouveau bilan. Les jets restent dans le sac ou les emplacements portés ; le bilan sauvegarde leurs identifiants sans dupliquer leurs caractéristiques.
+
+### 3.18.1 — Bilan à l’arrêt du mode automatique
+Le bilan montre directement chaque exemplaire obtenu. Un clic sur son image ouvre ses jets et la comparaison, avec vente ou équipement. Le parcours mobile vérifie le bouton Arrêter entre deux combats et pendant un combat.
