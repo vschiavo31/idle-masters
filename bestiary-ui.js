@@ -49,6 +49,22 @@ function renderEquipmentSearch(combat) {
     details.addEventListener("toggle", () => {
       if (!details.open || loaded) return;
       loaded = true;
+      const heading = document.createElement("p");
+      heading.textContent = item.s + " · Caractéristiques (jets possibles)";
+      details.append(heading);
+      const stats = document.createElement("div");
+      stats.className = "itemStats encyclopediaStats";
+      for (const [name, bounds] of Object.entries(item.x)) {
+        const row = document.createElement("span"), value = document.createElement("b");
+        const label = {Vitalite: "Vitalité", Agilite: "Agilité"}[name] || name;
+        const [low, high] = [Math.min(...bounds), Math.max(...bounds)];
+        const signed = n => (n > 0 ? "+" : "") + n;
+        row.append(document.createTextNode(label + " "));
+        value.textContent = low === high ? signed(low) : signed(low) + " à " + signed(high);
+        row.append(value);
+        stats.append(row);
+      }
+      details.append(stats);
       const monsters = combat.map(m => ({m, rate: dropRate(id, m)}))
         .filter(({rate}) => rate > 0)
         .sort((a, b) => b.rate - a.rate || a.m.l - b.m.l || a.m.n.localeCompare(b.m.n, "fr"));

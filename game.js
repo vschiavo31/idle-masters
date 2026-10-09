@@ -1784,7 +1784,7 @@ async function boot() {
     ];
     let [eq, sets, bestiary, world] = await Promise.all(
       files.map(async (f) => {
-        let r = await fetch(f + "?v=3.12.1");
+        let r = await fetch(f + "?v=3.12.2");
         if (!r.ok) throw Error(f + " : HTTP " + r.status);
         return r.json();
       }),

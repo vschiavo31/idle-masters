@@ -1022,6 +1022,13 @@ async function main() {
         const itemResult = worldPage.locator('#equipmentSearchResults details[data-item-id="' + searched.id + '"]');
         await itemResult.locator("summary").click();
         await itemResult.locator(".dropRow").first().waitFor();
+        const expectedStats = await worldPage.evaluate(id => Object.entries(meta(id).x).map(([name, bounds]) => {
+          const label = {Vitalite: "Vitalité", Agilite: "Agilité"}[name] || name;
+          const low = Math.min(...bounds), high = Math.max(...bounds);
+          const signed = n => (n > 0 ? "+" : "") + n;
+          return label + " " + (low === high ? signed(low) : signed(low) + " à " + signed(high));
+        }), searched.id);
+        assert.deepEqual(await itemResult.locator(".encyclopediaStats > span").allTextContents(), expectedStats);
         const actualDrops = await itemResult.locator(".dropRow").evaluateAll(rows => rows.map(row => ({id: row.dataset.monsterId, rate: row.querySelector(".dropRate").textContent})));
         const expectedDrops = await worldPage.evaluate(id => M.map(m => ({id:m.id,rate:dropRate(id,m)})).filter(x => x.rate > 0), searched.id);
         assert.equal(actualDrops.length, expectedDrops.length);
