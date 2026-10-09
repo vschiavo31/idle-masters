@@ -548,7 +548,7 @@ async function main() {
         await page.evaluate(() => {
           for (const slot of INVENTORY_SLOTS) {
             const id = Object.keys(I).find((id) => meta(id).s === slot);
-            D.bag.push(roll(id));
+            if(id) D.bag.push(roll(id));
           }
           show("inventory");
         });
