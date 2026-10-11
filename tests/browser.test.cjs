@@ -528,7 +528,7 @@ async function main() {
               (items, sort) =>
                 items.map((item) =>
                   Number(
-                    item
+                    sort.startsWith('jet') && item.querySelector('.itemHead > b').textContent.includes('Rayonnant') ? 150 : item
                       .querySelector(
                         sort.startsWith("level") ? ".eyebrow" : ".itemHead > b",
                       )
@@ -1268,7 +1268,7 @@ async function main() {
         await worldPage.locator('#tacticalBoard [data-x="2"][data-y="5"]').click();
         assert.equal(await worldPage.evaluate(()=>tactics.pm),pm-1);
         assert.deepEqual(await worldPage.evaluate(()=>tactics.player),{x:2,y:5});
-        await worldPage.evaluate(()=>{tactics.player={x:6,y:5};tactics.enemies[0]={x:7,y:5};targetIndex=0;D.mid=encounter.members[0].id;D.eh=encounter.members[0].hp;render()});
+        await worldPage.evaluate(()=>{tactics.player={x:6,y:5};tactics.enemies[0]={x:7,y:5};tactics.enemies[2]={x:7,y:1};targetIndex=0;D.mid=encounter.members[0].id;D.eh=encounter.members[0].hp;render()});
         const tacticalPa=await worldPage.evaluate(()=>PA);
         await worldPage.locator('#combatSpells [data-spell="0"]').click();
         assert.equal(await worldPage.evaluate(()=>PA),tacticalPa);
