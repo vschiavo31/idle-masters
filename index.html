@@ -6,7 +6,7 @@
       name="viewport"
       content="width=device-width,initial-scale=1,viewport-fit=cover"
     />
-    <title>Idle Masters V3.20.0</title>
+    <title>Idle Masters V3.21.0</title>
     <style>
       :root {
         --bg: #100e0b;
@@ -723,13 +723,35 @@
       @keyframes weaponSlash {0% {opacity:0;transform:translate(-50%,-50%) rotate(-40deg) scaleX(.2);}30% {opacity:1;}100% {opacity:0;transform:translate(-50%,-50%) rotate(-40deg) scaleX(1.4);}}
       @keyframes resultEntrance {from {opacity:0;}to {opacity:1;}}
       @media (prefers-reduced-motion:reduce) {#fight #fightPlayerArt .art,#fight .combatArtwork .art,#result {animation:none;}#combatFx .fxBurst,#combatFx .fxSlash,#combatFx .fxProjectile {display:none;}#combatFx .fxNumber,#combatFx .fxCritical {animation:none;transform:translate(-50%,-50%);}#enemyGroup .defeated .art,.enemyFocus[data-defeated="true"] .combatArtwork {transition:none;}}
+      #tacticalStats,#tacticalHint,#tacticalMoveMode {display:none;}
+      .tacticalArena #tacticalStats {display:block;font-weight:800;font-size:14px;}
+      .tacticalArena #tacticalHint {display:block;flex:1;font-size:12px;line-height:1.15;max-height:30px;overflow:hidden;}
+      .tacticalArena #tacticalMoveMode {display:block;padding:5px;font-size:12px;}
+      .tacticalArena .arenaStatus #turn,.tacticalArena #arenaXp {display:none;}
+      .tacticalArena .playerFocus,.tacticalArena .enemyFocus {display:none;}
+      .tacticalArena #enemyGroup .art,.tacticalArena #enemyGroup .miniHp {display:none;}
+      .tacticalArena.arenaShell {grid-template-rows:34px 52px minmax(210px,1fr) 36px 150px 42px 20px;gap:5px;padding:6px 10px;}
+      .tacticalArena .arenaStage {display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;padding:0 0 5px;}
+      #tacticalBoard:not([hidden]) {display:grid;grid-template-columns:repeat(9,minmax(0,1fr));grid-template-rows:repeat(7,minmax(0,1fr));width:min(100%,360px);height:min(100%,280px);gap:2px;min-height:0;}
+      .tacticalCell {min-height:0;min-width:0;padding:0;margin:0;border:1px solid #50624c;border-radius:4px;background:#26392b;position:relative;overflow:hidden;}
+      .tacticalCell:nth-child(even) {background:#304732;}
+      .tacticalCell:disabled {opacity:1;}
+      .tacticalCell.reachable {background:#487c4d;border-color:#8bbb72;}
+      .tacticalCell.rock {background:#555f55;color:#b6bfaa;font-size:23px;box-shadow:inset 0 3px #9ba694;}
+      .tacticalCell.player {border:2px solid #8bd8ff;background:#21465b;}
+      .tacticalCell.selected {border:2px solid #e9ba59;}
+      .tacticalCell.attackable {background:#843d35;border-color:#ffac84;}
+      .tacticalCell.acting {box-shadow:inset 0 0 0 2px #ffda64;}
+      .tacticalCell .art {width:100%;height:100%;max-width:38px;max-height:38px;pointer-events:none;}
+      @media(max-height:720px) {.tacticalArena.arenaShell {grid-template-rows:32px 45px minmax(180px,1fr) 32px 120px 38px 18px;}.tacticalArena #combatSpells button {font-size:11px;}.tacticalArena #combatSpells b {font-size:12px;}}
+      @media(max-height:500px) {.tacticalArena.arenaShell {grid-template-columns:1fr 1fr;grid-template-rows:30px 38px minmax(140px,1fr) 32px 18px;}.tacticalArena .arenaStage {grid-column:1;grid-row:3;}.tacticalArena .arenaStatus {grid-column:1;grid-row:4;}.tacticalArena #combatSpells {grid-column:2;grid-row:2/4;}}
     </style>
   </head>
   <body>
     <div class="wrap">
       <div class="top">
         <div class="brand">Idle Masters</div>
-        <span class="version">V3.20 · Combats animés</span>
+        <span class="version">V3.21 · Essai tactique</span>
       </div>
       <div class="row" style="margin-bottom: 12px">
         <small id="saveStatus" class="mut" role="status"
@@ -1127,14 +1149,14 @@
           </div>
           <div class="panel">
             <h2 id="zoneTitle">Choisir un combat</h2>
-            <div id="mobs"></div>
+            <button id="tacticalTrial" class="primary">Essayer un combat tactique · 3 monstres</button><p class="mut">Premier terrain : déplacements, portée et obstacles. Combat manuel dans la zone sélectionnée, avec tes équipements et les drops habituels.</p><div id="mobs"></div>
           </div>
         </div>
         <div id="fight" style="display: none">
           <div class="arenaShell"><div id="combatFx" aria-hidden="true"></div>
             <div class="arenaHeader"><button id="backMob">Quitter</button><span id="fightZone" class="gold"></span><span id="roundTxt"></span><button id="autoRecapBtn" hidden>Bilan auto</button><button id="arenaMenu">Menu</button></div>
             <div id="enemyGroup" aria-label="Choisir la cible"></div>
-            <div class="arenaStage">
+            <div class="arenaStage"><div id="tacticalStats"></div><div id="tacticalBoard" role="grid" aria-label="Terrain de combat 9 colonnes, 7 lignes" hidden></div>
               <div class="playerFocus">
                 <div class="fighterName"><span id="arenaPlayerName">Aventurier</span><b id="fightPa" class="paBox"></b></div>
                 <div id="fightPlayerArt"></div>
@@ -1149,7 +1171,7 @@
                 <div class="bar"><div id="enemyBar" class="fill enemy"></div></div>
               </div>
             </div>
-            <div class="arenaStatus"><span id="turn" aria-live="polite"></span><span id="arenaXp"></span></div>
+            <div class="arenaStatus"><span id="turn" aria-live="polite"></span><span id="tacticalHint" aria-live="polite"></span><button id="tacticalMoveMode">Déplacement</button><span id="arenaXp"></span></div>
             <div id="combatSpells" class="spellgrid"></div>
             <div class="arenaFooter"><button id="autoBtn">Mode automatique</button><button id="endBtn">Fin du tour</button></div>
             <details class="arenaJournal"><summary>Journal du combat</summary><div id="log" class="log"></div></details>
@@ -1197,18 +1219,19 @@
       ><button data-page="collection">COLLECTION</button
       ><button data-page="combat">COMBAT</button>
     </nav>
-    <script src="local-data.js?v=3.20.0"></script>
-    <script src="bestiary-ui.js?v=3.20.0"></script>
-    <script src="saving.js?v=3.20.0"></script>
-    <script src="classes.js?v=3.20.0"></script>
-    <script src="combat-effects.js?v=3.20.0"></script>
-    <script src="roster-selection.js?v=3.20.0"></script>
-    <script src="world-data.js?v=3.20.0"></script>
-    <script src="game-art.js?v=3.20.0"></script>
+    <script src="local-data.js?v=3.21.0"></script>
+    <script src="bestiary-ui.js?v=3.21.0"></script>
+    <script src="saving.js?v=3.21.0"></script>
+    <script src="classes.js?v=3.21.0"></script>
+    <script src="combat-effects.js?v=3.21.0"></script>
+    <script src="roster-selection.js?v=3.21.0"></script>
+    <script src="world-data.js?v=3.21.0"></script>
+    <script src="game-art.js?v=3.21.0"></script>
     <dialog id="itemInspector"><div class="dialogHeader"><h2 id="itemInspectorTitle"></h2><button id="itemInspectorClose" aria-label="Fermer la fiche">×</button></div><div id="itemInspectorBody"></div></dialog>
     <dialog id="autoRecap"><div class="dialogHeader"><h2>Bilan des combats automatiques</h2><button id="autoRecapClose" aria-label="Fermer le bilan">×</button></div><p id="autoRecapTotals"></p><p class="mut">Clique sur l’image d’un objet pour voir ses jets, comparer avec ton équipement et le vendre ou l’équiper. Le mode automatique est arrêté.</p><div id="autoRecapDrops"></div></dialog>
-    <script src="game.js?v=3.20.0"></script>
-    <script src="loot-ui.js?v=3.20.0"></script>
-    <script src="combat-animation.js?v=3.20.0"></script>
+    <script src="tactical-combat.js?v=3.21.0"></script>
+    <script src="game.js?v=3.21.0"></script>
+    <script src="loot-ui.js?v=3.21.0"></script>
+    <script src="combat-animation.js?v=3.21.0"></script>
   </body>
 </html>

@@ -206,3 +206,6 @@ Après le joueur, chaque monstre encore vivant attaque une fois, dans l’ordre.
 
 ### 3.20 — Combats animés
 Les images existantes bougent au repos. Sorts, corps à corps, impacts, soins et critiques ont des effets visuels liés aux résultats réels. Les monstres vaincus disparaissent. Les animations ne modifient aucun calcul ni délai de tour, respectent la réduction des mouvements et sont nettoyées à chaque nouveau combat.
+
+### 3.21 — Premier combat tactique
+Le bouton d’essai de la sélection des combats lance le groupe difficile de la zone choisie sur un terrain 9×7. Déplacements par chemins libres, PM renouvelés par tour, portée adaptée par classe, ligne de vue avec obstacles, ennemis mobiles et zones de sorts de rayon un. Ce prototype manuel conserve les récompenses et la progression ; invocations et bombes restent à venir. Les combats habituels et l’auto sont conservés.

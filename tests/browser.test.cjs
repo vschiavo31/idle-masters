@@ -1253,6 +1253,38 @@ async function main() {
         assert.equal(await worldPage.evaluate(()=>auto),false);
         assert.equal(await worldPage.evaluate(()=>D.autoSession.battles),0);
         await worldPage.locator('#autoRecapClose').click();
+        await worldPage.locator('#backMob').click();
+        await worldPage.locator('#tacticalTrial').click();
+        assert.equal(await worldPage.locator('#tacticalBoard .tacticalCell').count(),63);
+        assert.equal(await worldPage.locator('#tacticalBoard [data-actor="player"]').count(),1);
+        assert.equal(await worldPage.locator('#autoBtn').isDisabled(),true);
+        await worldPage.evaluate(()=>{encounter.members.forEach(e=>e.hp=100000);D.eh=100000;render()});
+        for(const height of [844,667]){
+          await worldPage.setViewportSize({width:390,height});
+          const valid=await worldPage.evaluate(()=>{const r=document.querySelector('#tacticalBoard').getBoundingClientRect();return r.top>=0&&r.bottom<=innerHeight&&r.left>=0&&r.right<=innerWidth&&document.querySelector('.arenaShell').scrollHeight<=document.querySelector('.arenaShell').clientHeight});
+          assert.equal(valid,true);
+        }
+        const pm=await worldPage.evaluate(()=>tactics.pm);
+        await worldPage.locator('#tacticalBoard [data-x="2"][data-y="5"]').click();
+        assert.equal(await worldPage.evaluate(()=>tactics.pm),pm-1);
+        assert.deepEqual(await worldPage.evaluate(()=>tactics.player),{x:2,y:5});
+        await worldPage.evaluate(()=>{tactics.player={x:6,y:5};tactics.enemies[0]={x:7,y:5};targetIndex=0;D.mid=encounter.members[0].id;D.eh=encounter.members[0].hp;render()});
+        const tacticalPa=await worldPage.evaluate(()=>PA);
+        await worldPage.locator('#combatSpells [data-spell="0"]').click();
+        assert.equal(await worldPage.evaluate(()=>PA),tacticalPa);
+        assert.equal(await worldPage.locator('#tacticalBoard [data-enemy-index="0"]').evaluate(el=>el.classList.contains('attackable')),true);
+        await worldPage.locator('#tacticalBoard [data-enemy-index="0"]').click();
+        assert.ok(await worldPage.evaluate(()=>PA)<tacticalPa);
+        await worldPage.locator('#endBtn').click();
+        await worldPage.waitForFunction(()=>D.rd===2&&D.tr);
+        assert.equal(await worldPage.evaluate(()=>tactics.pm),await worldPage.evaluate(()=>3+st('PM')));
+        await worldPage.evaluate(()=>{encounter.members.forEach(e=>e.hp=0);victory()});
+        await worldPage.locator('#again').click();
+        assert.equal(await worldPage.locator('#tacticalBoard').isVisible(),true);
+        await worldPage.locator('#backMob').click();
+        await worldPage.evaluate(()=>startEncounter(D.z,0));
+        assert.equal(await worldPage.evaluate(()=>tactics),null);
+        assert.equal(await worldPage.locator('#tacticalBoard').isVisible(),false);
         await full.close();
 
         assert.deepEqual(errors, []);

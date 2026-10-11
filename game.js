@@ -621,6 +621,7 @@ function enemy() {
     }
     D.rd++;
     PA = maxpa();
+    if(typeof tacticalNewRound==="function")tacticalNewRound();
     D.tr = true;
     render();
     if (auto) scheduleAuto();
@@ -638,10 +639,11 @@ function enemy() {
       const index = attackers[cursor++];
       const m = encounter ? M.find(m => m.id === encounter.members[index].id) : mob();
       enemyActingIndex = index;
-      const damage = incomingDamage(m,index);
+      const canAttack=typeof tacticalEnemyAction!=="function"||tacticalEnemyAction(index);
+      const damage = canAttack?incomingDamage(m,index):0;
       D.hp = Math.max(0,D.hp-damage);
-      if(typeof combatVisual==="function")combatVisual("enemy",{index,amount:damage,element:m.e||"Neutre"});
-      lg(m.n + ' : -' + damage + ' PV');
+      if(canAttack&&typeof combatVisual==="function")combatVisual("enemy",{index,amount:damage,element:m.e||"Neutre"});
+      lg(canAttack?m.n + ' : -' + damage + ' PV':m.n+' est trop loin pour attaquer.');
       if(D.hp <= 0) return finishRound();
       render();
       setTimeout(nextMonster,300);
@@ -699,7 +701,7 @@ function recordAutoRewards(xp,k,drops) {
  D.autoSession.drops.push(...drops.filter(q=>q.uid&&meta(q.id)).map(q=>({uid:q.uid,id:q.id,rayonnant:!!q.rayonnant})));
 }
 function toggleAuto() {
-  if (autoWins() < 10 || dungeon) return;
+  if (autoWins() < 10 || dungeon || (typeof tactics!=="undefined"&&tactics)) return;
   auto = !auto;
   if (auto) {D.autoSession={battles:0,wins:0,losses:0,xp:0,k:0,drops:[]};scheduleAuto();}
   else {clearTimeout(autoTimer);if(D.end&&lastResult)mode="result";}
@@ -742,6 +744,7 @@ function beginFight(
     tier,
     members: chosen.map((m) => ({ id: m.id, hp: m.h })),
   };
+  if(typeof tacticalInit==="function")tacticalInit();
   targetIndex = 0;
   D.mid = ids[0];
   D.z = fightZone;
@@ -1488,6 +1491,7 @@ function picker() {
     };
     z.append(b);
   });
+  $("tacticalTrial").disabled=!playerClass()||!GameSave.profile;
   $("zoneTitle").textContent = Z[D.z][0] + " · choisir un combat";
   let e = $("mobs");
   e.innerHTML = "";
@@ -1563,7 +1567,7 @@ function fight() {
       button.innerHTML = monsterArt(type) + '<b>' + esc(type.n) + '</b><span class="enemyStatus">' + enemy.hp + '/' + type.h + ' PV' + (enemy.hp <= 0 ? ' · Vaincu' : index === enemyActingIndex ? ' · Joue' : index === targetIndex ? ' · Cible' : '') + '</span><span class="miniHp"><span style="width:'+Math.max(0,Math.min(100,100*enemy.hp/type.h))+'%"></span></span>';
       button.classList.toggle('defeated',enemy.hp<=0);
       button.classList.toggle('acting',enemyActingIndex===index);
-      button.onclick = () => selectTarget(index);
+      button.onclick = () => typeof tactics!=="undefined"&&tactics?tacticalClickEnemy(index):selectTarget(index);
       $("enemyGroup").append(button);
     });
   $("combatArtwork").innerHTML = monsterArt(m, "monsterLarge");
@@ -1589,10 +1593,10 @@ function fight() {
   spellBook().forEach((s, i) => {
     const p = spell(i),
       b = document.createElement("button");
-    b.disabled = auto || !canCast(i);
+    b.disabled = auto || !canCast(i,typeof tactics!=="undefined"&&!!tactics);
     b.dataset.spell = String(i);
     const waiting = Math.max(0, (effects.cooldowns[i] || 0) - D.rd);
-    const status = !spellUnlocked(i)
+    const status = typeof tactics!=="undefined"&&tactics&&["summon","bomb","detonate"].includes(s.kind)?"À venir sur ce terrain":!spellUnlocked(i)
       ? "Niveau " + s.level + " requis"
       : waiting
         ? "Disponible dans " + waiting + " tour(s)"
@@ -1603,18 +1607,19 @@ function fight() {
       "</b><br>" +
       status +
       '<br><span class="mut">' +
-      spellEffectText(s, p) +
+      (typeof tactics!=="undefined"&&tactics&&s.kind==="aoe"?p[3]+"–"+p[4]+" dégâts · zone 1 case":spellEffectText(s, p)) +
       "</span>";
-    b.onclick = () => cast(i);
+    if(typeof tactics!=="undefined"&&tactics&&tacticalTargeted(i))b.innerHTML+="<span class=mut> · PO "+tacticalRange(i)+(s.kind==="aoe"?" · zone 1":"")+"</span>";
+    b.onclick = () => typeof tactics!=="undefined"&&tactics?tacticalChoose(i):cast(i);
     e.append(b);
   });
   const weaponButton = document.createElement("button");
   const equipped = D.w.Arme && meta(D.w.Arme.id);
   weaponButton.id = "weaponAttack";
-  weaponButton.disabled = auto || !canUseWeapon();
+  weaponButton.disabled = auto || !canUseWeapon(typeof tactics!=="undefined"&&!!tactics);
   weaponButton.innerHTML = "<b>" + (equipped ? esc(equipped.n) : "Corps à corps") + "</b><br>" +
     (equipped?.weapon ? equipped.weapon.ap + " PA · " + weaponLineText(D.w.Arme) : "Équipe une arme pour attaquer");
-  weaponButton.onclick = useWeapon;
+  weaponButton.onclick = () => typeof tactics!=="undefined"&&tactics?tacticalChoose(-2):useWeapon();
   e.append(weaponButton);
   $("fightEffects").textContent = [
     effects.shield ? effects.shield + " bouclier" : "",
@@ -1627,12 +1632,14 @@ function fight() {
     .filter(Boolean)
     .join(" · ");
   $("endBtn").disabled = auto || !D.tr || D.end;
-  $("autoBtn").disabled = !unlocked || !!dungeon;
+  $("autoBtn").disabled = !unlocked || !!dungeon || (typeof tactics!=="undefined"&&!!tactics);
   $("autoBtn").textContent = unlocked
     ? auto
       ? "Arrêter le mode automatique"
       : "Mode automatique"
     : "Auto : " + autoWins() + "/10 victoires sur ce combat";
+  if(typeof tactics!=="undefined"&&tactics)$("autoBtn").textContent="Essai tactique · manuel";
+  if(typeof renderTactical==="function")renderTactical();
 }
 function combatProgress() {
   const next = D.lv === MAX_LEVEL ? 1 : need(D.lv);
@@ -1816,10 +1823,10 @@ $("backMob").onclick = () => {
   render();
   if(wasAuto && typeof openAutoRecap==='function')openAutoRecap();
 };
-$("again").onclick = () =>
-  lastResult.key
-    ? startEncounter(lastResult.zone, lastResult.tier)
-    : startFight(lastResult.mid);
+$("again").onclick = () => {
+  if(typeof tactics!=="undefined")tacticalNext=!!tactics;
+  lastResult.key?startEncounter(lastResult.zone,lastResult.tier):startFight(lastResult.mid);
+};
 $("resultClose").onclick = () => $("again").click();
 document.addEventListener("keydown", event => {
   if(!resultWasVisible || document.querySelector("dialog[open]")) return;
@@ -2012,3 +2019,6 @@ async function boot() {
   }
 }
 boot();
+
+$("tacticalTrial").onclick=startTactical;
+$("tacticalMoveMode").onclick=()=>{if(tactics){tactics.armed=null;tactics.message="Clique sur une case verte pour te déplacer.";render()}};

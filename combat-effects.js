@@ -23,7 +23,7 @@ function resetEffects() {
   };
 }
 resetEffects();
-function canCast(i) {
+function canCast(i,ignoreRange=false) {
   if (
     !Number.isInteger(i) ||
     !spellUnlocked(i) ||
@@ -47,6 +47,7 @@ function canCast(i) {
     return false;
   if (s.kind === "bomb" && effects.bombs.length >= 3) return false;
   if (s.kind === "detonate" && !effects.bombs.length) return false;
+  if(typeof tactics!=="undefined"&&tactics){if(["summon","bomb","detonate"].includes(s.kind))return false;if(!ignoreRange&&!tacticalCanCast(i))return false;}
   return true;
 }
 function spellEffectText(s, p, trait = playerClass()?.trait) {
@@ -278,9 +279,9 @@ function castClassSpell(i) {
       const extra = kind !== "aoe" ? livingTargets().filter(index => index !== targetIndex)
         .sort((a, b) => Math.abs(a - targetIndex) - Math.abs(b - targetIndex) || b - a)[0] : undefined;
       let total = 0;
-      for (const index of kind === "aoe" ? livingTargets() : [targetIndex])
+      for (const index of kind === "aoe" ? (typeof tacticalAreaTargets==="function"?tacticalAreaTargets():livingTargets()) : [targetIndex])
         total += hurtTarget(index, amount);
-      if (extra !== undefined && Math.random() * 100 < Math.max(0, Math.min(100, st("Portee")))) {
+      if (extra !== undefined && (typeof tacticalSplash!=="function"||tacticalSplash(targetIndex,extra)) && Math.random() * 100 < Math.max(0, Math.min(100, st("Portee")))) {
         total += hurtTarget(extra, amount);
         lg("Portée : l’attaque touche également " + M.find(m => m.id === encounter.members[extra].id).n + ".");
       }
@@ -359,10 +360,10 @@ function weaponLineText(item) {
     (line.kind === "heal" ? "soins" : line.kind === "drain" ? "vol de vie" : "dégâts") + " " +
     (line.element === "Best" ? "du meilleur élément" : line.element)).join(" · ") || "Aucune attaque compatible";
 }
-function canUseWeapon() {
+function canUseWeapon(ignoreRange=false) {
   const weapon = D.w.Arme && meta(D.w.Arme.id)?.weapon;
   return !!(weapon && weapon.ap > 0 && weapon.lines.length && D.tr && !D.end && mode === "fight" &&
-    PA >= weapon.ap && effects.weaponCasts < Math.max(1, weapon.casts || 1));
+    (ignoreRange||typeof tacticalCanCast!=="function"||tacticalCanCast(-2)) && PA >= weapon.ap && effects.weaponCasts < Math.max(1, weapon.casts || 1));
 }
 function weaponElement(element) {
   return element === "Best" ? ["Terre", "Feu", "Eau", "Air"].sort((a, b) => bonus(b) - bonus(a))[0] : element;
@@ -387,7 +388,7 @@ function useWeapon() {
   const extra = hasDamage ? livingTargets().filter(index => index !== primary)
     .sort((a, b) => Math.abs(a - primary) - Math.abs(b - primary) || b - a)[0] : undefined;
   const targets = [primary];
-  if (extra !== undefined && Math.random() * 100 < Math.max(0, Math.min(100, st("Portee")))) {
+  if (extra !== undefined && (typeof tacticalSplash!=="function"||tacticalSplash(targetIndex,extra)) && Math.random() * 100 < Math.max(0, Math.min(100, st("Portee")))) {
     targets.push(extra);
     lg("Portée : le corps à corps touche également un second monstre.");
   }

@@ -24,6 +24,7 @@ function game() {
   vm.runInContext(read("classes.js"), c);
   vm.runInContext(read("combat-effects.js"), c);
   vm.runInContext(read("world-data.js"), c);
+  vm.runInContext(read("tactical-combat.js"),c);
   const src = read("game.js");
   vm.runInContext(src.slice(0, src.indexOf("function show(")), c);
   c.eq = data("dofus-equipment-1-40.json");
@@ -1002,4 +1003,34 @@ test('a complete round plays every living monster in order before restoring the 
  assert.equal(run('enemyActingIndex'),null);assert.equal(run('D.rd'),2);assert.equal(run('D.tr'),true);assert.equal(run('PA'),run('maxpa()'));
  run('enemy();fightToken++;mode="picker"');
  await new Promise(r=>setTimeout(r,350));assert.equal(run('D.hp'),91);
+});
+
+test('tactical movement uses shortest free paths, exact PM and blocks occupied or unreachable cells',()=>{
+ const {run}=game();run('tacticalNext=true;startEncounter(0,2)');
+ assert.equal(run('tactics.pm'),3);assert.equal(run('tacticalMove(2,5)'),true);assert.equal(run('tactics.pm'),2);
+ assert.equal(run('tacticalMove(4,5)'),false);assert.equal(run('tacticalMove(7,5)'),false);assert.equal(run('tacticalMove(8,0)'),false);
+ assert.equal(run('tacticalMove(2,4)'),true);assert.equal(run('tacticalMove(2,4)'),false);assert.equal(run('tactics.pm'),1);
+ run('D.tr=false');assert.equal(run('tacticalMove(3,4)'),false);
+ run('D.tr=true;tacticalNewRound()');assert.equal(run('tactics.pm'),3);
+ run('startEncounter(0,0)');assert.equal(run('tactics'),null);
+});
+test('tactical casts enforce distance and obstacles without spending PA on rejected attacks',()=>{
+ const {run}=game();run('tacticalNext=true;startEncounter(0,2);tactics.player={x:2,y:3};tactics.enemies[0]={x:4,y:3};targetIndex=0');
+ assert.equal(run('canCast(0)'),true);
+ run('tactics.rocks.add("3,3")');assert.equal(run('canCast(0)'),false);
+ const pa=run('PA'),hp=run('encounter.members[0].hp');run('cast(0)');assert.equal(run('PA'),pa);assert.equal(run('encounter.members[0].hp'),hp);
+ run('tactics.rocks.delete("3,3");tactics.enemies[0]={x:5,y:3}');assert.equal(run('canCast(0)'),false);assert.equal(run('canCast(0,true)'),true);
+ run('tactics.enemies[0]={x:4,y:3};cast(0)');assert.ok(run('PA')<pa);assert.ok(run('encounter.members[0].hp')<hp);
+ run('tactics.rocks.add("3,3")');assert.equal(run('tacticalSight({x:2,y:3},{x:3,y:4})'),false);
+});
+test('tactical monsters route around rocks and living enemies, attack only in range, and preserve full rounds',async()=>{
+ const {run}=game();run('tacticalNext=true;startEncounter(0,2);encounter.members.forEach(e=>e.hp=1000);tactics.player={x:1,y:5};D.hp=100;incomingDamage=()=>3;enemy()');
+ await new Promise(r=>setTimeout(r,1250));
+ assert.equal(run('D.rd'),2);assert.equal(run('D.tr'),true);assert.equal(run('tactics.pm'),3);
+ assert.equal(run('D.hp'),100,'all three monsters started too far away');
+ assert.equal(run('tactics.enemies.every(p=>!tactics.rocks.has(tacticalKey(p))&&tacticalKey(p)!==tacticalKey(tactics.player))'),true);
+ assert.equal(run('new Set(tactics.enemies.map(tacticalKey)).size'),3);
+ run('tactics.player={x:6,y:5};tactics.enemies[2]={x:7,y:5}');assert.equal(run('tacticalEnemyAction(2)'),true);
+ run('tactics.enemies[0]={x:3,y:3};tactics.enemies[1]={x:3,y:4};tactics.enemies[2]={x:6,y:1};targetIndex=0');
+ assert.equal(run('JSON.stringify(tacticalAreaTargets())'),'[0,1]');
 });
