@@ -203,3 +203,6 @@ Le bilan montre directement chaque exemplaire obtenu. Un clic sur son image ouvr
 
 ### 3.19 — Tours complets
 Après le joueur, chaque monstre encore vivant attaque une fois, dans l’ordre. Le monstre actif est mis en évidence. Le compteur de tours et les PA ne se renouvellent qu’après le dernier monstre.
+
+### 3.20 — Combats animés
+Les images existantes bougent au repos. Sorts, corps à corps, impacts, soins et critiques ont des effets visuels liés aux résultats réels. Les monstres vaincus disparaissent. Les animations ne modifient aucun calcul ni délai de tour, respectent la réduction des mouvements et sont nettoyées à chaque nouveau combat.

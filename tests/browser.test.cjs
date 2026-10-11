@@ -1142,12 +1142,23 @@ async function main() {
         await worldPage.locator('#weaponAttack').click();
         assert.ok(await worldPage.evaluate(()=>encounter.members[0].hp)<beforeWeapon.hp);
         assert.equal(await worldPage.evaluate(()=>PA),beforeWeapon.pa-beforeWeapon.cost);
+        await worldPage.waitForFunction(()=>document.querySelector('#combatFx .fxNumber'));
+        const damageDealt=beforeWeapon.hp-await worldPage.evaluate(()=>encounter.members[0].hp);
+        const floating=await worldPage.locator('#combatFx .fxNumber').allTextContents();
+        assert.equal(floating.filter(t=>t.startsWith('−')).reduce((sum,t)=>sum+Number(t.slice(1)),0),damageDealt);
+        assert.equal(await worldPage.locator('#combatFx .fxSlash').count(),1);
+        assert.notEqual(await worldPage.locator('#fightPlayerArt .art').evaluate(el=>getComputedStyle(el).animationName),'none');
+        await worldPage.emulateMedia({reducedMotion:'reduce'});
+        assert.equal(await worldPage.locator('#fightPlayerArt .art').evaluate(el=>getComputedStyle(el).animationName),'none');
+        await worldPage.emulateMedia({reducedMotion:'no-preference'});
+
         const arenaPosition=await worldPage.evaluate(()=>({scroll:scrollY,top:document.querySelector('#fight').getBoundingClientRect().top}));
         await worldPage.evaluate(()=>{encounter.members.forEach(e=>e.hp=0);victory()});
         assert.equal(await worldPage.locator('#result[role="dialog"]').isVisible(),true);
         assert.equal(await worldPage.evaluate(()=>document.activeElement.id),'again');
         await worldPage.locator('#resultClose').click();
         assert.equal(await worldPage.evaluate(()=>mode),'fight');
+        assert.equal(await worldPage.locator('#combatFx > span').count(),0);
         assert.deepEqual(await worldPage.evaluate(()=>({scroll:scrollY,top:document.querySelector('#fight').getBoundingClientRect().top})),arenaPosition);
         await worldPage.locator('#backMob').click();
         await worldPage.evaluate(()=>show('inventory'));

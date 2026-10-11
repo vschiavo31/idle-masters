@@ -6,7 +6,7 @@
       name="viewport"
       content="width=device-width,initial-scale=1,viewport-fit=cover"
     />
-    <title>Idle Masters V3.19.0</title>
+    <title>Idle Masters V3.20.0</title>
     <style>
       :root {
         --bg: #100e0b;
@@ -701,13 +701,35 @@
       #autoRecapBtn {font-size:11px;padding:6px;white-space:nowrap;}
       #enemyGroup .acting {opacity:1;border-color:#ffd45e;box-shadow:0 0 0 2px #ffd45e;background:#4b3a19;}
       #autoRecapBtn[hidden] {display:none;}
+      .arenaShell {position:relative;}
+      #combatFx {position:absolute;inset:0;pointer-events:none;overflow:hidden;z-index:8;}
+      #combatFx > span {position:absolute;pointer-events:none;}
+      .fxNumber,.fxCritical {font-size:25px;line-height:1;font-weight:900;white-space:nowrap;color:var(--fx-color);text-shadow:0 2px 3px #000,1px 0 #000,-1px 0 #000;animation:floatDamage 1s ease-out both;}
+      .fxNumber.healing {font-size:23px;}
+      .fxCritical {font-size:19px;letter-spacing:1px;margin-top:-34px;}
+      .fxCritical.radiantFx {font-size:26px;background:#30280ddd;padding:12px 18px;border:1px solid #ffe381;border-radius:18px;animation:floatDamage 1.5s ease-out both;}
+      .fxProjectile {width:20px;height:20px;border-radius:50%;background:radial-gradient(circle,#fff 10%,var(--fx-color) 35%,transparent 75%);box-shadow:0 0 16px var(--fx-color);}
+      .fxBurst {width:64px;height:64px;border:3px solid var(--fx-color);border-radius:50%;box-shadow:0 0 18px var(--fx-color),inset 0 0 16px var(--fx-color);color:var(--fx-color);font-size:13px;font-weight:900;text-align:center;animation:impactRing .65s ease-out both;}
+      .fxSlash {width:70px;height:9px;border-radius:50%;background:#fff;box-shadow:0 0 14px 5px var(--fx-color);animation:weaponSlash .45s ease-out both;}
+      #fight #fightPlayerArt .art {animation:playerIdle 2.7s ease-in-out infinite;}
+      #fight .combatArtwork .art {animation:monsterIdle 3.1s ease-in-out infinite;}
+      #enemyGroup .defeated .art,.enemyFocus[data-defeated="true"] .combatArtwork {opacity:0;transition:opacity .45s;}
+      #result {animation:resultEntrance .45s ease-out both;}
+      #result .radiant {box-shadow:0 0 16px #ffd85840;}
+      @keyframes playerIdle {0%,100% {transform:scaleX(-1) translateY(0);}50% {transform:scaleX(-1) translateY(-4px);}}
+      @keyframes monsterIdle {0%,100% {transform:translateY(0) rotate(-1deg);}50% {transform:translateY(-4px) rotate(1deg);}}
+      @keyframes floatDamage {0% {opacity:0;transform:translate(-50%,0) scale(.85);}15% {opacity:1;transform:translate(-50%,-10px) scale(1.12);}70% {opacity:1;}100% {opacity:0;transform:translate(-50%,-54px) scale(1);}}
+      @keyframes impactRing {0% {opacity:1;transform:translate(-50%,-50%) scale(.25);}100% {opacity:0;transform:translate(-50%,-50%) scale(1.4);}}
+      @keyframes weaponSlash {0% {opacity:0;transform:translate(-50%,-50%) rotate(-40deg) scaleX(.2);}30% {opacity:1;}100% {opacity:0;transform:translate(-50%,-50%) rotate(-40deg) scaleX(1.4);}}
+      @keyframes resultEntrance {from {opacity:0;}to {opacity:1;}}
+      @media (prefers-reduced-motion:reduce) {#fight #fightPlayerArt .art,#fight .combatArtwork .art,#result {animation:none;}#combatFx .fxBurst,#combatFx .fxSlash,#combatFx .fxProjectile {display:none;}#combatFx .fxNumber,#combatFx .fxCritical {animation:none;transform:translate(-50%,-50%);}#enemyGroup .defeated .art,.enemyFocus[data-defeated="true"] .combatArtwork {transition:none;}}
     </style>
   </head>
   <body>
     <div class="wrap">
       <div class="top">
         <div class="brand">Idle Masters</div>
-        <span class="version">V3.19 · Tours complets</span>
+        <span class="version">V3.20 · Combats animés</span>
       </div>
       <div class="row" style="margin-bottom: 12px">
         <small id="saveStatus" class="mut" role="status"
@@ -1109,7 +1131,7 @@
           </div>
         </div>
         <div id="fight" style="display: none">
-          <div class="arenaShell">
+          <div class="arenaShell"><div id="combatFx" aria-hidden="true"></div>
             <div class="arenaHeader"><button id="backMob">Quitter</button><span id="fightZone" class="gold"></span><span id="roundTxt"></span><button id="autoRecapBtn" hidden>Bilan auto</button><button id="arenaMenu">Menu</button></div>
             <div id="enemyGroup" aria-label="Choisir la cible"></div>
             <div class="arenaStage">
@@ -1175,17 +1197,18 @@
       ><button data-page="collection">COLLECTION</button
       ><button data-page="combat">COMBAT</button>
     </nav>
-    <script src="local-data.js?v=3.19.0"></script>
-    <script src="bestiary-ui.js?v=3.19.0"></script>
-    <script src="saving.js?v=3.19.0"></script>
-    <script src="classes.js?v=3.19.0"></script>
-    <script src="combat-effects.js?v=3.19.0"></script>
-    <script src="roster-selection.js?v=3.19.0"></script>
-    <script src="world-data.js?v=3.19.0"></script>
-    <script src="game-art.js?v=3.19.0"></script>
+    <script src="local-data.js?v=3.20.0"></script>
+    <script src="bestiary-ui.js?v=3.20.0"></script>
+    <script src="saving.js?v=3.20.0"></script>
+    <script src="classes.js?v=3.20.0"></script>
+    <script src="combat-effects.js?v=3.20.0"></script>
+    <script src="roster-selection.js?v=3.20.0"></script>
+    <script src="world-data.js?v=3.20.0"></script>
+    <script src="game-art.js?v=3.20.0"></script>
     <dialog id="itemInspector"><div class="dialogHeader"><h2 id="itemInspectorTitle"></h2><button id="itemInspectorClose" aria-label="Fermer la fiche">×</button></div><div id="itemInspectorBody"></div></dialog>
     <dialog id="autoRecap"><div class="dialogHeader"><h2>Bilan des combats automatiques</h2><button id="autoRecapClose" aria-label="Fermer le bilan">×</button></div><p id="autoRecapTotals"></p><p class="mut">Clique sur l’image d’un objet pour voir ses jets, comparer avec ton équipement et le vendre ou l’équiper. Le mode automatique est arrêté.</p><div id="autoRecapDrops"></div></dialog>
-    <script src="game.js?v=3.19.0"></script>
-    <script src="loot-ui.js?v=3.19.0"></script>
+    <script src="game.js?v=3.20.0"></script>
+    <script src="loot-ui.js?v=3.20.0"></script>
+    <script src="combat-animation.js?v=3.20.0"></script>
   </body>
 </html>

@@ -554,6 +554,7 @@ function victory() {
     k: kg,
     drops,
   };
+  if(drops.some(q=>q.rayonnant) && typeof combatVisual==="function")combatVisual("radiant");
   if (auto && !dungeon) {
     recordAutoRewards(xg,kg,drops);
     save();
@@ -639,6 +640,7 @@ function enemy() {
       enemyActingIndex = index;
       const damage = incomingDamage(m,index);
       D.hp = Math.max(0,D.hp-damage);
+      if(typeof combatVisual==="function")combatVisual("enemy",{index,amount:damage,element:m.e||"Neutre"});
       lg(m.n + ' : -' + damage + ' PV');
       if(D.hp <= 0) return finishRound();
       render();
@@ -732,6 +734,7 @@ function beginFight(
     return;
   clearTimeout(autoTimer);
   fightToken++;
+  if(typeof resetCombatVisuals==="function")resetCombatVisuals();
   enemyActingIndex = null;
   resetEffects();
   encounter = {
@@ -1555,6 +1558,7 @@ function fight() {
       let type = M.find((x) => x.id === enemy.id),
         button = document.createElement("button");
       button.className = "choice " + (targetIndex === index ? "sel" : "");
+      button.dataset.enemyIndex = index;
       button.disabled = enemy.hp <= 0 || auto || !D.tr || D.end;
       button.innerHTML = monsterArt(type) + '<b>' + esc(type.n) + '</b><span class="enemyStatus">' + enemy.hp + '/' + type.h + ' PV' + (enemy.hp <= 0 ? ' · Vaincu' : index === enemyActingIndex ? ' · Joue' : index === targetIndex ? ' · Cible' : '') + '</span><span class="miniHp"><span style="width:'+Math.max(0,Math.min(100,100*enemy.hp/type.h))+'%"></span></span>';
       button.classList.toggle('defeated',enemy.hp<=0);
@@ -1573,6 +1577,7 @@ function fight() {
     (D.master[m.id] || 0) +
     " victoire(s)";
   const displayedHp = enemyActingIndex !== null && encounter ? encounter.members[enemyActingIndex].hp : D.eh;
+  document.querySelector(".enemyFocus").dataset.defeated = displayedHp <= 0;
   $("enemyHp").textContent = displayedHp + " / " + m.h + " PV";
   $("enemyBar").style.width = (100 * displayedHp) / m.h + "%";
   $("fightHp").textContent = D.hp + " / " + h + " PV";
@@ -1801,6 +1806,7 @@ $("endBtn").onclick = enemy;
 $("autoBtn").onclick = toggleAuto;
 $("backMob").onclick = () => {
   const wasAuto=auto;
+  if(typeof resetCombatVisuals==="function")resetCombatVisuals();
   fightToken++;
   enemyActingIndex = null;
   auto = false;

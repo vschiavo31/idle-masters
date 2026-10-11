@@ -10,6 +10,7 @@ const files = [
   "game.js",
   "game-art.js",
   "loot-ui.js",
+  "combat-animation.js",
   "world-data.js",
   "game-world.json",
   "extra-equipment.json",

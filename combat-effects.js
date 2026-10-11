@@ -110,6 +110,7 @@ function healValue(p) {
 function restoreHp(h) {
   const gain = Math.min(Math.max(0, h), mh() - D.hp);
   D.hp += gain;
+  if(gain>0 && typeof combatVisual==="function")combatVisual("heal",{amount:gain});
   return gain;
 }
 function attackValue(p, kind, options = {}) {
@@ -139,7 +140,7 @@ function attackValue(p, kind, options = {}) {
   const criticalChance = Math.max(0, Math.min(100, 5 + st("Critique")));
   if (options.critical ?? (Math.random() * 100 < criticalChance)) {
     damage = Math.max(0, Math.floor(damage * 1.5) + (options.criticalDamage === false ? 0 : st("DommagesCritiques")));
-    if (!options.quiet) lg("Coup critique !");
+    if (!options.quiet) {lg("Coup critique !");if(typeof combatVisual==="function")combatVisual("critical",{actor:"enemy",index:targetIndex});}
   }
   return damage;
 }
@@ -164,6 +165,7 @@ function hurtTarget(index, amount, applyMark = true) {
   if (index === targetIndex) D.eh = hp;
   if (hp === 0)
     lg((enemy ? M.find((m) => m.id === enemy.id) : mob()).n + " est vaincu.");
+  if(typeof combatVisual==="function")combatVisual("hit",{index,amount:before-hp,dead:hp===0});
   return before - hp;
 }
 function settleTargets() {
@@ -187,6 +189,7 @@ function castClassSpell(i) {
   const s = spellBook()[i],
     p = spell(i),
     kind = s.kind;
+  if(typeof combatVisual==="function")combatVisual("cast",{kind,element:p[1],index:targetIndex});
   PA -= p[2];
   effects.casts[i] = (effects.casts[i] || 0) + 1;
   if (s.cd) effects.cooldowns[i] = D.rd + s.cd;
@@ -374,10 +377,11 @@ function weaponAutoScore() {
 function useWeapon() {
   if (!canUseWeapon()) return false;
   const item = D.w.Arme, weapon = meta(item.id).weapon;
+  if(typeof combatVisual==="function")combatVisual("cast",{kind:"weapon",element:weaponElement(weapon.lines[0]?.element),index:targetIndex});
   PA -= weapon.ap;
   effects.weaponCasts++;
   const critical = Math.random() * 100 < Math.max(0, Math.min(100, weapon.criticalChance + st("Critique")));
-  if (critical) lg("Corps à corps : coup critique !");
+  if (critical) {lg("Corps à corps : coup critique !");if(typeof combatVisual==="function")combatVisual("critical",{actor:"enemy",index:targetIndex});}
   const primary = targetIndex;
   const hasDamage = weapon.lines.some(line => line.kind !== "heal");
   const extra = hasDamage ? livingTargets().filter(index => index !== primary)
@@ -420,6 +424,7 @@ function incomingDamage(m, index) {
   if (critical) {
     value = Math.floor(value * 1.5);
     lg(m.n + " : coup critique !");
+    if(typeof combatVisual==="function")combatVisual("critical",{actor:"player"});
   }
   if (m.boss && D.rd % 3 === 0) value = Math.floor(value * 1.5);
   value = Math.floor(
