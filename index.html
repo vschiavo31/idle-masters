@@ -6,7 +6,7 @@
       name="viewport"
       content="width=device-width,initial-scale=1,viewport-fit=cover"
     />
-    <title>Idle Masters V3.21.0</title>
+    <title>Idle Masters V3.22.0</title>
     <style>
       :root {
         --bg: #100e0b;
@@ -741,6 +741,7 @@
       .tacticalCell.player {border:2px solid #8bd8ff;background:#21465b;}
       .tacticalCell.selected {border:2px solid #e9ba59;}
       .tacticalCell.attackable {background:#843d35;border-color:#ffac84;}
+      .tacticalCell.areaPreview {box-shadow:inset 0 0 0 2px #e19cff;}
       .tacticalCell.acting {box-shadow:inset 0 0 0 2px #ffda64;}
       .tacticalCell .art {width:100%;height:100%;max-width:38px;max-height:38px;pointer-events:none;}
       @media(max-height:720px) {.tacticalArena.arenaShell {grid-template-rows:32px 45px minmax(180px,1fr) 32px 120px 38px 18px;}.tacticalArena #combatSpells button {font-size:11px;}.tacticalArena #combatSpells b {font-size:12px;}}
@@ -751,7 +752,7 @@
     <div class="wrap">
       <div class="top">
         <div class="brand">Idle Masters</div>
-        <span class="version">V3.21 · Essai tactique</span>
+        <span class="version">V3.22 · Sorts tactiques</span>
       </div>
       <div class="row" style="margin-bottom: 12px">
         <small id="saveStatus" class="mut" role="status"
@@ -1219,19 +1220,19 @@
       ><button data-page="collection">COLLECTION</button
       ><button data-page="combat">COMBAT</button>
     </nav>
-    <script src="local-data.js?v=3.21.0"></script>
-    <script src="bestiary-ui.js?v=3.21.0"></script>
-    <script src="saving.js?v=3.21.0"></script>
-    <script src="classes.js?v=3.21.0"></script>
-    <script src="combat-effects.js?v=3.21.0"></script>
-    <script src="roster-selection.js?v=3.21.0"></script>
-    <script src="world-data.js?v=3.21.0"></script>
-    <script src="game-art.js?v=3.21.0"></script>
+    <script src="local-data.js?v=3.22.0"></script>
+    <script src="bestiary-ui.js?v=3.22.0"></script>
+    <script src="saving.js?v=3.22.0"></script>
+    <script src="classes.js?v=3.22.0"></script>
+    <script src="combat-effects.js?v=3.22.0"></script>
+    <script src="roster-selection.js?v=3.22.0"></script>
+    <script src="world-data.js?v=3.22.0"></script>
+    <script src="game-art.js?v=3.22.0"></script>
     <dialog id="itemInspector"><div class="dialogHeader"><h2 id="itemInspectorTitle"></h2><button id="itemInspectorClose" aria-label="Fermer la fiche">×</button></div><div id="itemInspectorBody"></div></dialog>
     <dialog id="autoRecap"><div class="dialogHeader"><h2>Bilan des combats automatiques</h2><button id="autoRecapClose" aria-label="Fermer le bilan">×</button></div><p id="autoRecapTotals"></p><p class="mut">Clique sur l’image d’un objet pour voir ses jets, comparer avec ton équipement et le vendre ou l’équiper. Le mode automatique est arrêté.</p><div id="autoRecapDrops"></div></dialog>
-    <script src="tactical-combat.js?v=3.21.0"></script>
-    <script src="game.js?v=3.21.0"></script>
-    <script src="loot-ui.js?v=3.21.0"></script>
-    <script src="combat-animation.js?v=3.21.0"></script>
+    <script src="tactical-combat.js?v=3.22.0"></script>
+    <script src="game.js?v=3.22.0"></script>
+    <script src="loot-ui.js?v=3.22.0"></script>
+    <script src="combat-animation.js?v=3.22.0"></script>
   </body>
 </html>

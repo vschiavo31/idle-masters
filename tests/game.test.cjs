@@ -1034,3 +1034,20 @@ test('tactical monsters route around rocks and living enemies, attack only in ra
  run('tactics.enemies[0]={x:3,y:3};tactics.enemies[1]={x:3,y:4};tactics.enemies[2]={x:6,y:1};targetIndex=0');
  assert.equal(run('JSON.stringify(tacticalAreaTargets())'),'[0,1]');
 });
+
+test('individual tactical spell rules enforce line targeting and correctly distinguish circle and cross areas',()=>{
+ const {run}=game();run('tacticalNext=true;startEncounter(0,2);tactics.rocks.clear();D.classId="cra";D.lv=200;tactics.player={x:1,y:1};tactics.enemies[0]={x:3,y:2};targetIndex=0');
+ assert.equal(run('tacticalCanCast(1)'),false);assert.equal(run('tacticalCanCast(0)'),true);
+ run('tactics.enemies[0]={x:3,y:1}');assert.equal(run('tacticalCanCast(1)'),true);
+ run('tactics.enemies[0]={x:3,y:3};tactics.enemies[1]={x:4,y:4};tactics.enemies[2]={x:5,y:3}');
+ assert.equal(run('JSON.stringify(tacticalAreaTargets(6))'),'[0,1,2]');
+ run('D.classId="iop"');assert.equal(run('JSON.stringify(tacticalAreaTargets(6))'),'[0,2]');
+ assert.equal(run('tacticalRange(0)'),2);assert.equal(run('tacticalRange(7)'),1);
+ run('tacticalNext=false;startEncounter(0,2)');assert.equal(run('tacticalCanCast(1)'),true);
+});
+test('monster spell profiles expose their actual reach and line requirement',()=>{
+ const {run}=game();
+ assert.equal(run('tacticalMonsterSpell({e:"Feu"}).line'),true);
+ assert.equal(run('tacticalMonsterSpell({e:"Eau"}).line'),false);
+ assert.equal(run('tacticalMonsterSpell({e:"Terre"}).range'),1);
+});

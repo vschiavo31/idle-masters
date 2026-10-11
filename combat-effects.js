@@ -279,7 +279,7 @@ function castClassSpell(i) {
       const extra = kind !== "aoe" ? livingTargets().filter(index => index !== targetIndex)
         .sort((a, b) => Math.abs(a - targetIndex) - Math.abs(b - targetIndex) || b - a)[0] : undefined;
       let total = 0;
-      for (const index of kind === "aoe" ? (typeof tacticalAreaTargets==="function"?tacticalAreaTargets():livingTargets()) : [targetIndex])
+      for (const index of kind === "aoe" ? (typeof tacticalAreaTargets==="function"?tacticalAreaTargets(i):livingTargets()) : [targetIndex])
         total += hurtTarget(index, amount);
       if (extra !== undefined && (typeof tacticalSplash!=="function"||tacticalSplash(targetIndex,extra)) && Math.random() * 100 < Math.max(0, Math.min(100, st("Portee")))) {
         total += hurtTarget(extra, amount);

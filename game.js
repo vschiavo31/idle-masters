@@ -643,7 +643,7 @@ function enemy() {
       const damage = canAttack?incomingDamage(m,index):0;
       D.hp = Math.max(0,D.hp-damage);
       if(canAttack&&typeof combatVisual==="function")combatVisual("enemy",{index,amount:damage,element:m.e||"Neutre"});
-      lg(canAttack?m.n + ' : -' + damage + ' PV':m.n+' est trop loin pour attaquer.');
+      lg(canAttack?m.n + (typeof tactics!=="undefined"&&tactics?' lance '+tactics.enemySpell.name:'') + ' : -' + damage + ' PV':m.n+' est trop loin pour attaquer.');
       if(D.hp <= 0) return finishRound();
       render();
       setTimeout(nextMonster,300);
@@ -1607,9 +1607,9 @@ function fight() {
       "</b><br>" +
       status +
       '<br><span class="mut">' +
-      (typeof tactics!=="undefined"&&tactics&&s.kind==="aoe"?p[3]+"–"+p[4]+" dégâts · zone 1 case":spellEffectText(s, p)) +
+      (typeof tactics!=="undefined"&&tactics&&s.kind==="aoe"?p[3]+"–"+p[4]+" dégâts":spellEffectText(s, p)) +
       "</span>";
-    if(typeof tactics!=="undefined"&&tactics&&tacticalTargeted(i))b.innerHTML+="<span class=mut> · PO "+tacticalRange(i)+(s.kind==="aoe"?" · zone 1":"")+"</span>";
+    if(typeof tactics!=="undefined"&&tactics&&tacticalTargeted(i))b.innerHTML+="<span class=mut> · "+tacticalRuleText(i)+"</span>";
     b.onclick = () => typeof tactics!=="undefined"&&tactics?tacticalChoose(i):cast(i);
     e.append(b);
   });

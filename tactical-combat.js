@@ -34,10 +34,33 @@ function tacticalSight(a,b){
   if(blocked({x,y}))return false;
  }return true;
 }
-function tacticalRange(i){if(i===-2){const type=D.w.Arme&&meta(D.w.Arme.id)?.subtype;return type==='Arc'?6:type==='Baguette'?4:1;}const id=D.classId;return id==='cra'?6:['iop','sacrieur','ouginak'].includes(id)?2:4;}
+// Curated rules for Idle Masters spells, not official Dofus spell tables.
+const TACTICAL_SPELL_RANGES={
+ iop:[2,3,0,2,4,0,4,1],cra:[6,5,0,6,5,4,6,7],
+ eniripsa:[4,0,0,3,0,3,0,4],sadida:[5,4,0,4,0,5,3,5],
+ feca:[3,0,5,4,0,3,0,4],osamodas:[3,4,0,0,3,0,4,0],
+ enutrof:[5,4,0,5,4,0,5,6],sram:[2,3,0,2,3,0,2,1],
+ xelor:[4,3,0,4,0,3,4,5],ecaflip:[4,3,0,3,0,4,0,5],
+ sacrieur:[2,2,0,2,1,0,2,1],pandawa:[3,2,0,3,0,4,2,4],
+ roublard:[5,4,0,0,5,0,0,6],zobal:[2,3,0,2,0,3,0,2],
+ steamer:[5,4,0,0,4,0,5,5],eliotrope:[5,4,0,5,0,4,3,6],
+ huppermage:[4,5,0,3,0,4,5,4],ouginak:[2,3,0,2,1,0,3,1],
+ forgelance:[3,4,0,3,0,4,3,5]
+};
+function tacticalRule(i){
+ if(i===-2){const type=D.w.Arme&&meta(D.w.Arme.id)?.subtype;return {min:1,max:type==='Arc'?6:type==='Baguette'?4:1,line:type==='Arc',shape:'point',radius:0};}
+ const s=spellBook()[i],targeted=['dmg','drain','aoe','poison','mark','weaken'].includes(s?.kind);
+ const max=targeted?Math.max(1,TACTICAL_SPELL_RANGES[D.classId]?.[i]||3):0;
+ const area=s?.kind==='aoe',shape=area?(['cra','sadida','feca','huppermage'].includes(D.classId)?'circle':'cross'):'point';
+ return {min:targeted?1:0,max,line:targeted&&D.classId==='cra'&&[1,7].includes(i),shape,radius:area?(i>=6?2:1):0};
+}
+function tacticalRange(i){return tacticalRule(i).max;}
+function tacticalRuleText(i){const r=tacticalRule(i);return r.max?'PO '+r.min+'–'+r.max+(r.line?' · en ligne':'')+(r.radius?' · '+(r.shape==='cross'?'croix':'cercle')+' '+r.radius:''):'Sur soi';}
 function tacticalTargeted(i){return (i===-2?!!D.w.Arme&&meta(D.w.Arme.id)?.weapon?.lines.some(line=>line.kind!=='heal'):false)||['dmg','drain','aoe','poison','mark','weaken'].includes(spellBook()[i]?.kind);}
-function tacticalCanCast(i){if(!tactics)return true;if(['summon','bomb','detonate'].includes(spellBook()[i]?.kind))return false;if(!tacticalTargeted(i))return true;const target=tactics.enemies[targetIndex];return !!target&&encounter.members[targetIndex].hp>0&&tacticalDistance(tactics.player,target)<=tacticalRange(i)&&tacticalSight(tactics.player,target);}
-function tacticalAreaTargets(){if(!tactics)return livingTargets();const center=tactics.enemies[targetIndex];return livingTargets().filter(i=>tacticalDistance(center,tactics.enemies[i])<=1&&tacticalSight(center,tactics.enemies[i]));}
+function tacticalValidTarget(i,p){const r=tacticalRule(i),d=tacticalDistance(tactics.player,p);return d>=r.min&&d<=r.max&&(!r.line||p.x===tactics.player.x||p.y===tactics.player.y)&&tacticalSight(tactics.player,p);}
+function tacticalCanCast(i){if(!tactics)return true;if(['summon','bomb','detonate'].includes(spellBook()[i]?.kind))return false;if(!tacticalTargeted(i))return true;const target=tactics.enemies[targetIndex];return !!target&&encounter.members[targetIndex].hp>0&&tacticalValidTarget(i,target);}
+function tacticalInArea(center,p,r){return tacticalDistance(center,p)<=r.radius&&(r.shape!=='cross'||p.x===center.x||p.y===center.y)&&tacticalSight(center,p);}
+function tacticalAreaTargets(i=3){if(!tactics)return livingTargets();const center=tactics.enemies[targetIndex],r=tacticalRule(i);return livingTargets().filter(j=>tacticalInArea(center,tactics.enemies[j],r));}
 function tacticalSplash(primary,other){return !tactics||tacticalDistance(tactics.enemies[primary],tactics.enemies[other])<=1&&tacticalSight(tactics.enemies[primary],tactics.enemies[other]);}
 function tacticalMove(x,y){
  if(!tactics||!D.tr||D.end||mode!=='fight'||auto||tactics.armed!==null)return false;
@@ -49,23 +72,24 @@ function tacticalChoose(i){
  if(!tactics)return i===-2?useWeapon():cast(i);
  if(i===-2?!canUseWeapon(true):!canCast(i,true))return;
  if(!tacticalTargeted(i)){i===-2?useWeapon():cast(i);return;}
- tactics.armed=i;tactics.message=(i===-2?'Corps à corps':spellBook()[i].n)+' · portée '+tacticalRange(i)+' case(s). Clique sur un monstre rouge.';render();
+ tactics.armed=i;tactics.message=(i===-2?'Corps à corps':spellBook()[i].n)+' · '+tacticalRuleText(i)+'. Clique sur un monstre rouge.';render();
 }
 function tacticalClickEnemy(index){
  if(!D.tr||D.end||auto)return;
  selectTarget(index,true);
  if(tactics.armed!==null){const i=tactics.armed;if(tacticalCanCast(i)){tactics.armed=null;i===-2?useWeapon():cast(i);}else{tactics.message='Cible hors de portée ou derrière un obstacle.';render();}}
- else{tactics.message='Cible choisie. Sélectionne un sort.';render();}
+ else{const m=M.find(m=>m.id===encounter.members[index].id),a=tacticalMonsterSpell(m);tactics.message=m.n+' · '+a.name+' · PO '+a.range+(a.line?' en ligne':'')+' · '+a.pm+' PM. Sélectionne un sort.';render();}
 }
 function tacticalEnemyAction(index){
  if(!tactics)return true;
- const m=M.find(m=>m.id===encounter.members[index].id),range=['Feu','Air','Eau'].includes(m.e)?2:1;
+ const m=M.find(m=>m.id===encounter.members[index].id),attack=tacticalMonsterSpell(m),range=attack.range;
+ tactics.enemySpell=attack;
  let origin=tactics.enemies[index];
- const inRange=p=>tacticalDistance(p,tactics.player)<=range&&tacticalSight(p,tactics.player);
+ const inRange=p=>tacticalDistance(p,tactics.player)<=range&&(!attack.line||p.x===tactics.player.x||p.y===tactics.player.y)&&tacticalSight(p,tactics.player);
  if(!inRange(origin)){
   const paths=tacticalPaths(origin,index),candidates=[...paths].map(([key,path])=>({p:{x:Number(key.split(',')[0]),y:Number(key.split(',')[1])},path}));
   candidates.sort((a,b)=>Number(inRange(b.p))-Number(inRange(a.p))|| (inRange(a.p)&&inRange(b.p)?a.path.length-b.path.length:tacticalDistance(a.p,tactics.player)-tacticalDistance(b.p,tactics.player)||a.path.length-b.path.length));
-  const path=candidates[0]?.path||[],steps=path.slice(0,3);
+  const path=candidates[0]?.path||[],steps=path.slice(0,attack.pm);
   if(steps.length){tactics.enemies[index]={...steps.at(-1)};lg(m.n+' se déplace de '+steps.length+' case(s).');}
  }
  return inRange(tactics.enemies[index]);
@@ -81,12 +105,19 @@ function renderTactical(){
   const p={x,y},key=tacticalKey(p),player=key===tacticalKey(tactics.player),index=tactics.enemies.findIndex((e,i)=>encounter.members[i].hp>0&&key===tacticalKey(e)),rock=tactics.rocks.has(key),path=paths.get(key),reachable=path?.length>0&&path.length<=tactics.pm;
   const cell=document.createElement('button');cell.type='button';cell.className='tacticalCell';cell.dataset.x=x;cell.dataset.y=y;cell.setAttribute('role','gridcell');
   cell.classList.toggle('rock',rock);cell.classList.toggle('reachable',reachable);cell.classList.toggle('player',player);
+  if(tactics.armed!==null&&tacticalRule(tactics.armed).radius&&tacticalCanCast(tactics.armed))cell.classList.toggle('areaPreview',tacticalInArea(tactics.enemies[targetIndex],p,tacticalRule(tactics.armed)));
   cell.disabled=!D.tr||D.end||rock||(!player&&index<0&&!reachable);
   let label='Case '+(x+1)+', '+(y+1);
   if(player){cell.innerHTML=classArt(D.classId);cell.dataset.actor='player';label+=' · Ton personnage';}
-  else if(index>=0){const m=M.find(m=>m.id===encounter.members[index].id);cell.innerHTML=monsterArt(m);cell.dataset.enemyIndex=index;cell.classList.toggle('selected',index===targetIndex);cell.classList.toggle('acting',index===enemyActingIndex);cell.classList.toggle('attackable',tactics.armed!==null&&tacticalDistance(tactics.player,p)<=tacticalRange(tactics.armed)&&tacticalSight(tactics.player,p));label+=' · '+m.n+' · '+encounter.members[index].hp+' PV';cell.onclick=()=>tacticalClickEnemy(index);}
+  else if(index>=0){const m=M.find(m=>m.id===encounter.members[index].id);cell.innerHTML=monsterArt(m);cell.dataset.enemyIndex=index;cell.classList.toggle('selected',index===targetIndex);cell.classList.toggle('acting',index===enemyActingIndex);cell.classList.toggle('attackable',tactics.armed!==null&&tacticalValidTarget(tactics.armed,p));const attack=tacticalMonsterSpell(m);label+=' · '+m.n+' · '+encounter.members[index].hp+' PV · '+attack.name+' · PO '+attack.range+' · '+attack.pm+' PM'+(attack.line?' · en ligne':'');cell.onclick=()=>tacticalClickEnemy(index);}
   else if(rock){cell.textContent='◆';label+=' · Obstacle';}
   else{label+=reachable?' · '+path.length+' PM':'';cell.onclick=()=>tacticalMove(x,y);}
-  cell.setAttribute('aria-label',label);root.append(cell);
+  cell.setAttribute('aria-label',label);cell.title=label;root.append(cell);
  }
+}
+
+// One adapted offensive spell per monster; preserves existing damage/resistance math.
+function tacticalMonsterSpell(m){
+ const ranged=['Feu','Air','Eau'].includes(m.e);
+ return {name:ranged?'Projection '+(m.e||'Neutre').toLowerCase():'Frappe '+(m.e||'Neutre').toLowerCase(),range:ranged?2:1,line:ranged&&m.e==='Feu',pm:3};
 }

@@ -209,3 +209,6 @@ Les images existantes bougent au repos. Sorts, corps à corps, impacts, soins et
 
 ### 3.21 — Premier combat tactique
 Le bouton d’essai de la sélection des combats lance le groupe difficile de la zone choisie sur un terrain 9×7. Déplacements par chemins libres, PM renouvelés par tour, portée adaptée par classe, ligne de vue avec obstacles, ennemis mobiles et zones de sorts de rayon un. Ce prototype manuel conserve les récompenses et la progression ; invocations et bombes restent à venir. Les combats habituels et l’auto sont conservés.
+
+### V3.22 — tactical spell rules
+Each of the 152 class spells has a curated tactical range. Targeted spells enforce minimum/maximum range, obstacle LOS and selected Cra line constraints. AOE uses a target-centered cross or Manhattan circle, radius 1 or 2; the selected target area is outlined purple. These are Idle Masters adaptations, not official Dofus tables. Each monster has one adapted elemental offensive spell: melee range 1, ranged range 2, fire in line, 3 movement points. UI selection exposes the actual profile, and logs name the attack. Source monster spell tables remain to be integrated. Classic combat and damage/reward formulas are unchanged.
