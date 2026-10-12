@@ -1162,11 +1162,11 @@ async function main() {
           Math.random=random;
         });
         const session=await worldPage.evaluate(()=>structuredClone(D.autoSession));
-        assert.equal(session.battles,2);assert.equal(session.wins,2);assert.ok(session.drops.length>0);
+        assert.equal(session.battles,2);assert.equal(session.wins,2);assert.ok(session.drops.length>0);assert.equal(session.spellDrops.length,2);
         await worldPage.locator('#autoBtn').click();
         assert.equal(await worldPage.evaluate(()=>auto),false);
         assert.ok((await worldPage.locator('#autoRecapTotals').textContent()).includes('2 combat(s)'));
-        await worldPage.locator('#autoRecapDrops .lootCard').first().click();
+        await worldPage.locator('#autoRecapDrops .lootCard[data-uid]').first().click();
         await worldPage.locator('#itemInspector').getByRole('button',{name:'Vendre · 5 K',exact:true}).click();
         const autoKamas=await worldPage.evaluate(()=>D.k);
         await worldPage.locator('#itemInspector').getByRole('button',{name:'Confirmer la vente',exact:true}).click();
