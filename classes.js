@@ -40,8 +40,8 @@ const CLASS_CATALOG = [
     "cra",
     "Crâ",
     "Tirs précis et cibles marquées",
-    "Précision : +10 % aux dégâts directs sur une seule cible.",
-    "precision",
+    "Archer : +25 % dégâts à distance, −25 % dégâts en mêlée.",
+    "distance",
     [
       ["Flèche vive", "Air", "dmg"],
       ["Flèche brûlante", "Feu", "dmg"],
@@ -429,6 +429,7 @@ function playerClass() {
   return CLASSES.find((c) => c.id === D.classId);
 }
 function spellBook() {
+  if(D.spellDeckMigration)return [BASIC_SPELL,...D.spellDeck.filter(Boolean).map(id=>collectibleSpell(id))];
   return (
     playerClass()?.spells ||
     BASE.map((b, i) => ({
@@ -446,12 +447,13 @@ function spellBook() {
   );
 }
 function spellRank(i) {
+  if(D.spellDeckMigration)return bestSpellRank(spellBook()[i]?.id);
   return playerClass()
     ? D.spellRanks?.[spellBook()[i]?.id] || 1
     : D.spellLv[i] || 1;
 }
 function spellUnlocked(i) {
-  return !!playerClass() && !!spellBook()[i] && D.lv >= spellBook()[i].level;
+  return !!playerClass() && !!spellBook()[i] && (D.spellDeckMigration?spellRank(i)>0:D.lv >= spellBook()[i].level);
 }
 function migrateClassSave(state) {
   if (!state.classMigration) {

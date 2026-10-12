@@ -118,6 +118,10 @@ function attackValue(p, kind, options = {}) {
   const trait = playerClass()?.trait;
   let boost = 1 + effects.buff / 100;
   if (["dmg", "drain", "aoe", "weapon"].includes(kind)) boost += effects.focus / 100;
+  if (trait === "distance") {
+    const distance=typeof tactics!=="undefined"&&tactics?tacticalDistance(tactics.player,tactics.enemies[targetIndex]):(kind==="weapon"?1:2);
+    boost*=distance<=1?0.75:1.25;
+  }
   if (trait === "precision" && ["dmg", "drain"].includes(kind)) boost += 0.1;
   if (trait === "ambush" && effects.shield > 0) boost += 0.15;
   if (trait === "fury" && D.hp < mh() * 0.5) boost += 0.2;

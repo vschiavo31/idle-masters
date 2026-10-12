@@ -22,6 +22,7 @@ function game() {
   });
   vm.runInContext(read("local-data.js"), c);
   vm.runInContext(read("classes.js"), c);
+  vm.runInContext(read("spell-deck.js"), c);
   vm.runInContext(read("combat-effects.js"), c);
   vm.runInContext(read("world-data.js"), c);
   vm.runInContext(read("tactical-combat.js"),c);
@@ -1050,4 +1051,47 @@ test('monster spell profiles expose their actual reach and line requirement',()=
  assert.equal(run('tacticalMonsterSpell({e:"Feu"}).line'),true);
  assert.equal(run('tacticalMonsterSpell({e:"Eau"}).line'),false);
  assert.equal(run('tacticalMonsterSpell({e:"Terre"}).range'),1);
+});
+
+test('deck migration preserves unlocked and trained spells once without granting new class spells',()=>{
+ const {run}=game();run('D.lv=10;D.spellRanks={"iop:0":4,"cra:7":3};D.spellPts=8;migrateSpellDeck(D)');
+ assert.equal(run('spellCopies("iop:0",4)'),1);assert.equal(run('spellCopies("cra:7",3)'),1);
+ assert.equal(run('D.spellDeck.filter(Boolean).length'),4);assert.equal(run('D.spellPts'),0);
+ run('migrateSpellDeck(D)');assert.equal(run('spellCopies("iop:0",4)'),1);
+ const before=run('JSON.stringify([D.spellCollection,D.spellDeck])');run('chooseClass("cra")');
+ assert.equal(run('JSON.stringify([D.spellCollection,D.spellDeck])'),before);
+ assert.equal(run('spellBook()[0].id'),'basic');assert.equal(run('spellRank(1)'),4);
+});
+test('new characters have only the basic attack and deck editing validates slots, copies, duplicates and fight lock',()=>{
+ const {run}=game();run('D.classId=null;migrateSpellDeck(D);D.classId="iop"');
+ assert.equal(run('spellBook().length'),1);assert.equal(run('canCast(0)'),false);
+ assert.equal(run('setDeckSpell(0,"cra:0")'),false);run('addSpellCopy("cra:0");addSpellCopy("eniripsa:1")');
+ assert.equal(run('setDeckSpell(0,"cra:0")'),true);assert.equal(run('setDeckSpell(1,"cra:0")'),false);
+ assert.equal(run('setDeckSpell(6,"eniripsa:1")'),false);assert.equal(run('setDeckSpell(1,"eniripsa:1")'),true);
+ run('startEncounter(0,2)');assert.equal(run('setDeckSpell(0,null)'),false);assert.equal(run('spellUnlocked(2)'),true);
+ const pa=run('PA');run('Math.random=()=>.999;cast(1)');assert.equal(run('PA'),pa-3);
+ run('mode="picker"');assert.equal(run('setDeckSpell(0,null)'),true);assert.equal(run('spellCopies("cra:0",1)'),1);
+});
+test('fusion consumes exactly three equal-rank copies, keeps equipped spells and refuses invalid or maximum ranks',()=>{
+ const {run}=game();run('migrateSpellDeck(D);D.spellCollection={};D.spellDeck=Array(6).fill(null);addSpellCopy("cra:0");addSpellCopy("cra:0");setDeckSpell(0,"cra:0")');
+ assert.equal(run('fuseSpell("cra:0",1)'),false);run('addSpellCopy("cra:0")');
+ assert.equal(run('fuseSpell("cra:0",1)'),true);assert.equal(run('spellCopies("cra:0",1)'),0);assert.equal(run('spellCopies("cra:0",2)'),1);assert.equal(run('spellRank(1)'),2);
+ assert.equal(run('fuseSpell("cra:0",1)'),false);run('addSpellCopy("cra:0",6);addSpellCopy("cra:0",6);addSpellCopy("cra:0",6)');
+ assert.equal(run('fuseSpell("cra:0",6)'),false);assert.equal(run('fuseSpell("cra:0",0)'),false);
+ run('startEncounter(0,0);addSpellCopy("cra:0",2);addSpellCopy("cra:0",2)');assert.equal(run('fuseSpell("cra:0",2)'),false);
+});
+test('every collectible spell has a drop source and 12 percent gate exactly matches advertised independent rates',()=>{
+ const {c,run}=game();c.world=data('game-world.json');run('activateWorld(world);migrateSpellDeck(D);buildSpellDropPools(M)');
+ assert.equal(run('DROP_SPELLS.every(s=>M.some(m=>spellDropRate(s.id,m)>0))'),true);
+ assert.equal(run('M.every(m=>Math.abs(spellDropsFor(m).reduce((sum,s)=>sum+spellDropRate(s.id,m),0)-12)<1e-9)'),true);
+ run('Math.random=()=>.12');assert.equal(run('rollSpellDrop(M[0]).length'),0);
+ run('Math.random=()=>0');const q=run('rollSpellDrop(M[0])[0]');assert.equal(q.rank,1);assert.equal(run(`spellCopies('${q.spellId}',1)>=1`),true);
+ run('startEncounter(ZONE_ORDER[0],2);encounter.members.forEach(e=>e.hp=0);victory()');assert.equal(run('lastResult.drops.filter(q=>q.spellId).length'),3);
+ const snapshot=run('JSON.stringify(D.spellCollection)');run('victory()');assert.equal(run('JSON.stringify(D.spellCollection)'),snapshot);
+});
+test('collectible tactical rules follow spell identity across class changes and deck reorder; experience gives no spell points',()=>{
+ const {run}=game();run('migrateSpellDeck(D);D.spellCollection={};D.spellDeck=Array(6).fill(null);addSpellCopy("cra:1");setDeckSpell(3,"cra:1");D.classId="iop"');
+ assert.equal(run('tacticalRule(1).line'),true);assert.equal(run('tacticalRange(1)'),5);
+ run('gainxp(500)');assert.equal(run('D.spellPts'),0);
+ const saved=run('JSON.stringify(D)');run('migrateSpellDeck(D)');assert.equal(run('JSON.stringify(D)'),saved);
 });

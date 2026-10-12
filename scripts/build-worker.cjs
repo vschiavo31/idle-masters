@@ -18,6 +18,7 @@ const files = [
   "roster-selection.js",
   "monster-catalogue.json",
   "classes.js",
+  "spell-deck.js",
   "combat-effects.js",
   "saving.js",
   "local-data.js",

@@ -477,7 +477,7 @@ function gainxp(x) {
     D.lv++;
     D.pts += 5;
     D.bh += 8;
-    if (D.lv % 2 === 0) D.spellPts++;
+    if (!D.spellDeckMigration && D.lv % 2 === 0) D.spellPts++;
   }
   if (D.lv === MAX_LEVEL) {
     g = Math.max(0, g - D.xp);
@@ -526,7 +526,7 @@ function victory() {
   for (const m of defeated) {
     kg += R(m.k[0], m.k[1]);
     baseXp += m.xp;
-    drops.push(...loot(m));
+    drops.push(...loot(m),...rollSpellDrop(m));
     D.master[m.id] = (D.master[m.id] || 0) + 1;
     if (m.boss) D.boss[m.boss] = (D.boss[m.boss] || 0) + 1;
   }
@@ -548,7 +548,7 @@ function victory() {
     levelBefore,
     levelAfter: D.lv,
     levelsGained: D.lv - levelBefore,
-    unlocked: spellBook()
+    unlocked: D.spellDeckMigration?[]:spellBook()
       .filter((s) => s.level > levelBefore && s.level <= D.lv)
       .map((s) => s.n),
     k: kg,
@@ -698,6 +698,7 @@ function autoWins() {
 function recordAutoRewards(xp,k,drops) {
  D.autoSession ||= {battles:0,wins:0,losses:0,xp:0,k:0,drops:[]};
  D.autoSession.battles++;D.autoSession.wins=(D.autoSession.wins||0)+1;D.autoSession.xp+=xp;D.autoSession.k+=k;
+ D.autoSession.spellDrops||=[];D.autoSession.spellDrops.push(...drops.filter(q=>q.spellId));
  D.autoSession.drops.push(...drops.filter(q=>q.uid&&meta(q.id)).map(q=>({uid:q.uid,id:q.id,rayonnant:!!q.rayonnant})));
 }
 function toggleAuto() {
@@ -816,6 +817,7 @@ function spellUpgradeCost(i) {
   return spellRank(i) < MAX_SPELL_RANK ? spellRank(i) : 0;
 }
 function upSpell(i) {
+  if(D.spellDeckMigration)return false;
   const cost = spellUpgradeCost(i);
   if (!spellUnlocked(i) || !cost || D.spellPts < cost) return false;
   D.spellPts -= cost;
@@ -877,34 +879,12 @@ function renderClassChoice() {
   $("classArtwork").innerHTML = classArt(candidate.id,'classLarge');
   $("classPreviewName").textContent = candidate.name;
   $("classPreview").textContent = candidate.style + " · " + candidate.passive;
-  $("chooseClassBtn").textContent = "Voir les sorts du " + candidate.name;
+  $("chooseClassBtn").textContent = "Voir le passif du " + candidate.name;
   $("chooseClassBtn").disabled = mode === "fight";
   select.disabled = mode === "fight";
   const root = $("classPreviewSpells");
   root.innerHTML = "";
-  candidate.spells.forEach((s) => {
-    const rank = D.spellRanks[s.id] || 1,
-      p = spellValues(s, rank),
-      card = document.createElement("div");
-    card.className = "card";
-    card.innerHTML =
-      "<b>" +
-      s.n +
-      "</b><div class='mut'>Niveau " +
-      s.level +
-      " · " +
-      s.pa +
-      " PA · " +
-      s.e +
-      " · Rang " +
-      rank +
-      "/6</div><div>" +
-      spellEffectText(s, p, candidate.trait) +
-      "</div><div class='mut'>" +
-      (s.cd ? "Relance " + s.cd + " tours" : "3 lancers maximum par tour") +
-      "</div>";
-    root.append(card);
-  });
+  const info=document.createElement('div');info.className='card';info.textContent='La classe donne uniquement un passif. Tous les sorts se trouvent sur les monstres, sans restriction de classe. Ton deck et ta collection sont conservés si tu changes de classe.';root.append(info);
   const cost = classChangeCost(candidate.id),
     current = D.classId === candidate.id;
   $("classCost").textContent = current
@@ -1120,7 +1100,7 @@ function dashboard() {
   $("dashK").textContent = D.k;
   $("pts").textContent = D.pts;
   $("quickPts").textContent = D.pts;
-  $("spellPts").textContent = D.spellPts;
+  $("spellPts").textContent = Object.keys(D.spellCollection||{}).length;
   $("quickSeen").textContent = Object.keys(D.seen || {}).length;
   $("quickBag").textContent = D.bag.length;
   $("resetStatsBtn").disabled = mode === "fight" || !investedStatPoints();
@@ -1396,6 +1376,7 @@ function inventory() {
       '<div class="mut">Aucun objet ne correspond aux filtres.</div>';
 }
 function spells() {
+  if(D.spellDeckMigration){renderSpellDeck();return;}
   $("spPtsTop").textContent = D.spellPts + " point(s)";
   const root = $("spellList");
   root.innerHTML = "";
@@ -1691,6 +1672,7 @@ function result() {
   $("resultK").textContent = "+" + lastResult.k;
   const dropsRoot=$("resultDrops");dropsRoot.replaceChildren();
   for(const q of lastResult.drops) {
+    if(q.spellId){dropsRoot.append(spellDropButton(q));continue;}
     if(q.resourceId)continue;
     dropsRoot.append(lootButton(q));
   }
@@ -1952,6 +1934,7 @@ async function boot() {
   D.claimed = D.claimed || {};
   D.spellLv = D.spellLv || [1, 1, 1, 1, 1, 1];
   migrateClassSave(D);
+  migrateSpellDeck(D);
   pendingClass = D.classId || "iop";
   D.w = {
     Coiffe: null,
@@ -1994,6 +1977,7 @@ async function boot() {
     }
     D.localCombatMigration = 1;
     activateWorld(world);
+    buildSpellDropPools(M);
     cleanEquipmentSave(D);
     ensureEquipmentSlots(D);
     if (!M.some((m) => m.id === D.mid)) D.mid = M[0].id;
@@ -2022,3 +2006,6 @@ boot();
 
 $("tacticalTrial").onclick=startTactical;
 $("tacticalMoveMode").onclick=()=>{if(tactics){tactics.armed=null;tactics.message="Clique sur une case verte pour te déplacer.";render()}};
+
+$('spellSearch').oninput=()=>{deckSearch=$('spellSearch').value;renderSpellDeck()};
+$('spellOwnedOnly').onchange=()=>{deckOwnedOnly=$('spellOwnedOnly').checked;renderSpellDeck()};

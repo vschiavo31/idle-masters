@@ -145,7 +145,7 @@ async function main() {
         await page.locator("#classSelect").selectOption("cra");
         assert.equal(
           await page.locator("#classPreviewSpells .card").count(),
-          8,
+          1,
         );
         assert.equal(await page.evaluate(() => D.classId), null);
         assert.equal(await page.evaluate(() => D.k), 123);
@@ -172,7 +172,7 @@ async function main() {
         await page.locator("#classSelect").selectOption("xelor");
         assert.equal(
           await page.locator("#classPreviewSpells .card").count(),
-          8,
+          1,
         );
         assert.equal(await page.locator("#confirmClassBtn").isDisabled(), true);
         assert.equal(await page.evaluate(() => D.classId), "iop");
@@ -384,122 +384,59 @@ async function main() {
           "Previous level-up message must disappear",
         );
         await page.locator("#changeZone").click();
-        // All 19 classes: level gates, actual casts of all 152 spells, and class lock during fights.
-        await page.evaluate(() => {
-          M.forEach((m) => (m.h += 10000));
-          D.k = 500000;
-        });
-        const classIds = await page.evaluate(() => CLASSES.map((c) => c.id));
-        for (const id of classIds) {
-          await page
-            .getByRole("button", { name: "SORTS", exact: true })
-            .click();
-          await page.locator("#classSelect").selectOption(id);
-          const same = await page.evaluate((id) => D.classId === id, id);
-          const bank = await page.evaluate(() => D.k);
-          assert.equal(
-            await page.locator("#classPreviewSpells .card").count(),
-            8,
-          );
-          if (!same) await page.locator("#confirmClassBtn").click();
-          else await page.locator("#backClassBtn").click();
-          assert.equal(
-            await page.evaluate(() => D.k),
-            bank - (same ? 0 : 20000),
-          );
-          await page.evaluate(() => {
-            D.lv = 1;
-            render();
-          });
-          assert.equal(await page.locator("#spellList .card").count(), 8);
-          assert.equal(await page.locator("#spellList .locked").count(), 6);
-          await page.evaluate(() => {
-            D.lv = 39;
-            render();
-          });
-          assert.equal(await page.locator("#spellList .locked").count(), 1);
-          await page.evaluate(() => {
-            D.lv = 40;
-            D.z = 0;
-            render();
-          });
-          assert.equal(await page.locator("#spellList .locked").count(), 0);
-          await page
-            .getByRole("button", { name: "COMBAT", exact: true })
-            .click();
-          await page.locator("#mobs button").nth(2).click();
-          for (let i = 0; i < 8; i++) {
-            await page.evaluate((i) => {
-              PA = maxpa();
-              effects.casts = {};
-              effects.cooldowns = {};
-              effects.summons = [];
-              if (spellBook()[i].kind === "heal") D.hp = Math.floor(mh() / 2);
-              if (spellBook()[i].kind === "detonate") {
-                cast(1);
-                PA = maxpa();
-              }
-              render();
-            }, i);
-            const rows = await page.locator("#log div").count();
-            await page
-              .locator(`#combatSpells button[data-spell="${i}"]`)
-              .click();
-            assert.ok(
-              (await page.locator("#log div").count()) > rows,
-              id + " spell " + i + " did not resolve",
-            );
-          }
-          await page.locator('#arenaMenu').click();
-          await page
-            .getByRole("button", { name: "SORTS", exact: true })
-            .click();
-          assert.equal(await page.locator("#classSelect").isDisabled(), true);
-          await page
-            .getByRole("button", { name: "COMBAT", exact: true })
-            .click();
-          await page.locator("#backMob").click();
-          assert.equal(
-            await page.evaluate(
-              () => document.documentElement.scrollWidth > innerWidth,
-            ),
-            false,
-          );
+        // Classes now grant passives only; changes preserve a mixed deck and collection.
+        await page.evaluate(() => {D.k=500000;addSpellCopy('cra:0');addSpellCopy('eniripsa:1');D.spellDeck=Array(6).fill(null);setDeckSpell(0,'cra:0');setDeckSpell(1,'eniripsa:1');show('spellsPage')});
+        const classIds=await page.evaluate(()=>CLASSES.map(c=>c.id));
+        const collectionBefore=await page.evaluate(()=>JSON.stringify([D.spellCollection,D.spellDeck]));
+        for(const id of classIds){
+          await page.locator('#classSelect').selectOption(id);
+          assert.equal(await page.locator('#classPreviewSpells .card').count(),1);
+          const same=await page.evaluate(id=>D.classId===id,id),bank=await page.evaluate(()=>D.k);
+          if(!same)await page.locator('#confirmClassBtn').click();else await page.locator('#backClassBtn').click();
+          assert.equal(await page.evaluate(()=>D.k),bank-(same?0:20000));
+          assert.equal(await page.evaluate(()=>JSON.stringify([D.spellCollection,D.spellDeck])),collectionBefore);
         }
-        await page.evaluate(() => {
-          M.forEach((m) => (m.h -= 10000));
-        });
-        await page.evaluate(() => {
-          delete D.spellRanks[spellBook()[0].id];
-          show("spellsPage");
-        });
-        const upgrade = page.locator('#spellList .card[data-spell="0"] button');
-        for (let cost = 1; cost <= 5; cost++) {
-          await page.evaluate((cost) => {
-            D.spellPts = cost - 1;
-            render();
-          }, cost);
-          assert.equal(await upgrade.isDisabled(), true);
-          assert.equal(
-            (await upgrade.textContent()).includes(String(cost) + " point"),
-            true,
-          );
-          await page.evaluate((cost) => {
-            D.spellPts = cost;
-            render();
-          }, cost);
-          await upgrade.click();
-          assert.equal(await page.evaluate(() => D.spellPts), 0);
-          assert.equal(await page.evaluate(() => spellRank(0)), cost + 1);
+        await page.locator('#spellSearch').fill('Flèche vive');
+        const card=page.locator('#spellList [data-spell-id="cra:0"]');
+        assert.equal(await card.count(),1);
+        const upgrade=card.locator('[data-fuse-rank="1"]');
+        await page.evaluate(()=>{D.spellCollection['cra:0']=[2,0,0,0,0,0];render()});
+        assert.equal(await upgrade.isDisabled(),true);
+        await page.evaluate(()=>{addSpellCopy('cra:0');render()});await upgrade.click();
+        assert.equal(await page.evaluate(()=>spellCopies('cra:0',1)),0);
+        assert.equal(await page.evaluate(()=>spellCopies('cra:0',2)),1);
+        assert.equal(await page.evaluate(()=>bestSpellRank('cra:0')),2);
+        assert.ok((await card.textContent()).includes('Rang 2/6'));
+        // Three copies of each next rank reach six, without spending points.
+        for(let rank=2;rank<6;rank++){
+          await page.evaluate(rank=>{addSpellCopy('cra:0',rank);addSpellCopy('cra:0',rank);render()},rank);
+          await card.locator('[data-fuse-rank="'+rank+'"]').click();
+          assert.equal(await page.evaluate(()=>bestSpellRank('cra:0')),rank+1);
         }
-        assert.equal(await upgrade.textContent(), "Rang 6 · maximum");
-        assert.equal(await upgrade.isDisabled(), true);
-        assert.equal(
-          (
-            await page.locator('#spellList .card[data-spell="0"]').textContent()
-          ).includes("6/6"),
-          true,
-        );
+        assert.equal(await card.locator('[data-fuse-rank]').count(),0);
+        assert.equal(await page.evaluate(()=>D.spellPts),0);
+        await page.locator('#spellSearch').fill('');
+        await page.locator('#spellDeck [data-deck-slot="0"] button').click();
+        assert.equal(await page.evaluate(()=>D.spellDeck[0]),null);
+        await page.locator('[data-add-spell="cra:0"]').click();
+        assert.equal(await page.evaluate(()=>D.spellDeck[0]),'cra:0');
+        await page.evaluate(()=>{show('combat');startEncounter(0,2);encounter.members.forEach(e=>e.hp=10000);D.eh=10000;render()});
+        assert.equal(await page.locator('#combatSpells [data-spell]').count(),3);
+        await page.locator('#combatSpells [data-spell="1"]').click();
+        assert.ok(await page.evaluate(()=>encounter.members[0].hp)<10000);
+        await page.locator('#arenaMenu').click();await page.getByRole('button',{name:'SORTS',exact:true}).click();
+        assert.equal(await page.locator('#classSelect').isDisabled(),true);
+        assert.equal(await page.locator('#spellDeck button').first().isDisabled(),true);
+        await page.evaluate(()=>{addSpellCopy('cra:0',1);addSpellCopy('cra:0',1);addSpellCopy('cra:0',1);render()});
+        assert.equal(await page.locator('#spellList [data-spell-id="cra:0"] [data-fuse-rank="1"]').isDisabled(),true);
+        await page.getByRole('button',{name:'COMBAT',exact:true}).click();await page.locator('#backMob').click();
+        // Guaranteed test drop is rendered, opens its collection entry, and is included in auto recap.
+        await page.evaluate(()=>{startEncounter(0,0);encounter.members[0].hp=0;const random=Math.random;Math.random=()=>0;victory();Math.random=random;});
+        const dropped=await page.evaluate(()=>lastResult.drops.find(q=>q.spellId).spellId);
+        await page.locator('#resultDrops [data-spell-id="'+dropped+'"]').click();
+        assert.equal(await page.locator('#spellList [data-spell-id="'+dropped+'"]').count(),1);
+        await page.locator('#spellSearch').fill('');
+        await page.evaluate(()=>{mode='picker';show('combat')});
         // Zone access is free even with no wins and level one.
         const gateBackup = await page.evaluate(() => D.encounterWins);
         await page.evaluate(() => {
@@ -854,6 +791,7 @@ async function main() {
           zone: D.z,
           classId: D.classId,
           spellRanks: D.spellRanks,
+            spellCollection:D.spellCollection,spellDeck:D.spellDeck,
           inventorySort: D.inventorySort,
           inventorySlots: D.inventorySlots,
           locks: D.bag.filter((q) => q.locked).map((q) => q.uid),
@@ -896,6 +834,7 @@ async function main() {
             zone: D.z,
             classId: D.classId,
             spellRanks: D.spellRanks,
+            spellCollection:D.spellCollection,spellDeck:D.spellDeck,
             inventorySort: D.inventorySort,
             inventorySlots: D.inventorySlots,
             locks: D.bag.filter((q) => q.locked).map((q) => q.uid),

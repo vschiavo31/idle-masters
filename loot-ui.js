@@ -56,10 +56,12 @@ function openAutoRecap() {
 }
 function renderAutoRecap() {
  const session=D.autoSession;if(!session)return;
- $('autoRecapTotals').textContent=session.battles+' combat(s) terminé(s) · '+(session.wins??session.battles)+' victoire(s) · '+(session.losses||0)+' défaite(s) · '+session.xp.toLocaleString('fr')+' XP · '+session.k.toLocaleString('fr')+' kamas · '+session.drops.length+' drop(s)';
+ $('autoRecapTotals').textContent=session.battles+' combat(s) terminé(s) · '+(session.wins??session.battles)+' victoire(s) · '+(session.losses||0)+' défaite(s) · '+session.xp.toLocaleString('fr')+' XP · '+session.k.toLocaleString('fr')+' kamas · '+(session.drops.length+(session.spellDrops||[]).length)+' drop(s)';
  const root=$('autoRecapDrops');root.replaceChildren();
  const groups=new Map();for(const q of session.drops){if(!groups.has(q.id))groups.set(q.id,[]);groups.get(q.id).push(q)}
- if(!groups.size)root.textContent='Aucun équipement obtenu pour le moment.';
+ if(!groups.size&&!(session.spellDrops||[]).length)root.textContent='Aucun drop obtenu pour le moment.';
+ const spellGroups=new Map();for(const q of session.spellDrops||[]){const key=q.spellId+':'+q.rank;if(!spellGroups.has(key))spellGroups.set(key,{...q,count:0});spellGroups.get(key).count++;}
+ for(const q of spellGroups.values()){const section=document.createElement('section');section.className='recapGroup';const h=document.createElement('h3');h.textContent=collectibleSpell(q.spellId).n+' × '+q.count;section.append(h,spellDropButton(q));root.append(section);}
  for(const [id,items] of groups){
   const section=document.createElement('section');section.className='recapGroup';
   const heading=document.createElement('h3');heading.textContent=(meta(id)?.n||id)+' × '+items.length;section.append(heading);

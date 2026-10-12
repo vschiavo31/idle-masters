@@ -6,7 +6,7 @@
       name="viewport"
       content="width=device-width,initial-scale=1,viewport-fit=cover"
     />
-    <title>Idle Masters V3.22.0</title>
+    <title>Idle Masters V3.23.0</title>
     <style>
       :root {
         --bg: #100e0b;
@@ -742,6 +742,15 @@
       .tacticalCell.selected {border:2px solid #e9ba59;}
       .tacticalCell.attackable {background:#843d35;border-color:#ffac84;}
       .tacticalCell.areaPreview {box-shadow:inset 0 0 0 2px #e19cff;}
+      .deckGrid {display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;}
+      .deckSlot {display:flex;flex-direction:column;gap:8px;padding:12px;background:#241c12;border:1px solid #8c7545;border-radius:12px;min-width:0;}
+      .deckSlot span {overflow-wrap:anywhere;}
+      .spellToken {display:inline-flex;position:relative;align-items:center;justify-content:center;width:42px;height:42px;min-width:42px;border:1px solid #d3b77b;border-radius:12px;background:radial-gradient(circle,#6f5135,#21160f);font-size:24px;color:#ffe0a5;}
+      .spellToken small {position:absolute;right:2px;bottom:0;font-size:11px;}
+      .copyCounts div {margin:8px 0;}.copyCounts button {display:block;margin-top:5px;font-size:12px;}
+      .collectibleSpell details {margin-top:12px;}.collectibleSpell details p {max-height:200px;overflow:auto;}
+      #spellSearch {box-sizing:border-box;padding:12px;font:inherit;max-width:100%;}
+      @media(max-width:500px){.deckGrid{grid-template-columns:repeat(2,minmax(0,1fr));}}
       .tacticalCell.acting {box-shadow:inset 0 0 0 2px #ffda64;}
       .tacticalCell .art {width:100%;height:100%;max-width:38px;max-height:38px;pointer-events:none;}
       @media(max-height:720px) {.tacticalArena.arenaShell {grid-template-rows:32px 45px minmax(180px,1fr) 32px 120px 38px 18px;}.tacticalArena #combatSpells button {font-size:11px;}.tacticalArena #combatSpells b {font-size:12px;}}
@@ -752,7 +761,7 @@
     <div class="wrap">
       <div class="top">
         <div class="brand">Idle Masters</div>
-        <span class="version">V3.22 · Sorts tactiques</span>
+        <span class="version">V3.23 · Collection de sorts</span>
       </div>
       <div class="row" style="margin-bottom: 12px">
         <small id="saveStatus" class="mut" role="status"
@@ -829,7 +838,7 @@
           <div class="quickCard">
             <div class="quickIcon">SORTS</div>
             <h2>Sorts</h2>
-            <div class="mut"><span id="spellPts"></span> point(s)</div>
+            <div class="mut"><span id="spellPts"></span> sorts découverts</div>
           </div>
           <div class="quickCard wide">
             <div class="quickIcon">SAC</div>
@@ -986,7 +995,7 @@
           <div id="classList">
             <label for="classSelect">Classe à découvrir</label>
             <select id="classSelect" class="wide"></select>
-            <button id="chooseClassBtn" class="wide">Voir les sorts</button>
+            <button id="chooseClassBtn" class="wide">Voir le passif</button>
           </div>
           <div id="classDetail" hidden>
             <div id="nicknameField">
@@ -1025,18 +1034,22 @@
           </div>
           <p class="mut">
             Premier choix gratuit, puis 20 000 kamas par changement hors combat.
-            Les améliorations restent liées à chaque classe. Sorts et effets
+            Le deck et la collection sont conservés. Sorts et effets
             adaptés à Idle Masters.
           </p>
         </div>
         <div id="classTraining" class="panel">
           <div class="row">
-            <h1>Sorts</h1>
+            <h1>Deck et collection</h1>
             <b id="spPtsTop" class="gold"></b>
           </div>
           <p class="mut">
-            Rang maximum : 6 · Coûts : 1, 2, 3, 4 puis 5 points de sort.
+            Les sorts se droppent sur les monstres. Fusionne 3 exemplaires du même rang pour obtenir 1 exemplaire du rang supérieur, jusqu’au rang 6.
           </p>
+          <p id="deckLock" class="mut"></p><div id="spellDeck" class="deckGrid"></div>
+          <p id="deckStatus" role="status" class="gold"></p>
+          <label for="spellSearch">Rechercher un sort ou un élément</label><input id="spellSearch" class="wide" placeholder="Nom du sort, feu, soin…" />
+          <label class="saleChoice"><input id="spellOwnedOnly" type="checkbox" checked /> Possédés uniquement</label>
           <div id="spellList" class="spellgrid"></div>
         </div>
       </section>
@@ -1220,19 +1233,20 @@
       ><button data-page="collection">COLLECTION</button
       ><button data-page="combat">COMBAT</button>
     </nav>
-    <script src="local-data.js?v=3.22.0"></script>
-    <script src="bestiary-ui.js?v=3.22.0"></script>
-    <script src="saving.js?v=3.22.0"></script>
-    <script src="classes.js?v=3.22.0"></script>
-    <script src="combat-effects.js?v=3.22.0"></script>
-    <script src="roster-selection.js?v=3.22.0"></script>
-    <script src="world-data.js?v=3.22.0"></script>
-    <script src="game-art.js?v=3.22.0"></script>
+    <script src="local-data.js?v=3.23.0"></script>
+    <script src="bestiary-ui.js?v=3.23.0"></script>
+    <script src="saving.js?v=3.23.0"></script>
+    <script src="classes.js?v=3.23.0"></script>
+    <script src="spell-deck.js?v=3.23.0"></script>
+    <script src="combat-effects.js?v=3.23.0"></script>
+    <script src="roster-selection.js?v=3.23.0"></script>
+    <script src="world-data.js?v=3.23.0"></script>
+    <script src="game-art.js?v=3.23.0"></script>
     <dialog id="itemInspector"><div class="dialogHeader"><h2 id="itemInspectorTitle"></h2><button id="itemInspectorClose" aria-label="Fermer la fiche">×</button></div><div id="itemInspectorBody"></div></dialog>
     <dialog id="autoRecap"><div class="dialogHeader"><h2>Bilan des combats automatiques</h2><button id="autoRecapClose" aria-label="Fermer le bilan">×</button></div><p id="autoRecapTotals"></p><p class="mut">Clique sur l’image d’un objet pour voir ses jets, comparer avec ton équipement et le vendre ou l’équiper. Le mode automatique est arrêté.</p><div id="autoRecapDrops"></div></dialog>
-    <script src="tactical-combat.js?v=3.22.0"></script>
-    <script src="game.js?v=3.22.0"></script>
-    <script src="loot-ui.js?v=3.22.0"></script>
-    <script src="combat-animation.js?v=3.22.0"></script>
+    <script src="tactical-combat.js?v=3.23.0"></script>
+    <script src="game.js?v=3.23.0"></script>
+    <script src="loot-ui.js?v=3.23.0"></script>
+    <script src="combat-animation.js?v=3.23.0"></script>
   </body>
 </html>

@@ -49,13 +49,19 @@ const TACTICAL_SPELL_RANGES={
 };
 function tacticalRule(i){
  if(i===-2){const type=D.w.Arme&&meta(D.w.Arme.id)?.subtype;return {min:1,max:type==='Arc'?6:type==='Baguette'?4:1,line:type==='Arc',shape:'point',radius:0};}
- const s=spellBook()[i],targeted=['dmg','drain','aoe','poison','mark','weaken'].includes(s?.kind);
- const max=targeted?Math.max(1,TACTICAL_SPELL_RANGES[D.classId]?.[i]||3):0;
- const area=s?.kind==='aoe',shape=area?(['cra','sadida','feca','huppermage'].includes(D.classId)?'circle':'cross'):'point';
- return {min:targeted?1:0,max,line:targeted&&D.classId==='cra'&&[1,7].includes(i),shape,radius:area?(i>=6?2:1):0};
+ return tacticalRuleFor(spellBook()[i]);
+}
+function tacticalRuleFor(s){
+ if(s?.id==='basic')return {min:1,max:2,line:false,shape:'point',radius:0};
+ const classId=s?.originClass||D.classId,i=s?.originIndex??spellBook().indexOf(s),targeted=['dmg','drain','aoe','poison','mark','weaken'].includes(s?.kind);
+ const max=targeted?Math.max(1,TACTICAL_SPELL_RANGES[classId]?.[i]||3):0;
+ const area=s?.kind==='aoe',shape=area?(['cra','sadida','feca','huppermage'].includes(classId)?'circle':'cross'):'point';
+ return {min:targeted?1:0,max,line:targeted&&classId==='cra'&&[1,7].includes(i),shape,radius:area?(i>=6?2:1):0};
 }
 function tacticalRange(i){return tacticalRule(i).max;}
-function tacticalRuleText(i){const r=tacticalRule(i);return r.max?'PO '+r.min+'–'+r.max+(r.line?' · en ligne':'')+(r.radius?' · '+(r.shape==='cross'?'croix':'cercle')+' '+r.radius:''):'Sur soi';}
+function tacticalRuleText(i){return tacticalDescribeRule(tacticalRule(i));}
+function tacticalRuleTextFor(s){return tacticalDescribeRule(tacticalRuleFor(s));}
+function tacticalDescribeRule(r){return r.max?'PO '+r.min+'–'+r.max+(r.line?' · en ligne':'')+(r.radius?' · '+(r.shape==='cross'?'croix':'cercle')+' '+r.radius:''):'Sur soi';}
 function tacticalTargeted(i){return (i===-2?!!D.w.Arme&&meta(D.w.Arme.id)?.weapon?.lines.some(line=>line.kind!=='heal'):false)||['dmg','drain','aoe','poison','mark','weaken'].includes(spellBook()[i]?.kind);}
 function tacticalValidTarget(i,p){const r=tacticalRule(i),d=tacticalDistance(tactics.player,p);return d>=r.min&&d<=r.max&&(!r.line||p.x===tactics.player.x||p.y===tactics.player.y)&&tacticalSight(tactics.player,p);}
 function tacticalCanCast(i){if(!tactics)return true;if(['summon','bomb','detonate'].includes(spellBook()[i]?.kind))return false;if(!tacticalTargeted(i))return true;const target=tactics.enemies[targetIndex];return !!target&&encounter.members[targetIndex].hp>0&&tacticalValidTarget(i,target);}
